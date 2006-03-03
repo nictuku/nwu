@@ -1,0 +1,16 @@
+#!/bin/sh -e
+
+USER_NAME=nwu-agent
+
+if ! id -u $USER_NAME >/dev/null 2>&1; then
+  adduser --quiet --system --home /var/spool/nwu 
+          --shell /bin/sh --disabled-login \
+          --gecos 'Network Wide Updates' $USER_NAME
+elif ! test -d /var/spool/nwu; then
+    mkdir /var/spool/nwu
+fi
+
+chown $USER_NAME /var/spool/nwu
+
+#DEBHELPER#
+
