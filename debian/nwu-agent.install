@@ -1,5 +1,3 @@
 debian/tmp/usr/bin/nwu-maint usr/sbin
 debian/tmp/usr/bin/nwu-agent usr/bin
 debian/tmp/usr/lib/*/site-packages/nwu_agent usr/lib/site-python
-debian/config debian/tmp/DEBIAN
-debian/templates debian/tmp/DEBIAN
