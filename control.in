@@ -20,7 +20,7 @@ Description: Network-wide updates for apt-able systems
 
 Package: nwu-server
 Architecture: all
-Depends: adduser, ${python:Depends}
+Depends: adduser, ${python:Depends}, m2crypto
 Description: Network-wide updates for apt-able systems
  Nwu lets administrators manage APT of remote machines from one central point.
  It can do many apt tasks remotely, like update, upgrade and install. Also it

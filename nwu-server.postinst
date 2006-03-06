@@ -1,0 +1,15 @@
+#!/bin/sh -e
+
+USER_NAME=nwuserver
+
+if ! id -u $USER_NAME >/dev/null 2>&1; then
+  adduser --quiet --system --home /var/lib/nwu \
+          --shell /bin/sh --disabled-login \
+          --gecos 'Network Wide Updates' $USER_NAME
+elif ! test -d /var/lib/nwu; then
+    mkdir /var/lib/nwu
+fi
+
+chown -R $USER_NAME /var/lib/nwu
+chmod 700 /var/lib/nwu -R
+#DEBHELPER#
