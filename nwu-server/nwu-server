@@ -1,0 +1,179 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+import SOAPpy
+import sys
+
+sys.path.append('/usr/local/share/nwud')
+sys.path.append('/usr/share/nwud')
+
+from nwu_server.db.operation import *
+
+from M2Crypto import SSL
+
+from nwu_server import apt, auth 
+
+import ConfigParser
+config = ConfigParser.ConfigParser()
+config.read("/etc/nwu/server.conf")
+
+host = config.get("webservice", "host")
+port = int(config.get("webservice", "port"))
+
+# FIXME: fix ident info for SOAP
+ident = '$Id: nwu-server, v 0.1 $'
+
+
+SOAPpy.Config.simplify_objects = 1
+
+try:
+    create_tables()
+except:
+    pass
+
+def add_machine(password, uniq, hostname, os_name, os_version):
+    print "Creating machine", uniq, hostname, os_name, os_version
+    m = machine(uniq=uniq,hostname=hostname, os_name=os_name,
+        os_version=os_version,password=password)
+    return True
+
+def session_setup(uniq, token):
+    """Setups the session for agent-aggregator or agent-manager communication.
+    
+    The token string comes from the authentication process.
+
+    Returns session object to be used by the agent in later
+    communcation steps.
+    """
+    
+    # FIXME: test if token is valid here.
+    query_check_m = machine.select(machine.q.uniq==uniq)
+    check_m = list(query_check_m)
+    
+    password = ''
+
+    if len(check_m) == 0:
+        return False
+
+    if auth.check_token(uniq, token):
+        return uniq, token
+
+    print "uniq, token:", uniq, token
+    # FIXME: return False or raise an exception?
+    raise Exception, "Wrong token for " + uniq
+
+def get_tasks(session):
+
+    (uniq, token) = session
+
+    if not auth.check_token(uniq, token):
+        raise Exception, "Invalid authentication token"
+
+    m = machine.select(machine.q.uniq==uniq)
+    ma = list(m)
+    q = len(ma)
+    if q != 1:
+        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
+'uniq string and it should have exactly one."
+
+    client_machine = ma[0]
+
+    print "Checking pending tasks for:", client_machine.id, client_machine.hostname
+
+    remote_tasks = []
+    
+    t = task.select(machine.q.id==client_machine.id)
+    ta = list(t)
+    qta = len(ta)
+
+    if qta == 0:
+        print "No pending tasks found for:", client_machine.id, client_machine.hostname
+        return remote_tasks
+        
+    for tas in ta:
+        remote_tasks.append((tas.action, tas.details))
+        print "Found:", tas.action, tas.details
+
+    return remote_tasks
+
+def wipe_tasks(session):
+    (uniq, token) = session
+
+    if not auth.check_token(uniq, token):
+        raise Exception, "Invalid authentication token"
+
+    m = machine.select(machine.q.uniq==uniq)
+    ma = list(m)
+    q = len(ma)
+    if q != 1:
+        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
+'uniq string and it should have exactly one."
+
+    client_machine = ma[0]
+
+    print "Wiping tasks for:", client_machine.id, client_machine.hostname
+
+
+    delquery = conn.sqlrepr(Delete(task.q, where=\
+        (task.q.machineID ==  client_machine.id)))
+
+    conn.query(delquery)
+
+#    for tas in client_machine.tasks:
+#            client_machine.hostname
+#        tas.destroySelf()
+        
+    return True
+
+def main():
+
+    ssl_context = SSL.Context()
+
+    ssl_context.load_cert('/etc/nwu/server.pem')
+#    except:
+#        raise Exception, "Error while trying to load the server certificate file"
+
+    SOAPpy.Config.debug = 0
+
+    server = SOAPpy.SOAPServer (
+        (host, port),
+    # I don't believe namespace would help us in any way.
+    #    namespace = namespace,
+        ssl_context = ssl_context
+        )
+
+    server.registerFunction(apt.apt_set_repositories)
+    server.registerFunction(apt.apt_set_current_packages_full)
+    server.registerFunction(session_setup)
+    server.registerFunction(apt.apt_set_upgrade_candidates_diff)
+    server.registerFunction(apt.apt_set_upgrade_candidates_full)
+    server.registerFunction(get_tasks)
+    server.registerFunction(wipe_tasks)
+    server.registerFunction(add_machine)
+    
+    server.serve_forever()
+
+if __name__ == '__main__':
+    try:
+        sys.exit (main ())
+    except KeyboardInterrupt:
+        sys.exit (0)
+else:
+    print "wee"
+

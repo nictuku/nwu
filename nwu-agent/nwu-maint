@@ -1,0 +1,187 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+"""Network Wide Updates maintenance script.
+
+This is called by cron and runs as root.
+"""
+
+
+import ConfigParser 
+import commands
+import os 
+from sys import exit
+
+accepted_actions = ['update', 'install', 'upgrade']
+
+status = {}
+
+
+def is_safe(str):
+    # From Byron Ellacot's message in the mod_python list
+    # http://www.modpython.org/pipermail/mod_python/2004-December/016987.html
+
+    OK_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.-_"
+    
+    return [x for x in str if x.lower() not in OK_CHARS] == []
+
+
+# FIXME: use main() here
+
+task_spool_path = "/var/spool/nwu/nw.tasks"
+
+action_file = ConfigParser.ConfigParser()
+
+r = action_file.read(task_spool_path)
+if len(r) == 0:
+    print "Could not read the task file in", task_spool_path
+    exit(1)
+    
+actions = action_file.sections()
+
+for act in actions:
+
+    # Sample structure 
+    # act = update, details = [None]
+    # act = upgrade, details = [None]
+    # act = install, details = ['package1', 'package2', 'package3']
+
+
+    if act not in accepted_actions:
+        print "Bogus task section found. Deleting" , act, "."
+        action_file.remove_section(act)
+        continue
+
+    print "Checking for pending", act, "task..."
+    details = action_file.options(act)
+
+    status = {}
+
+    # Iterate over the list of task details (package names for example)
+    iterate_list = details[:]
+    
+    for detail in iterate_list:
+        print "current action: " + str(detail)
+
+        task_id = str(act) + str(detail)
+
+        if detail > 0:
+            detail_s = detail
+        else:
+            detail_s = ''
+
+        print "Found a pending task: " + act + detail_s
+
+        if act == 'update':
+
+            # Check if we had not already tried to run this before
+            if not status.has_key(task_id):
+
+                status[task_id] = commands.getstatusoutput(
+                    "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get update"
+                    )
+
+                if status[task_id][0] != 0:
+                    print "Failed to update apt repositores. Output:"
+                    print status[task_id][1]
+                    # FIXME: log this to syslog
+                else:
+                    # If sucessful, remove that detail from the task list
+                    action_file.remove_option(act, detail)
+                    print "Apt update finished."
+                    print "DEBUG:"
+                    print status[task_id][1]
+
+            else:
+                 action_file.remove_option(act, detail)
+
+        elif act == 'upgrade':
+
+            # Check if we had not already tried to run this before
+            if not status.has_key(task_id):
+
+                status[task_id] = commands.getstatusoutput(
+                    "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"
+                    )
+
+                if status[task_id][0] != 0:
+                    print "Failed to upgrade the system. Output:"
+                    print status[task_id][1]
+                    # FIXME: log this to syslog
+                else:
+                    # If sucessful, remove that detail from the task list
+                    action_file.remove_option(act, detail)
+                    print "Apt upgrade finished."
+                    print "DEBUG:"
+                    print status[task_id][1]
+
+            else:
+
+                 
+                action_file.remove_option(act, detail)
+
+        elif act == 'install':
+
+            # Checks if the packages to be installed names are safe and valid
+
+            if len(detail) > 1 and is_safe(detail):
+                print "Running valid task:", task_id
+
+                if not status.has_key(task_id): 
+
+                    status[task_id] = commands.getstatusoutput(
+                     "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get install " + detail
+                    )
+
+                    if status[task_id][0] != 0:
+                        print "Failed to install package. Output:"
+                        print status[task_id][1]
+                        # FIXME: log this to syslog
+                    else:
+                        # If sucessful, remove that detail from the task list
+                        print "remove_option", act, detail
+                        action_file.remove_option(act, detail)
+                        print "Task failed."
+                        print status[task_id][1]
+
+                else:
+                    action_file.remove_option(act, detail)
+
+
+            else:
+                # Buggy install instruction. Delete it.
+                action_file.remove_option(act, detail)
+
+        else:
+            print "Unrecognized task: " + act
+
+        print "current action: " + str(detail)
+
+try:
+    updt_spool = open(task_spool_path, 'w')
+except:
+    print "!!! Problem writing to spool directory in", task_spool_path
+    pass
+else:
+    print "Updating task spool file."
+    action_file.write(updt_spool)
+
+#    if len(action_file.sections()) == 0:
+#        print "Deleting", task_spool_path, "task spool."
+#        os.unlink(task_spool_path)

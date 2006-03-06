@@ -1,0 +1,120 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+import sys
+sys.path.append('/usr/local/share/nwud')
+sys.path.append('/usr/share/nwud')
+
+from nwu_server.db.operation import *
+
+VERSION = '0.1'
+
+# The coding style here is very ugly. I'll work on that later.
+
+def usage():
+    print """usage: nwu <sub-command> <options> [arguments]
+Command line manager for nwu, version """ + VERSION + """.
+
+nwu is a remote upgrades manager for apt-able systems.
+For more information, see http://www.cetico.org/tech/nwu/"""
+
+sub_commands = [ "update", "install", "help", "upgrade", "list"]
+
+args = len(sys.argv)
+
+if args < 2 or sys.argv[1] not in sub_commands:
+    print "Type 'nwu help' for usage help" 
+    sys.exit(64) # see /usr/include/sysexits.h
+
+sub_command = sys.argv[1]
+
+args = []
+
+if len(sys.argv) > 2:
+    args = sys.argv[2:]
+
+print sub_command
+if sub_command == 'help':
+    usage()
+    sys.exit(0)
+
+elif sub_command == 'list':
+
+    if len(args) > 1:
+        id = args[0]
+        m = machine.select(machine.q.id==id)
+        ma = list(m)
+
+        for mach in ma:
+            list_what = args[1]
+
+            if list_what == 'packages':
+                print "Reading current packages in machine id=" + id + "."
+                for package in mach.apt_current_packageses:
+                    print package.name, package.version
+
+            elif list_what == 'upgrade-candidates':
+                print "Reading upgrade candidades for machine id=" + id + "."
+                for package in mach.apt_upgrade_candidateses:
+                    print package.name, package.version
+
+            elif list_what == 'repositories':
+                print "Reading repositories for machine id=" + id + "."
+                for rep in mach.apt_repositorieses:
+                    print rep.type + " " + rep.uri + " " + rep.distribution + \
+                        " " + rep.components + "  (" + rep.filename + ")"
+
+    elif len(args) == 1:
+        print "Please choose an information to list: packages, repositories, upgrade-candidates"
+ 
+    else:
+        m = machine.select()
+        ma = list(m)
+        for mach in ma:
+            print mach.id, mach.hostname, mach.os_name, '"' + mach.uniq + '"'
+
+elif sub_command == 'update' or sub_command == 'upgrade':
+    print sub_command
+    if len(args) > 0:
+        id = args[0]
+        m = machine.select(machine.q.id==id)
+        ma = list(m)
+        for mach in ma:
+            print "Found machine id=" + id + " in the database. Requesting " + sub_command + "."
+            t = task(machine=mach, action=sub_command)
+    else:
+        print "use nwu help <command> to get help."
+
+    
+elif sub_command == 'install':
+    if len(args) > 1:
+        id = args[0]
+        pkgs = args[1:]
+        m = machine.select(machine.q.id==id)
+        ma = list(m)
+        for mach in ma:
+            print "Found machine id=" + id + " in the database. Requesting pacakge installation."
+            t = task(machine=mach, action='install',details=pkgs)
+    else:
+        print "use nwu help <command> to get help."
+    print "Install."
+    
+else:
+    print "Command not yet implemented"
+    

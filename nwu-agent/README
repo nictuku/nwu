@@ -1,0 +1,70 @@
+Agent installation:
+
+adduser --system --group nwuagent
+
+mkdir /var/spool/nwu/
+
+chown nwuagent.nwuagent /var/spool/nwu
+
+chmod 600 /var/spool/nwu
+
+mkdir /etc/nwu
+
+cp server.pem /etc/nwu/
+
+chown nwu.nwu /var/spool/nwu
+
+touch /var/log/nwu{agent,maint}.log
+
+chown nwuagent.nwuagent /var/log/nwuagent.log
+
+chmod 660 /var/log/nwu{agent,maint}.log
+
+tar zxvf nwu.tar.gz
+
+cd nwu
+
+cp sample_conf/agent.conf /etc/nwu
+
+vi /etc/nwu/agent.conf # altere o endereço do servidor
+
+cp nwu-agent /usr/local/bin
+
+cp nwu-maint /usr/local/sbin
+
+cp nwu.cron /etc/cron.d/nwu
+
+mkdir /usr/local/share/nwu
+
+cp -R agent /usr/local/share/nwu/
+
+
+
+
+=== Server installation (Draft) ===
+
+adduser --system --group nwud
+
+mkdir /var/lib/nwu/
+
+chown nwud.nwud /var/lib/nwu
+
+chmod 700 /var/lib/nwu
+
+mkdir /usr/local/share/nwud
+
+cp -R server /usr/local/share/nwud
+
+cp -R db /usr/local/share/nwud
+
+# separar chave publica e privada
+chown nwud /etc/nwu/server.pem
+
+and chmodded 600
+--
+
+MySQL:
+
+Create user:
+
+GRANT ALL PRIVILEGES ON nwu.* TO 'yves'@'%' IDENTIFIED BY 'nwu-teste' WITH GRANT OPTION;

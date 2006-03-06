@@ -1,0 +1,31 @@
+Source: nwu
+Section: admin
+Priority: optional
+Maintainer: Yves Junqueira <yves@cetico.org>
+Build-Depends: @cdbs@, python-dev
+Standards-Version: 3.6.1
+
+Package: nwu-agent
+Architecture: all
+Depends: adduser, ${python:Depends}
+Description: Network-wide updates for apt-able systems
+ Nwu lets administrators manage APT of remote machines from one central point.
+ It can do many apt tasks remotely, like update, upgrade and install. Also it
+ provides relevant information about each node, like listing current installed
+ packages, upgrade candidates and APT repositories and some basic system inf-
+ ormation.
+ .
+ This package installs the nwu agent software, but you also need the nwu ser-
+ ver somewhere in your network.
+
+Package: nwu-server
+Architecture: all
+Depends: adduser, ${python:Depends}, m2crypto
+Description: Network-wide updates for apt-able systems
+ Nwu lets administrators manage APT of remote machines from one central point.
+ It can do many apt tasks remotely, like update, upgrade and install. Also it
+ provides relevant information about each node, like listing current installed
+ packages, upgrade candidates and APT repositories and some basic system inf-
+ ormation.
+ .
+ This package installs the nwu server software
