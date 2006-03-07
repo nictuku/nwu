@@ -17,37 +17,29 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import SOAPpy
 import sys
-
-sys.path.append('/usr/local/share/nwud')
-sys.path.append('/usr/share/nwud')
-
-from nwu_server.db.operation import *
-
-from M2Crypto import SSL
-
-from nwu_server import apt, auth 
-
 import ConfigParser
-config = ConfigParser.ConfigParser()
-config.read("/etc/nwu/server.conf")
-
-host = config.get("webservice", "host")
-port = int(config.get("webservice", "port"))
+from nwu_server.db.operation import *
+from nwu_server import apt, auth, sslxmlrpc
 
 # FIXME: fix ident info for SOAP
 ident = '$Id: nwu-server, v 0.1 $'
 
 
-SOAPpy.Config.simplify_objects = 1
+def read_config():
+    """Reads configuration data from the config file.
+    """
+    config_p = ConfigParser.ConfigParser()
+    config_p.read("/etc/nwu/server.conf")
 
-try:
-    create_tables()
-except:
-    pass
+    host = config_p.get("webservice", "host")
+    port = int(config_p.get("webservice", "port"))
+    config = { 'host' : host, 'port' : port }
+    return config
 
 def add_machine(password, uniq, hostname, os_name, os_version):
+    """Adds the given machine to the nodes database.
+    """
     print "Creating machine", uniq, hostname, os_name, os_version
     m = machine(uniq=uniq,hostname=hostname, os_name=os_name,
         os_version=os_version,password=password)
@@ -135,37 +127,27 @@ def wipe_tasks(session):
 
     conn.query(delquery)
 
-#    for tas in client_machine.tasks:
-#            client_machine.hostname
-#        tas.destroySelf()
-        
     return True
 
 def main():
 
-    ssl_context = SSL.Context()
+    config = read_config()
+    host = config['host']
+    port = config['port']
 
-    ssl_context.load_cert('/etc/nwu/server.pem')
-#    except:
-#        raise Exception, "Error while trying to load the server certificate file"
+    create_tables()
 
-    SOAPpy.Config.debug = 0
+    ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
+    server = ssl.start_server(host, port)
 
-    server = SOAPpy.SOAPServer (
-        (host, port),
-    # I don't believe namespace would help us in any way.
-    #    namespace = namespace,
-        ssl_context = ssl_context
-        )
-
-    server.registerFunction(apt.apt_set_repositories)
-    server.registerFunction(apt.apt_set_current_packages_full)
-    server.registerFunction(session_setup)
-    server.registerFunction(apt.apt_set_upgrade_candidates_diff)
-    server.registerFunction(apt.apt_set_upgrade_candidates_full)
-    server.registerFunction(get_tasks)
-    server.registerFunction(wipe_tasks)
-    server.registerFunction(add_machine)
+    server.register_function(apt.apt_set_repositories)
+    server.register_function(apt.apt_set_current_packages_full)
+    server.register_function(session_setup)
+    server.register_function(apt.apt_set_upgrade_candidates_diff)
+    server.register_function(apt.apt_set_upgrade_candidates_full)
+    server.register_function(get_tasks)
+    server.register_function(wipe_tasks)
+    server.register_function(add_machine)
     
     server.serve_forever()
 

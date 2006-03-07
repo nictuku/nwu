@@ -17,16 +17,18 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from SOAPpy import *
 import os
 import logging
 #from xml.sax.saxutils import escape as xmlescape
+import re
 import sysinfo
 import string
 import random
 import hmac
 import stat
 import ConfigParser
+from M2Crypto import SSL
+from M2Crypto.m2xmlrpclib import Server, SSL_Transport
 
 config = ConfigParser.ConfigParser()
 r = config.read("/etc/nwu/agent.conf")
@@ -43,8 +45,17 @@ formatter = logging.Formatter(format)
 ch.setFormatter(formatter)
 sysinfo_logger.addHandler(ch)
 
-Config.simplify_objects = 1 
-rpc = SOAPProxy(server_uri)
+#Config.simplify_objects = 1 
+
+def XClient(server_uri):
+    ctx = SSL.Context()
+    #ctx.load_cert_chain('client.pem')
+    #ctx.load_verify_location('ca.pem')
+    #ctx.set_verify(SSL.verify_peer, 10)
+    xs = Server(server_uri, SSL_Transport(ctx))
+    return xs
+
+rpc = XClient(server_uri)
 
 def get_auth():
     auth_path = "/var/spool/nwu/auth"

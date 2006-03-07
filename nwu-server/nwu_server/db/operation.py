@@ -22,7 +22,7 @@
   
 from sqlobject import *
 from sqlobject.sqlbuilder import *
-
+import sys
 import ConfigParser
 
 #FIXME: Organize this properly, object-oriented
@@ -114,12 +114,16 @@ def create_tables():
     """Creates required tables in the database.
     """
     print "Creating necessary tables in the database."
-    machine.createTable()
-    apt_current_packages.createTable()
-    apt_upgrade_candidates.createTable()
-    apt_repositories.createTable()
-    task.createTable()
-    auth.createTable()
+    try:
+        machine.createTable()
+        apt_current_packages.createTable()
+        apt_upgrade_candidates.createTable()
+        apt_repositories.createTable()
+        task.createTable()
+        auth.createTable()
+    except:
+        print "Could not create tables:", sys.exc_type, sys.exc_value
+
 
 if __name__ == '__main__':
 
