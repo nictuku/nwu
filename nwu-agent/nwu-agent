@@ -24,38 +24,25 @@ if os.geteuid() == 0:
     print "Error: nwu-agent should not be run as root."
     sys.exit(1)
 
-sys.path.append('/usr/local/share/nwu')
-
-sys.path.append('/usr/share/nwu')
-
 from nwu_agent import misc as agent
 
 current_packages = agent.get_current_packages()
-
 sourcefiles = agent.list_sources_list()
-
 repositories = agent.read_sources_list(sourcefiles)
-
 update_candidates = agent.get_apt_update_candidates()
-
 (uniq, password) = agent.get_auth()
-
 token = agent.hmac.new(password, uniq).hexdigest()
-
 uname = os.uname()
 os_name = uname[0]
 myhost = uname[1] # Alternative: socket.gethostname()
 os_version = uname[2]
 
 print "Hey, this is me:", uniq, myhost, os_name, os_version
-
-
 print "Setting up initial session."
 
 my_session = agent.rpc.session_setup(uniq, token)
 
 if not my_session:
-
     print "Oops. The server does not know me."
     add_me = agent.rpc.add_machine(password, uniq, myhost, os_name, os_version)
 
@@ -67,14 +54,12 @@ if not my_session:
 
     my_session = agent.rpc.session_setup(uniq, token)
     
-    
-
 print "Sending repositories data"
 rep = agent.rpc.apt_set_repositories(my_session,repositories)
 
-
 if len(update_candidates) > 0:
-    # FIXME: update_candidates returns an empty string when blank. Should be a dict.
+    # FIXME: update_candidates returns an empty string when blank.
+    # Should be a dict.
     print "Sending update candidates.",update_candidates
 else:
     print "No pending updates - informing the server."
@@ -97,8 +82,6 @@ if len(store_task) > 0:
     print "Storing tasks in spool"
     agent.store_spool(store_task)
         
-        
-
 print "Sending current packages list."
 rep = agent.rpc.apt_set_current_packages_full(my_session, current_packages)
 
