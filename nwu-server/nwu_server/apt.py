@@ -27,7 +27,6 @@ def apt_set_repositories(session,reps):
     """Stores the full repositories list in the database, after
     wiping that machine's repositories table.
     """
-
     (uniq, token) = session
 
     if not auth.check_token(uniq, token):
@@ -37,12 +36,13 @@ def apt_set_repositories(session,reps):
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
+        raise Exception, "Strange. There are " +  str(q) +  " machine(s) with'" + uniq + "\
 'uniq string and it should have exactly one."
 
     client_machine = l[0]
 
-    print "Updating repositories for:", client_machine.id, client_machine.hostname
+    print "Updating repositories for: " + \
+        str(client_machine.id) + " " + client_machine.hostname
     print dir(client_machine)
     # Deleting old reps
 
@@ -79,16 +79,20 @@ def apt_set_repositories(session,reps):
                 components=rep_components)
 
 
-#        setrep = apt_repositories(machine=mach, filename=filename,rep_type='deb',
+#        setrep = apt_repositories(machine=mach, filename=filename,
+            # rep_type='deb',
 #        rep_uri='http://de.archive.ubuntu.com/ubuntu',
 #        components = 'breezy-updates main restricted')
     return True
 
-
-
-def apt_set_upgrade_candidates_diff(session, add_pkgs, rm_pkgs):
+def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 #    import pdb ; pdb.set_trace()
     (uniq, token) = session
+
+    if change_table not in ['apt_update_candidates', 'apt_current_packages']:
+        raise Exception, 'Unknown table'
+
+    table = eval(change_table)
 
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
@@ -111,12 +115,16 @@ def apt_set_upgrade_candidates_diff(session, add_pkgs, rm_pkgs):
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
-'uniq string and it should have exactly one."
+        raise Exception, "Strange. There are " +  q +  " machine(s) with'" +\
+            uniq + "'uniq string and it should have exactly one."
 
     client_machine = l[0]
 
-    print "Updating upgrade candidates list for:", client_machine.id, client_machine.hostname
+    print "Updating table", change_table, "for: " + str(client_machine.id) + " " + \
+        client_machine.hostname
+
+    print "will delete:", rm_pkgs
+    print "will update:", add_pkgs
 
     # Deleting old packages
     for del_pk_name, del_pk_version in pkgs['rm_pkgs'].iteritems():
@@ -124,8 +132,8 @@ def apt_set_upgrade_candidates_diff(session, add_pkgs, rm_pkgs):
 
 
         print "Deleting old entries:", del_pk_name, del_pk_version
-        delquery = conn.sqlrepr(Delete(apt_upgrade_candidates.q, where=\
-            (apt_upgrade_candidates.q.name==del_pk_name)))
+        delquery = conn.sqlrepr(Delete(table.q, where=\
+            (table.q.name==del_pk_name)))
 
         conn.query(delquery)
 
@@ -135,19 +143,18 @@ def apt_set_upgrade_candidates_diff(session, add_pkgs, rm_pkgs):
     for add_pk_name, add_pk_version in pkgs['add_pkgs'].iteritems():
         # FIXME: update history table here
         print "Updating new entries for:", add_pk_name, add_pk_version
-        delquery = conn.sqlrepr(Delete(apt_upgrade_candidates.q, where=\
-            (apt_upgrade_candidates.q.name==add_pk_name)))
+        delquery = conn.sqlrepr(Delete(table.q, where=\
+            (table.q.name==add_pk_name)))
 
         conn.query(delquery)
 
-        apt_upgrade_candidates(machine=client_machine, name=add_pk_name,
+        table(machine=client_machine, name=add_pk_name,
             version=add_pk_version)
 
     return True
 
 
-
-def apt_set_upgrade_candidates_full(session, pkgs):
+def apt_set_update_candidates_full(session, pkgs):
 #    import pdb ; pdb.set_trace()
     (uniq, token) = session
 
@@ -161,23 +168,24 @@ def apt_set_upgrade_candidates_full(session, pkgs):
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
-'uniq string and it should have exactly one."
+        raise Exception, "Strange. There are " +  q +  " machine(s) with'" +\
+            uniq + "'uniq string and it should have exactly one."
 
     client_machine = l[0]
 
-    print "Creating new upgrade candidates list for:", client_machine.id, client_machine.hostname
+    print "Creating new update candidates list for: " + client_machine.id + \
+        " " + client_machine.hostname
 
     # Deleting old packages
 
-    delquery = conn.sqlrepr(Delete(apt_upgrade_candidates.q, where=\
-        (apt_upgrade_candidates.q.machineID ==  client_machine.id)))
+    delquery = conn.sqlrepr(Delete(apt_update_candidates.q, where=\
+        (apt_update_candidates.q.machineID ==  client_machine.id)))
 
     conn.query(delquery)
 
     for pk_name, pk_version in pkgs.iteritems():
     #    print pk_name, pk_version
-        apt_upgrade_candidates(machine=client_machine, name=pk_name,
+        apt_update_candidates(machine=client_machine, name=pk_name,
             version=pk_version)
 
     return True
@@ -192,12 +200,13 @@ def apt_set_current_packages_full(session, pkgs):
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
-'uniq string and it should have exactly one."
+        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + \
+            uniq + "'uniq string and it should have exactly one."
 
     client_machine = l[0]
 
-    print "Updating current packages list for:", client_machine.id, client_machine.hostname
+    print "Updating current packages list for: " + client_machine.id + " " +\
+        client_machine.hostname
 
     # Deleting old packages
     print "Wiping old packages list."
@@ -212,3 +221,4 @@ def apt_set_current_packages_full(session, pkgs):
             version=pk_version)
     print "End."
     return True
+

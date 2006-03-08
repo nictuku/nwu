@@ -60,7 +60,7 @@ class machine(SQLObject):
     os_version = StringCol(length=255)
 
     current_packages = MultipleJoin('apt_current_packages')
-    upgrade_candidates = MultipleJoin('apt_upgrade_candidates')
+    update_candidates = MultipleJoin('apt_update_candidates')
     repositories = MultipleJoin('apt_repositories')
     auth = MultipleJoin('auth')
     task = MultipleJoin('task')
@@ -78,7 +78,7 @@ class apt_current_packages(SQLObject):
 
     machine = ForeignKey('machine')
 
-class apt_upgrade_candidates(SQLObject):
+class apt_update_candidates(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
@@ -116,13 +116,28 @@ def create_tables():
     print "Creating necessary tables in the database."
     try:
         machine.createTable()
+    except:
+        print "Could not create table:", sys.exc_type, sys.exc_value
+    try:
         apt_current_packages.createTable()
-        apt_upgrade_candidates.createTable()
+    except:
+        print "Could not create table:", sys.exc_type, sys.exc_value
+    try:
+        apt_update_candidates.createTable()
+    except:
+        print "Could not create table:", sys.exc_type, sys.exc_value
+    try:
         apt_repositories.createTable()
+    except:
+        print "Could not create table:", sys.exc_type, sys.exc_value
+    try:
         task.createTable()
+    except:
+        print "Could not create table:", sys.exc_type, sys.exc_value
+    try:
         auth.createTable()
     except:
-        print "Could not create tables:", sys.exc_type, sys.exc_value
+        print "Could not create table:", sys.exc_type, sys.exc_value
 
 
 if __name__ == '__main__':

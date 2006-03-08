@@ -32,7 +32,7 @@ def usage():
 Command line manager for nwu, version """ + VERSION + """.
 
 nwu is a remote upgrades manager for apt-able systems.
-For more information, see http://www.cetico.org/tech/nwu/"""
+For more information, see https://dev.ubuntubrasil.org/trac/nwu/"""
 
 sub_commands = [ "update", "install", "help", "upgrade", "list"]
 
@@ -69,9 +69,9 @@ elif sub_command == 'list':
                 for package in mach.apt_current_packageses:
                     print package.name, package.version
 
-            elif list_what == 'upgrade-candidates':
-                print "Reading upgrade candidades for machine id=" + id + "."
-                for package in mach.apt_upgrade_candidateses:
+            elif list_what == 'update-candidates':
+                print "Reading update candidades for machine id=" + id + "."
+                for package in mach.apt_update_candidateses:
                     print package.name, package.version
 
             elif list_what == 'repositories':
@@ -81,7 +81,7 @@ elif sub_command == 'list':
                         " " + rep.components + "  (" + rep.filename + ")"
 
     elif len(args) == 1:
-        print "Please choose an information to list: packages, repositories, upgrade-candidates"
+        print "Please choose an information to list: packages, repositories, update-candidates"
  
     else:
         m = machine.select()

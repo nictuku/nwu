@@ -134,26 +134,18 @@ def get_auth():
     return session
 
  
-# FIXME: make this a class and use instance
-def get_packages():
-#    import pdb ; pdb.set_trace()
-    pkgs = sysinfo.software.packages()
-    print pkgs
-    return pkgs
-
-pkgs = get_packages()
-
-def get_current_packages():
+def get_current(info):
     #get_packages()
-    packages = pkgs.installed_ver
-    return packages
-
-
-def get_apt_update_candidates():
-    #get_packages()
-    update_candidates = pkgs.update_candidates
-    return update_candidates    
-    
+    if info == 'pkgs':
+        pkgs = sysinfo.software.packages()
+        packages = pkgs.installed_ver
+        return packages
+    elif info == 'update_candidates':
+        pkgs = sysinfo.software.packages()
+        update_candidates = pkgs.update_candidates
+        return update_candidates    
+        
+  
 def list_sources_list():
     filenames = ['/etc/apt/sources.list']
     directories = ['/etc/apt/sources.d']
@@ -192,10 +184,61 @@ def read_sources_list(filenames):
     print repositories
     return repositories
 
-def store_current_pages(current_packages):
-    """Stores current installed packages in the 
+def diff_dicts(old_dict, new_dict):
+    """This function detects the differences between two dicts,
+    returning two dicts: new or changed keys; and deleted keys
     """
-def store_spool(spool, item_list):
+    updated_keys = [ k for k in new_dict if k not in old_dict 
+        or new_dict[k] != old_dict[k] ]
+
+    up_k = {}
+    for k in updated_keys:
+        up_k[k] = new_dict[k]
+
+    deleted_keys = [ k for k in old_dict if k not in new_dict ]
+
+    del_k = {}
+    for k in deleted_keys:
+        del_k[k] = old_dict[k]
+
+    return (up_k, del_k)
+
+def read_spool(category):
+
+    if category not in ['pkgs', 'update_candidates']:
+        raise Exception, "Wrong cache category specified: " + category
+
+    cache_path = "/var/spool/nwu/nw." + category
+
+    cache = ConfigParser.ConfigParser()
+    result = cache.read(cache_path)
+
+    if len(result) < 1:
+        print "Could not read " + category + "cache"
+        return {}
+    
+    objects = {}
+    for s in cache.sections():
+        for option, value in cache.items(s):
+            objects[option] = value
+
+    return objects
+
+
+def diff_new_spool(info):
+    """Returns a list of:
+    - cached info
+    - current info
+    - diff of previous both [updated, deleted]
+    """
+    cached = read_spool(info)
+    current = get_current(info)
+    diff = diff_dicts(cached, current)
+
+    return [cached, current, diff]
+
+
+def store_spool(spool, item_list, wipe_old=False):
     """Stores data in the services pool directory.
     
     It takes a list of itens, each of which contains a list of
@@ -206,12 +249,19 @@ def store_spool(spool, item_list):
 
     spool_path = "/var/spool/nwu/nw." + spool 
 
+    if wipe_old == True:
+        try:
+            os.unlink(spool_path)
+        except:
+            pass
+        else:
+            print "Deleted old spool file."
+
     store = ConfigParser.ConfigParser()
 
     r = store.read(spool_path)
 
     for it in item_list:
-
         section = it[0]
         option = it[1]
         if len(it) > 2:
@@ -219,28 +269,30 @@ def store_spool(spool, item_list):
         else:
             value = 'placeholder'
 
-        print "test task:", section, option, value
+        print "test spool:", section, option, value
 
         if option == '':
             option = 'placeholder'
 
-        print "received task, type="+ str(section) + " , action="+ str(option)
+        print "received spool, type="+ str(section) + " , action="+ str(option)
         
         if not store.has_section(section):
             # create section in the task file
             store.add_section(section)
 
-        if not store.has_option(section, option):
+#        if not store.has_option(section, option):
             # add action to the task file
             # None is the action detail, reserved for future need
-            store.set(section, option, None)
+ #           store.add_option(section, option)
 
+        store.set(section, option, value)
+    print "will write to", spool_path
     try:
         updt_spool = open(spool_path, 'w')
     except:
         print "!!! Problem writing to spool directory in", spool_path
         pass
     else:
-        print "Updating spool file."
+        print "Updating spool file for", spool
         store.write(updt_spool)
 
