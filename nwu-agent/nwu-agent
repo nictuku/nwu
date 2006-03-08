@@ -80,7 +80,7 @@ for tas in get_tasks:
 
 if len(store_task) > 0:
     print "Storing tasks in spool"
-    agent.store_spool(store_task)
+    agent.store_spool('tasks', store_task)
         
 print "Sending current packages list."
 rep = agent.rpc.apt_set_current_packages_full(my_session, current_packages)

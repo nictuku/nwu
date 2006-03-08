@@ -99,8 +99,9 @@ def get_tasks(session):
         return remote_tasks
         
     for tas in ta:
+        if tas.action is None: tas.action = ''
+        if tas.details is None: tas.details = ''
         remote_tasks.append((tas.action, tas.details))
-        print "Found:", tas.action, tas.details
 
     return remote_tasks
 

@@ -192,48 +192,55 @@ def read_sources_list(filenames):
     print repositories
     return repositories
 
-def store_spool(task_list):
+def store_current_pages(current_packages):
+    """Stores current installed packages in the 
+    """
+def store_spool(spool, item_list):
     """Stores data in the services pool directory.
     
-    It takes a list of tasks, each of which contains a touple of
-    actions and details for execution.
+    It takes a list of itens, each of which contains a list of
+    "section", "option" and "value".
 
     Security is a must here."""
     # FIXME: check for right permissions in the spool dir and files
 
-    task_spool_path = "/var/spool/nwu/nw.tasks"
+    spool_path = "/var/spool/nwu/nw." + spool 
 
     store = ConfigParser.ConfigParser()
 
-    r = store.read(task_spool_path)
+    r = store.read(spool_path)
 
-    for tk in task_list:
+    for it in item_list:
 
-        type = tk[0]
-        action = tk[1]
+        section = it[0]
+        option = it[1]
+        if len(it) > 2:
+            value = it[2]
+        else:
+            value = 'placeholder'
 
-        print repr(action)
+        print "test task:", section, option, value
 
-        if action == None:
-            action = '-'
+        if option == '':
+            option = 'placeholder'
 
-        print "received task, type="+ str(type) + " , action="+ str(action)
+        print "received task, type="+ str(section) + " , action="+ str(option)
         
-        if not store.has_section(type):
+        if not store.has_section(section):
             # create section in the task file
-            store.add_section(type)
+            store.add_section(section)
 
-        if not store.has_option(type, action):
+        if not store.has_option(section, option):
             # add action to the task file
             # None is the action detail, reserved for future need
-            store.set(type, action, None)
+            store.set(section, option, None)
 
     try:
-        updt_spool = open(task_spool_path, 'w')
+        updt_spool = open(spool_path, 'w')
     except:
-        print "!!! Problem writing to spool directory in", task_spool_path
+        print "!!! Problem writing to spool directory in", spool_path
         pass
     else:
-        print "Updating task spool file."
+        print "Updating spool file."
         store.write(updt_spool)
 
