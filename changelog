@@ -1,3 +1,9 @@
+nwu (0.1.2-3) unstable; urgency=low
+
+  * Fix missing /etc/nwu/agent.conf file for agent isntall 
+
+ -- Mário Meyer <mariomeyer@ubuntu.com>  Wed,  8 Mar 2006 04:55:44 -0300
+
 nwu (0.1.2-2) unstable; urgency=low
 
   * Improved packages description a bit
