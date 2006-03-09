@@ -24,6 +24,9 @@ from sqlobject import *
 from sqlobject.sqlbuilder import *
 import sys
 import ConfigParser
+import logging
+
+log = logging.getLogger('nwu_server.db.operation')
 
 #FIXME: Organize this properly, object-oriented
 
@@ -37,14 +40,18 @@ db_user = config.get("database", "user")
 db_password = config.get("database", "password")
 
 
-print "Using", db_type, " as my database."
+log.debug("Using" + db_type + " as my database.")
+
 if db_type == 'sqlite':
     connection_string = db_type + "://" + db_database
 else:
     connection_string = db_type + "://" + db_user + ":" + db_password + "@" +\
      db_host + "/" + db_database
-print "conn string:", connection_string
+
+log.debug("conn string:" + connection_string)
+
 conn = connectionForURI(connection_string)
+
 conn.debug=0
 
 __connection__ = conn
@@ -113,31 +120,37 @@ class task(SQLObject):
 def create_tables():
     """Creates required tables in the database.
     """
-    print "Creating necessary tables in the database."
+    log.debug("Creating necessary tables in the database.")
     try:
         machine.createTable()
     except:
-        print "Could not create table:", sys.exc_type, sys.exc_value
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+             str(sys.exc_value))
     try:
         apt_current_packages.createTable()
     except:
-        print "Could not create table:", sys.exc_type, sys.exc_value
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+            str(sys.exc_value))
     try:
         apt_update_candidates.createTable()
     except:
-        print "Could not create table:", sys.exc_type, sys.exc_value
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+             str(sys.exc_value))
     try:
         apt_repositories.createTable()
     except:
-        print "Could not create table:", sys.exc_type, sys.exc_value
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+            str(sys.exc_value))
     try:
         task.createTable()
     except:
-        print "Could not create table:", sys.exc_type, sys.exc_value
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+            str(sys.exc_value))
     try:
         auth.createTable()
     except:
-        print "Could not create table:", sys.exc_type, sys.exc_value
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+            str(sys.exc_value))
 
 
 if __name__ == '__main__':
@@ -154,13 +167,11 @@ if __name__ == '__main__':
         uri='http://blabla', distribution='stable',
         components = 'breezy-updates main restricted')
 
-    print "code"
     all = machine.select(machine.q.hostname=='localhost')
 
     #print "weee",list(all)
 
     for ma in all:
-        print "wee"
         print ma.hostname
         for package in ma.apt_current_packageses:
             print package.name, package.version

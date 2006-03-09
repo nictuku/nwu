@@ -21,10 +21,23 @@ import sys
 import ConfigParser
 from nwu_server.db.operation import *
 from nwu_server import apt, auth, sslxmlrpc
+import logging
+import logging.handlers
+
+log = logging.getLogger()
+
+hdlr = logging.handlers.SysLogHandler(
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+  
+formatter = logging.Formatter(
+"nwu[%(process)d] %(levelname)s %(message)s"
+    )
+hdlr.setFormatter(formatter)
+log.addHandler(hdlr)
+log.setLevel(logging.DEBUG)
 
 # FIXME: fix ident info for SOAP
 ident = '$Id: nwu-server, v 0.1 $'
-
 
 def read_config():
     """Reads configuration data from the config file.
@@ -40,7 +53,7 @@ def read_config():
 def add_machine(password, uniq, hostname, os_name, os_version):
     """Adds the given machine to the nodes database.
     """
-    print "Creating machine", uniq, hostname, os_name, os_version
+    log.info("Creating machine", uniq, hostname, os_name, os_version)
     m = machine(uniq=uniq,hostname=hostname, os_name=os_name,
         os_version=os_version,password=password)
     return True
@@ -66,7 +79,7 @@ def session_setup(uniq, token):
     if auth.check_token(uniq, token):
         return uniq, token
 
-    print "uniq, token:", uniq, token
+    log.debug("uniq, token:" + uniq + ' ' + token)
     # FIXME: return False or raise an exception?
     raise Exception, "Wrong token for " + uniq
 
@@ -81,12 +94,11 @@ def get_tasks(session):
     ma = list(m)
     q = len(ma)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
-'uniq string and it should have exactly one."
-
+        raise Exception, "Strange. There are more then 1 machine with uniq string =" + uniq
+    
     client_machine = ma[0]
 
-    print "Checking pending tasks for:", client_machine.id, client_machine.hostname
+    log.info("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
 
     remote_tasks = []
     
@@ -95,7 +107,7 @@ def get_tasks(session):
     qta = len(ta)
 
     if qta == 0:
-        print "No pending tasks found for:", client_machine.id, client_machine.hostname
+        log.info("No pending tasks found for "  + client_machine.hostname + '(' + str(client_machine.id) + ')' )
         return remote_tasks
         
     for tas in ta:
@@ -120,7 +132,7 @@ def wipe_tasks(session):
 
     client_machine = ma[0]
 
-    print "Wiping tasks for:", client_machine.id, client_machine.hostname
+    log.info("Wiping tasks for "   + client_machine.hostname + '(' + str(client_machine.id) + ')' )
 
 
     delquery = conn.sqlrepr(Delete(task.q, where=\
@@ -156,6 +168,3 @@ if __name__ == '__main__':
         sys.exit (main ())
     except KeyboardInterrupt:
         sys.exit (0)
-else:
-    print "wee"
-

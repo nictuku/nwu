@@ -20,6 +20,9 @@
 
 from db.operation import *
 import auth
+import logging
+
+log = logging.getLogger('nwu_server.apt')
 
 # FIXME: there is a lot of code repetition here, you insane coder
 
@@ -36,14 +39,15 @@ def apt_set_repositories(session,reps):
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  str(q) +  " machine(s) with'" + uniq + "\
-'uniq string and it should have exactly one."
+        raise Exception, "Strange. There are " +  str(q) +  \
+    " machine(s) with'" + uniq + \
+    "'uniq string and it should have exactly one."
 
     client_machine = l[0]
 
-    print "Updating repositories for: " + \
-        str(client_machine.id) + " " + client_machine.hostname
-    print dir(client_machine)
+    log.info("Updating repositories for: " + client_machine.hostname + \
+        '(' + str(client_machine.id) + ')' ) 
+    
     # Deleting old reps
 
     delquery = conn.sqlrepr(Delete(apt_repositories.q, where=\
@@ -71,7 +75,7 @@ def apt_set_repositories(session,reps):
             apt_repositories.q.distribution==rep_distribution))
 
             for k in distro_check:
-                print "repeated distro:", k
+                log.debug("repeated distro: " +  str(k))
 
             # update repositories
             setrep = apt_repositories(machine=client_machine, filename=filename,
@@ -120,18 +124,18 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 
     client_machine = l[0]
 
-    print "Updating table", change_table, "for: " + str(client_machine.id) + " " + \
-        client_machine.hostname
+    log.debug("Updating table " + change_table + " for " + \
+       client_machine.hostname + '(' + str(client_machine.id) + ')' ) 
 
-    print "will delete:", rm_pkgs
-    print "will update:", add_pkgs
+    log.debug("will delete: " + str(rm_pkgs))
+    log.debug("will update: " + str(add_pkgs))
 
     # Deleting old packages
     for del_pk_name, del_pk_version in pkgs['rm_pkgs'].iteritems():
         # FIXME: update history table here
 
 
-        print "Deleting old entries:", del_pk_name, del_pk_version
+        log.debug("Deleting old entries " + del_pk_name + " " + del_pk_version)
         delquery = conn.sqlrepr(Delete(table.q, where=\
             (table.q.name==del_pk_name)))
 
@@ -142,7 +146,8 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 
     for add_pk_name, add_pk_version in pkgs['add_pkgs'].iteritems():
         # FIXME: update history table here
-        print "Updating new entries for:", add_pk_name, add_pk_version
+        log.debug("Updating new entries for " + add_pk_name + " " + \
+            add_pk_version)
         delquery = conn.sqlrepr(Delete(table.q, where=\
             (table.q.name==add_pk_name)))
 
@@ -173,8 +178,8 @@ def apt_set_update_candidates_full(session, pkgs):
 
     client_machine = l[0]
 
-    print "Creating new update candidates list for: " + client_machine.id + \
-        " " + client_machine.hostname
+    log.debug("Creating new update candidates list for: " \
+        + client_machine.hostname + '(' + str(client_machine.id) + ')')
 
     # Deleting old packages
 
@@ -184,7 +189,6 @@ def apt_set_update_candidates_full(session, pkgs):
     conn.query(delquery)
 
     for pk_name, pk_version in pkgs.iteritems():
-    #    print pk_name, pk_version
         apt_update_candidates(machine=client_machine, name=pk_name,
             version=pk_version)
 
@@ -205,20 +209,21 @@ def apt_set_current_packages_full(session, pkgs):
 
     client_machine = l[0]
 
-    print "Updating current packages list for: " + client_machine.id + " " +\
-        client_machine.hostname
+    log.debug("Updating current packages list for: " \
+        + client_machine.hostname + '(' + str(client_machine.id) + ')' )
 
     # Deleting old packages
-    print "Wiping old packages list."
+    log.debug("Wiping old packages list.")
+
     delquery = conn.sqlrepr(Delete(apt_current_packages.q, where=\
         (apt_current_packages.q.machineID ==  client_machine.id)))
 
     conn.query(delquery)
-    print "Adding new packages."
+    log.debug("Adding new packages.")
+
     for pk_name, pk_version in pkgs.iteritems():
-    #    print pk_name, pk_version
         apt_current_packages(machine=client_machine, name=pk_name,
             version=pk_version)
-    print "End."
+    log.debug("End.")
     return True
 
