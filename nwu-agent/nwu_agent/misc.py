@@ -29,6 +29,9 @@ import stat
 import ConfigParser
 from M2Crypto import SSL
 from M2Crypto.m2xmlrpclib import Server, SSL_Transport
+import logging
+
+log = logging.getLogger('nwu_agent.misc')
 
 config = ConfigParser.ConfigParser()
 r = config.read("/etc/nwu/agent.conf")
@@ -46,6 +49,8 @@ ch.setFormatter(formatter)
 sysinfo_logger.addHandler(ch)
 
 #Config.simplify_objects = 1 
+
+pkgs = sysinfo.software.packages()
 
 def XClient(server_uri):
     ctx = SSL.Context()
@@ -97,7 +102,6 @@ def get_auth():
 #
     else:
         uniq = auth_file.get("auth", "uniq")
-        print "uniq:", uniq
 
     # Checking for password. If it doesn't find one, generate
     # a new random string.
@@ -119,12 +123,10 @@ def get_auth():
 
     else:
         password = auth_file.get("auth", "password")
-        print "password:", password
-
 
     # dump changes
     if changed:
-        print "Storing auth settings to", auth_path
+        log.info("Storing auth settings to " + auth_path)
         auth_fd = open(auth_path, 'w')
         auth_file.write(auth_fd)
         auth_fd.close()
@@ -137,11 +139,9 @@ def get_auth():
 def get_current(info):
     #get_packages()
     if info == 'pkgs':
-        pkgs = sysinfo.software.packages()
         packages = pkgs.installed_ver
         return packages
     elif info == 'update_candidates':
-        pkgs = sysinfo.software.packages()
         update_candidates = pkgs.update_candidates
         return update_candidates    
         
@@ -181,7 +181,6 @@ def read_sources_list(filenames):
 
         repositories.append(thisrep)
 
-    print repositories
     return repositories
 
 def diff_dicts(old_dict, new_dict):
@@ -214,7 +213,7 @@ def read_spool(category):
     result = cache.read(cache_path)
 
     if len(result) < 1:
-        print "Could not read " + category + "cache"
+        log.error("Could not read " + category + "cache")
         return {}
     
     objects = {}
@@ -255,7 +254,7 @@ def store_spool(spool, item_list, wipe_old=False):
         except:
             pass
         else:
-            print "Deleted old spool file."
+            log.info("Deleted old spool file.")
 
     store = ConfigParser.ConfigParser()
 
@@ -269,12 +268,10 @@ def store_spool(spool, item_list, wipe_old=False):
         else:
             value = 'placeholder'
 
-        print "test spool:", section, option, value
-
         if option == '':
             option = 'placeholder'
 
-        print "received spool, type="+ str(section) + " , action="+ str(option)
+        log.info("received "+ str(section) + " , action="+ str(option))
         
         if not store.has_section(section):
             # create section in the task file
@@ -286,13 +283,14 @@ def store_spool(spool, item_list, wipe_old=False):
  #           store.add_option(section, option)
 
         store.set(section, option, value)
-    print "will write to", spool_path
+    log.info("Write to " + spool_path)
+
     try:
         updt_spool = open(spool_path, 'w')
     except:
-        print "!!! Problem writing to spool directory in", spool_path
+        log.error("!!! Problem writing to spool directory in " + spool_path)
         pass
     else:
-        print "Updating spool file for", spool
+        log.info("Updating spool file for", spool)
         store.write(updt_spool)
 

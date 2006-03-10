@@ -21,12 +21,24 @@
 
 This is called by cron and runs as root.
 """
-
-
 import ConfigParser 
 import commands
 import os 
 from sys import exit
+import logging
+import logging.handlers
+
+log = logging.getLogger('nwu-maint')
+
+hdlr = logging.handlers.SysLogHandler(
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+
+formatter = logging.Formatter(
+"nwu_maint[%(process)d] %(levelname)s %(message)s"
+    )
+hdlr.setFormatter(formatter)
+log.addHandler(hdlr)
+log.setLevel(logging.DEBUG)
 
 accepted_actions = ['update', 'install', 'upgrade']
 
@@ -50,7 +62,7 @@ action_file = ConfigParser.ConfigParser()
 
 r = action_file.read(task_spool_path)
 if len(r) == 0:
-    print "Could not read the task file in", task_spool_path
+    log.warn("Could not read the task file in", task_spool_path)
     exit(1)
     
 actions = action_file.sections()
@@ -64,11 +76,12 @@ for act in actions:
 
 
     if act not in accepted_actions:
-        print "Bogus task section found. Deleting" , act, "."
+        log.warn("Bogus task section found. Deleting" , act, ".")
         action_file.remove_section(act)
         continue
 
-    print "Checking for pending", act, "task..."
+    log.debug("Checking for pending " + act + " task...")
+
     details = action_file.options(act)
 
     status = {}
@@ -77,7 +90,7 @@ for act in actions:
     iterate_list = details[:]
     
     for detail in iterate_list:
-        print "current action: " + str(detail)
+        log.debug("current action: " + str(detail))
 
         task_id = str(act) + str(detail)
 
@@ -86,7 +99,7 @@ for act in actions:
         else:
             detail_s = ''
 
-        print "Found a pending task: " + act + detail_s
+        log.info("Found a pending task: " + act + detail_s)
 
         if act == 'update':
 
@@ -98,15 +111,15 @@ for act in actions:
                     )
 
                 if status[task_id][0] != 0:
-                    print "Failed to update apt repositores. Output:"
-                    print status[task_id][1]
-                    # FIXME: log this to syslog
+                    log.error("Failed to update apt repositores. Output:")
+                    # FIXME: This should probably be breaken in many lines
+                    log.error(status[task_id][1])
                 else:
                     # If sucessful, remove that detail from the task list
                     action_file.remove_option(act, detail)
-                    print "Apt update finished."
-                    print "DEBUG:"
-                    print status[task_id][1]
+                    log.info("Apt update finished.")
+                    # FIXME: break in many lines?
+                    log.debug(status[task_id][1])
 
             else:
                  action_file.remove_option(act, detail)
@@ -121,15 +134,13 @@ for act in actions:
                     )
 
                 if status[task_id][0] != 0:
-                    print "Failed to upgrade the system. Output:"
-                    print status[task_id][1]
-                    # FIXME: log this to syslog
+                    log.error("Failed to upgrade the system. Output:")
+                    log.error(status[task_id][1])
                 else:
                     # If sucessful, remove that detail from the task list
                     action_file.remove_option(act, detail)
-                    print "Apt upgrade finished."
-                    print "DEBUG:"
-                    print status[task_id][1]
+                    log.info("Apt upgrade finished.")
+                    log.debug(status[task_id][1])
 
             else:
 
@@ -141,7 +152,7 @@ for act in actions:
             # Checks if the packages to be installed names are safe and valid
 
             if len(detail) > 1 and is_safe(detail):
-                print "Running valid task:", task_id
+                log.info("Running task:", task_id)
 
                 if not status.has_key(task_id): 
 
@@ -150,16 +161,14 @@ for act in actions:
                     )
 
                     if status[task_id][0] != 0:
-                        print "Failed to install package. Output:"
-                        print status[task_id][1]
+                        log.error("Failed to install package. Output:")
+                        log.error(status[task_id][1])
                         # FIXME: log this to syslog
                     else:
                         # If sucessful, remove that detail from the task list
-                        print "remove_option", act, detail
+                        log.debug(status[task_id][1])
+                        log.info("Clearing task " + act + " " + detail)
                         action_file.remove_option(act, detail)
-                        print "Task failed."
-                        print status[task_id][1]
-
                 else:
                     action_file.remove_option(act, detail)
 
@@ -169,17 +178,18 @@ for act in actions:
                 action_file.remove_option(act, detail)
 
         else:
-            print "Unrecognized task: " + act
+            log.warn("Unrecognized task: " + act)
 
-        print "current action: " + str(detail)
+        log.debug("current action: " + str(detail))
+
 
 try:
     updt_spool = open(task_spool_path, 'w')
 except:
-    print "!!! Problem writing to spool directory in", task_spool_path
+    log.error("!!! Problem writing to spool directory in " + task_spool_path)
     pass
 else:
-    print "Updating task spool file."
+    log.info("Updating task spool file.")
     action_file.write(updt_spool)
 
 #    if len(action_file.sections()) == 0:

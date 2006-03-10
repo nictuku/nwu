@@ -19,13 +19,28 @@
 
 import os
 import sys
+import logging
+import logging.handlers
+
+log = logging.getLogger()
+
+hdlr = logging.handlers.SysLogHandler(
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+
+formatter = logging.Formatter(
+"nwu_agent[%(process)d] %(levelname)s %(message)s"
+    )
+hdlr.setFormatter(formatter)
+log.addHandler(hdlr)
+log.setLevel(logging.INFO)
+
 
 if os.geteuid() == 0:
-    print "Error: nwu-agent should not be run as root."
+    log.error("nwu-agent cannot be run as root.")
     sys.exit(1)
 
+# FIXME: sysinfo should not generate output here
 from nwu_agent import misc as agent
-
 [cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('pkgs')
 
 # Format the current packages list ready to store in spool
@@ -35,13 +50,12 @@ for key, val in current_pkgs.iteritems():
     
 [cached_candidates, current_candidates, diff_candidates] \
     = agent.diff_new_spool('update_candidates')
-
 # Format the update candidates list ready to store in spool
 candidates_list = []
 for key, val in current_candidates.iteritems():
     candidates_list.append(['cur_candidates', key, val])
  
-print "diff candidates:", diff_candidates
+#print "diff candidates:", diff_candidates
 
 sourcefiles = agent.list_sources_list()
 repositories = agent.read_sources_list(sourcefiles)
@@ -54,24 +68,25 @@ os_name = uname[0]
 myhost = uname[1] # Alternative: socket.gethostname()
 os_version = uname[2]
 
-print "Hey, this is me:", uniq, myhost, os_name, os_version
-print "Setting up initial session."
+log.info("Machine identification:" + uniq + " " + myhost + " " + \
+    " " + os_name + " " + os_version)
+log.info("Setting up initial session.")
 
 my_session = agent.rpc.session_setup(uniq, token)
 
 if not my_session:
-    print "Oops. The server does not know me."
+    log.info("Oops. The server does not know me.")
     add_me = agent.rpc.add_machine(password, uniq, myhost, os_name, os_version)
 
     if add_me:
-        print "Machine account created on the server."
+        log.info("Machine account created on the server.")
     else:
-        print "Server did not create the account."
+        log.error("Server did not create the account.")
         raise Exception, "Failed to create machine account in the server."
 
     my_session = agent.rpc.session_setup(uniq, token)
     
-print "Sending repositories data"
+log.debug("Sending repositories data")
 rep = agent.rpc.apt_set_repositories(my_session,repositories)
 
 #if len(update_candidates) > 0:
@@ -85,11 +100,11 @@ rep = agent.rpc.apt_set_repositories(my_session,repositories)
 #    packages_diff[0], packages_diff[1])
 
 
-print "Getting assigned tasks."
+log.debug("Getting assigned tasks.")
 get_tasks = agent.rpc.get_tasks(my_session)
 
-print "Tasks:", get_tasks
-print "Kindly asking server to wipe tasks."
+log.info("Assigned tasks found: " + str(get_tasks))
+log.debug("Kindly asking server to wipe tasks.")
 result = agent.rpc.wipe_tasks(my_session)
 
 store_task = []
@@ -98,24 +113,26 @@ for tas in get_tasks:
    store_task.append(tas)
 
 if len(store_task) > 0:
-    print "Storing tasks in spool"
+    log.debug("Storing tasks in spool")
     agent.store_spool('tasks', store_task)
 
-print "Sending update candidates list."
+log.debug("Sending update candidates list.")
+
 
 rep = agent.rpc.apt_set_list_diff(my_session, 'apt_update_candidates', 
     diff_candidates[0], diff_candidates[1])
 
 # FIXME: store candidates cache only if server confirms receipt
 if len(diff_candidates[0]) > 0 or len(diff_candidates[1]) > 0:
-    print "storing spool for update_candidates"
+    log.info("storing spool for update_candidates")
     agent.store_spool('update_candidates', candidates_list, True)
         
-print "Sending current packages list."
+log.debug("Sending current packages list.")
 rep = agent.rpc.apt_set_list_diff(my_session, 'apt_current_packages', 
     diff_pkgs[0], diff_pkgs[1])
 
 # FIXME: store pkg cache only if server confirms receipt
 if len(diff_pkgs[0]) > 0 or len(diff_pkgs[1]) > 0:
-    print "storing spool for current package list"
+    log.info("storing spool for current package list")
+
     agent.store_spool('pkgs', pkgs_list, True)

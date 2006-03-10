@@ -30,11 +30,11 @@ hdlr = logging.handlers.SysLogHandler(
   "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
   
 formatter = logging.Formatter(
-"nwu[%(process)d] %(levelname)s %(message)s"
+"nwu_server[%(process)d] %(levelname)s %(message)s"
     )
 hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 # FIXME: fix ident info for SOAP
 ident = '$Id: nwu-server, v 0.1 $'
@@ -98,7 +98,7 @@ def get_tasks(session):
     
     client_machine = ma[0]
 
-    log.info("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
+    log.debug("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
 
     remote_tasks = []
     
@@ -147,6 +147,8 @@ def main():
     config = read_config()
     host = config['host']
     port = config['port']
+    log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
+        ".")
 
     create_tables()
 
