@@ -13,11 +13,11 @@ class list_nodes:
     at the current directory.
     """
     nodes = []
-    gladefile = ''
-    listnodes = ''
-    listnodes_model = '' 
+    gladefile = None 
+    listnodes = None
+    listnodes_model = None
     signals = {}
-    data = ''
+    data = None
     nodes_popup = object
 
     def __init__(self):
@@ -95,6 +95,11 @@ class list_nodes:
         if iter:
             host = model.get_value(iter, 0)
             print "host:", host
+            task_list = self.data.task()
+            new_task = { 'machine_id' : host,
+                        'task_name' : 'update'
+                        }
+            task_list.append(new_task)
             #model.remove(iter)
 
     def main(self):
