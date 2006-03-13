@@ -42,6 +42,7 @@ class list_nodes:
 #            "on_treeview1_cursor_changed" :
 #                self.on_treeview1_cursor_changed,
             "on_update1_clicked": (self.on_update1_clicked, self.listnodes),
+            "on_remove1_clicked": (self.on_remove1_clicked, self.listnodes),
             }
 
 
@@ -87,16 +88,25 @@ class list_nodes:
         self.listnodes.show()
 #       print model
 #        print iter
-    
+ 
+    def on_remove1_clicked(self, button, model):
+        selection = model.get_selection()
+        model, iter = selection.get_selected()
+        if iter:
+            machine_id = model.get_value(iter, 0)
+            machine = self.data.machine()
+            machine.remove(machine_id)
+            model.remove(iter)
+
     def on_update1_clicked(self, button, model):
         print "click"
         selection = model.get_selection()
         model, iter = selection.get_selected()
         if iter:
-            host = model.get_value(iter, 0)
-            print "host:", host
+            machine_id = model.get_value(iter, 0)
+            print "machine id:", machine_id
             task_list = self.data.task()
-            new_task = { 'machine_id' : host,
+            new_task = { 'machine_id' : machine_id,
                         'task_name' : 'update'
                         }
             task_list.append(new_task)
