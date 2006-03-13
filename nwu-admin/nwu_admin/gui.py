@@ -19,6 +19,7 @@ class list_nodes:
     signals = {}
     data = None
     nodes_popup = object
+    remove_ok = object
 
     def __init__(self):
 
@@ -34,6 +35,10 @@ class list_nodes:
         self.listnodes.set_model(self.listnodes_model)
 
         self.nodes_popup= self.gladefile.get_widget('menu14')
+        print "nada"
+        self.remove_ok = self.gladefile.get_widget('remove_ok')
+        self.remove_ok.hide()
+        #print "aqui"
         self.signals = { 
             "on_main_destroy" : gtk.main_quit,
             "on_reload_clicked" : self.nodes_reload,
@@ -43,6 +48,9 @@ class list_nodes:
 #                self.on_treeview1_cursor_changed,
             "on_update1_clicked": (self.on_update1_clicked, self.listnodes),
             "on_remove1_clicked": (self.on_remove1_clicked, self.listnodes),
+            "on_remove_cancel_clicked" : self.on_remove_cancel_clicked,
+            "on_remove_ok_closed" : self.on_remove_ok_closed,
+            "on_remove_ok_destroy_event" : self.on_remove_ok_closed,
             }
 
 
@@ -89,15 +97,31 @@ class list_nodes:
 #       print model
 #        print iter
  
-    def on_remove1_clicked(self, button, model):
-        selection = model.get_selection()
-        model, iter = selection.get_selected()
-        if iter:
-            machine_id = model.get_value(iter, 0)
-            machine = self.data.machine()
-            machine.remove(machine_id)
-            model.remove(iter)
+    
+    def on_remove_ok_closed(self, button):
+        self.remove_ok.hide()
+#        self.remove_ok.destroy()
+        pass
 
+    def on_remove_cancel_clicked(self, button):
+        self.remove_ok.hide()
+#        self.remove_ok.destroy()
+        pass
+
+    def on_remove1_clicked(self, button, model):
+        remove_ok = self.gladefile.get_widget('remove_ok')
+        res = remove_ok.run()
+        if res == gtk.RESPONSE_OK:
+            print "respondeu ok"
+            selection = model.get_selection()
+            model, iter = selection.get_selected()
+            if iter:
+                machine_id = model.get_value(iter, 0)
+                machine = self.data.machine()
+                machine.remove(machine_id)
+                model.remove(iter)
+        remove_ok.hide()
+        return 1
     def on_update1_clicked(self, button, model):
         print "click"
         selection = model.get_selection()
