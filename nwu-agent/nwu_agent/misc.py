@@ -291,6 +291,6 @@ def store_spool(spool, item_list, wipe_old=False):
         log.error("!!! Problem writing to spool directory in " + spool_path)
         pass
     else:
-        log.info("Updating spool file for", spool)
+        log.info("Updating spool file for " + spool)
         store.write(updt_spool)
 

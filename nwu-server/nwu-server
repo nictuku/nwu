@@ -53,7 +53,8 @@ def read_config():
 def add_machine(password, uniq, hostname, os_name, os_version):
     """Adds the given machine to the nodes database.
     """
-    log.info("Creating machine", uniq, hostname, os_name, os_version)
+    log.info("Creating machine " + uniq + " " + hostname + " " +\
+         os_name + " " + os_version)
     m = machine(uniq=uniq,hostname=hostname, os_name=os_name,
         os_version=os_version,password=password)
     return True
