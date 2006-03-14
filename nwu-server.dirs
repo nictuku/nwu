@@ -1,2 +1,3 @@
 var/run/nwu-server
 var/lib/nwu
+etc/nwu
