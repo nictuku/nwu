@@ -31,7 +31,7 @@ import logging.handlers
 log = logging.getLogger('nwu-maint')
 
 hdlr = logging.handlers.SysLogHandler(
-  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_USER)
 
 formatter = logging.Formatter(
 "nwu_maint[%(process)d] %(levelname)s %(message)s"
