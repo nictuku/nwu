@@ -20,7 +20,7 @@ Description: Network-wide updates for systems which use APT - agent
 
 Package: nwu-server
 Architecture: all
-Depends: adduser, python (>= 2.3), m2crypto 
+Depends: adduser, python (>= 2.3), m2crypto, sqlite3 | mysql-server | postgresql
 Description: Network-wide updates for systems which use APT - server
  Nwu lets administrators manage APT of remote machines from one central point.
  It can do many apt tasks remotely, like update, upgrade and install. Also it
