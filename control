@@ -7,7 +7,7 @@ Standards-Version: 3.6.1
 
 Package: nwu-agent
 Architecture: all
-Depends: adduser, ${python:Depends}, m2crypto, python-sysinfo
+Depends: adduser, python ( >= 2.3), m2crypto, python-sysinfo
 Description: Network-wide updates for systems which use APT - agent
  Nwu lets administrators manage APT of remote machines from one central point.
  It can do many apt tasks remotely, like update, upgrade and install. Also it
@@ -20,7 +20,7 @@ Description: Network-wide updates for systems which use APT - agent
 
 Package: nwu-server
 Architecture: all
-Depends: adduser, ${python:Depends}, m2crypto 
+Depends: adduser, python (>= 2.3), m2crypto 
 Description: Network-wide updates for systems which use APT - server
  Nwu lets administrators manage APT of remote machines from one central point.
  It can do many apt tasks remotely, like update, upgrade and install. Also it

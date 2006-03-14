@@ -14,7 +14,8 @@ chown -R $USER_NAME /var/spool/nwu
 touch /var/log/nwuagent.log
 chown $USER_NAME /var/log/nwuagent.log
 chmod 640 /var/log/nwuagent.log
-
+chown nwuagent /etc/nwu/agent.conf
+chmod 600 /etc/nwu/agent.conf
 
 . /usr/share/debconf/confmodule
 
