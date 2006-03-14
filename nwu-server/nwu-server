@@ -104,8 +104,8 @@ def get_tasks(session):
     log.info("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
 
     remote_tasks = []
-    
-    t = task.select(machine.q.id==client_machine.id)
+#    task._connection.debug = True    
+    t = task.select(task.q.id==client_machine.id)
     ta = list(t)
     qta = len(ta)
 
