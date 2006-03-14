@@ -31,6 +31,6 @@ fi
 chown -R $USER_NAME.$USER_NAME /var/lib/nwu
 chown -R $USER_NAME.$USER_NAME /var/run/nwu-server/
 chmod 640 /etc/nwu/server.conf
-chown $USERNAME.$USERNAME /etc/nwu/server.conf
+chown $USER_NAME.$USER_NAME /etc/nwu/server.conf
 chmod 770 /var/lib/nwu -R
 #DEBHELPER#
