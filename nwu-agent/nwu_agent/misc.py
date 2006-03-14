@@ -271,7 +271,7 @@ def store_spool(spool, item_list, wipe_old=False):
         if option == '':
             option = 'placeholder'
 
-        log.info("received "+ str(section) + " , action="+ str(option))
+        log.debug("Found "+ str(section) + ": "+ str(option))
         
         if not store.has_section(section):
             # create section in the task file
@@ -283,14 +283,13 @@ def store_spool(spool, item_list, wipe_old=False):
  #           store.add_option(section, option)
 
         store.set(section, option, value)
-    log.info("Write to " + spool_path)
-
+    
     try:
         updt_spool = open(spool_path, 'w')
     except:
-        log.error("!!! Problem writing to spool directory in " + spool_path)
+        log.error("!!! Problem writing to spool directory in " + spool_path + ".")
         pass
     else:
-        log.info("Updating spool file for " + spool)
+        log.info("Updating spool file for " + spool + ".")
         store.write(updt_spool)
 

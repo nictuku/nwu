@@ -39,6 +39,7 @@ if os.geteuid() == 0:
     log.error("nwu-agent cannot be run as root.")
     sys.exit(1)
 
+log.info("Starting nwu-agent")
 # FIXME: sysinfo should not generate output here
 from nwu_agent import misc as agent
 [cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('pkgs')
@@ -68,10 +69,8 @@ os_name = uname[0]
 myhost = uname[1] # Alternative: socket.gethostname()
 os_version = uname[2]
 
-log.info("Machine identification:" + uniq + " " + myhost + " " + \
-    " " + os_name + " " + os_version)
+log.info("Machine identification: " + uniq + " " + myhost + ".")
 log.info("Setting up initial session.")
-
 my_session = agent.rpc.session_setup(uniq, token)
 
 if not my_session:
@@ -86,25 +85,16 @@ if not my_session:
 
     my_session = agent.rpc.session_setup(uniq, token)
     
-log.debug("Sending repositories data")
+log.info("Sending repositories data.")
 rep = agent.rpc.apt_set_repositories(my_session,repositories)
 
-#if len(update_candidates) > 0:
-#    # FIXME: update_candidates returns an empty string when blank.
-#    # Should be a dict.
-#    print "Sending update candidates.",update_candidates
-#else:
-#    print "No pending updates - informing the server."
 
-#rep = agent.rpc.apt_set_upgrade_candidates_diff(my_session,
-#    packages_diff[0], packages_diff[1])
-
-
-log.debug("Getting assigned tasks.")
+log.info("Getting assigned tasks.")
 get_tasks = agent.rpc.get_tasks(my_session)
 
-log.info("Assigned tasks found: " + str(get_tasks))
-log.debug("Kindly asking server to wipe tasks.")
+log.info("Assigned tasks found: " + str(get_tasks) + ".")
+
+log.debug("Kindly asking server to wipe old tasks.")
 result = agent.rpc.wipe_tasks(my_session)
 
 store_task = []
@@ -113,26 +103,25 @@ for tas in get_tasks:
    store_task.append(tas)
 
 if len(store_task) > 0:
-    log.debug("Storing tasks in spool")
+    log.debug("Storing tasks in spool.")
     agent.store_spool('tasks', store_task)
 
-log.debug("Sending update candidates list.")
-
+log.info("Sending update candidates list.")
 
 rep = agent.rpc.apt_set_list_diff(my_session, 'apt_update_candidates', 
     diff_candidates[0], diff_candidates[1])
 
 # FIXME: store candidates cache only if server confirms receipt
 if len(diff_candidates[0]) > 0 or len(diff_candidates[1]) > 0:
-    log.info("storing spool for update_candidates")
+    log.info("Storing spool for update_candidates.")
     agent.store_spool('update_candidates', candidates_list, True)
         
-log.debug("Sending current packages list.")
+log.info("Sending current packages list.")
 rep = agent.rpc.apt_set_list_diff(my_session, 'apt_current_packages', 
     diff_pkgs[0], diff_pkgs[1])
 
 # FIXME: store pkg cache only if server confirms receipt
 if len(diff_pkgs[0]) > 0 or len(diff_pkgs[1]) > 0:
-    log.info("storing spool for current package list")
+    log.info("Storing spool for current package list.")
 
     agent.store_spool('pkgs', pkgs_list, True)

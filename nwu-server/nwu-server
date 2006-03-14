@@ -69,7 +69,7 @@ def session_setup(uniq, token):
     communcation steps.
     """
 
-    log.info("Setting session for machine " + id + " " + hostname + ".")
+    log.info("Setting session for machine " + uniq + ".")
   
     # FIXME: test if token is valid here.
     query_check_m = machine.select(machine.q.uniq==uniq)
