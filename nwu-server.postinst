@@ -2,17 +2,35 @@
 
 USER_NAME=nwuserver
 
-if ! id -u $USER_NAME >/dev/null 2>&1; then
-  adduser --quiet --system --home /var/lib/nwu \
+# Due to older deb packages, sometimes the system has the user but
+# does not have the group
+CREATE_USER=0 
+CREATE_GROUP=0
+id -u $USER_NAME >/dev/null 2>&1
+if [ "$?" == "1" ]; then CREATE_USER=1; fi
+
+grep -q "^$USER_NAME:" /etc/group > /dev/null 2>&1
+if [ "$?" == "1" ]; then CREATE_GROUP=1; fi 
+
+if [ "$CREATE_USER" == 1 ]; then
+#if ! id -u $USER_NAME >/dev/null 2>&1; then
+  adduser --quiet --system --home /var/lib/nwu --group \
           --shell /bin/sh --disabled-login \
           --gecos 'Network Wide Updates' $USER_NAME
-elif ! test -d /var/lib/nwu; then
-    mkdir /var/lib/nwu
+  if [ "$?" == 0 ]; then CREATE_GROUP=0; fi
 fi
 
-chown -R $USER_NAME /var/lib/nwu
-chown -R $USER_NAME /var/run/nwu-server/
-chmod 600 /etc/nwu/server.conf
-chown nwuserver /etc/nwu/server.conf
-chmod 700 /var/lib/nwu -R
+if [ "$CREATE_GROUP" == 1 ]; then
+  addgroup --quiet --system $USER_NAME
+  adduser --quiet $USER_NAME $USER_NAME
+fi
+
+if ! test -d /var/lib/nwu; then
+    mkdir /var/lib/nwu
+fi
+chown -R $USER_NAME.$USER_NAME /var/lib/nwu
+chown -R $USER_NAME.$USER_NAME /var/run/nwu-server/
+chmod 640 /etc/nwu/server.conf
+chown $USERNAME.$USERNAME /etc/nwu/server.conf
+chmod 770 /var/lib/nwu -R
 #DEBHELPER#
