@@ -31,8 +31,12 @@ Leave everything to nwu-server and it will create the database file in /var/lib/
 
 C) - PostgreSQL -
 
-Not yet tested, sorry.
-
+sudo su - postgres createuser nwu
+sudo su - postgres createdb nwu
+sudo su - postgres psql nwu << EOF
+ALTER DATABASE nwu OWNER TO nwu
+\q
+EOF
 
 --- Nwu-server config file ---
 
