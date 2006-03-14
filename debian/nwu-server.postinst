@@ -11,5 +11,8 @@ elif ! test -d /var/lib/nwu; then
 fi
 
 chown -R $USER_NAME /var/lib/nwu
+chown -R $USER_NAME /var/run/nwu-server/
+chmod 600 /etc/nwu/server.conf
+chown nwuserver /etc/nwu/server.conf
 chmod 700 /var/lib/nwu -R
 #DEBHELPER#
