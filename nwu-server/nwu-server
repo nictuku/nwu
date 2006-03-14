@@ -68,7 +68,9 @@ def session_setup(uniq, token):
     Returns session object to be used by the agent in later
     communcation steps.
     """
-    
+
+    log.info("Setting session for machine " + id + " " + hostname + ".")
+  
     # FIXME: test if token is valid here.
     query_check_m = machine.select(machine.q.uniq==uniq)
     check_m = list(query_check_m)
@@ -81,7 +83,6 @@ def session_setup(uniq, token):
     if auth.check_token(uniq, token):
         return uniq, token
 
-    log.debug("uniq, token:" + uniq + ' ' + token)
     # FIXME: return False or raise an exception?
     raise Exception, "Wrong token for " + uniq
 
@@ -100,7 +101,7 @@ def get_tasks(session):
     
     client_machine = ma[0]
 
-    log.debug("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
+    log.info("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
 
     remote_tasks = []
     

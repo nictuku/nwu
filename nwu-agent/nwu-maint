@@ -152,7 +152,7 @@ for act in actions:
             # Checks if the packages to be installed names are safe and valid
 
             if len(detail) > 1 and is_safe(detail):
-                log.info("Running task:", task_id)
+                log.info("Running task: " + task_id)
 
                 if not status.has_key(task_id): 
 
@@ -163,7 +163,6 @@ for act in actions:
                     if status[task_id][0] != 0:
                         log.error("Failed to install package. Output:")
                         log.error(status[task_id][1])
-                        # FIXME: log this to syslog
                     else:
                         # If sucessful, remove that detail from the task list
                         log.debug(status[task_id][1])
