@@ -1,0 +1,15 @@
+Version 0.1.3
+2006-03-13
+
+- Using XML-RPC instead of SOAP
+- Fixed missing agent.conf in debian package
+- Implemented logging through syslog
+- Prototyping a PyGTK interface
+- Nwu-server is now a syslog logging daemon
+
+Version 0.1.2
+2006-03-05
+
+- Initial Release
+
+
