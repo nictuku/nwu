@@ -2,3 +2,4 @@ debian/tmp/usr/bin/nwu usr/bin
 debian/tmp/usr/bin/nwu-server usr/bin
 debian/tmp/usr/lib/*/site-packages/nwu_server usr/lib/site-python
 debian/tmp/usr/lib/*/site-packages/nwu_server/db/* usr/lib/site-python/nwu_server/db
+debian/tmp/etc/nwu/server.conf etc/nwu 
