@@ -82,6 +82,7 @@ class apt_current_packages(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
+    _defaultOrder = 'name'
 
     machine = ForeignKey('machine')
 
@@ -89,6 +90,7 @@ class apt_update_candidates(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
+    _defaultOrder = 'name'
 
     machine = ForeignKey('machine')
 

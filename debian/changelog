@@ -4,8 +4,9 @@ nwu (0.1.3-1) unstable; urgency=low
   * Manual dependency on python >= 2.3
   * Fixed permissions for /etc/nwu/server.conf and agent.conf
   * New directory /var/run/nwu-server
+  * nwu-server.postinst creating nwuserver group
 
- -- Yves Junqueira <yves@cetico.org>  Mon, 13 Mar 2006 21:37:13 -0300
+ -- Yves Junqueira <yves@cetico.org>  Mon, 13 Mar 2006 23:23:04 -0300
 
 nwu (0.1.2-3) unstable; urgency=low
 
