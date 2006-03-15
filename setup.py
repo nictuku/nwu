@@ -13,5 +13,7 @@ setup(name='Nwu',
       package_dir = {'nwu_agent': 'nwu-agent/nwu_agent', 'nwu_server': 'nwu-server/nwu_server'},
       packages=['nwu_agent', 'nwu_server', 'nwu_server.db'],
       data_files=[('/etc/nwu', ['nwu-agent/sample_conf/agent.conf']),
-                  ('/etc/nwu', ['nwu-server/sample_conf/server.conf'])]
+                  ('/etc/nwu', ['nwu-server/sample_conf/server.conf']),
+		  ('/usr/share/doc/nwu-server', ['nwu-server/README']),
+		  ('/usr/share/doc/nwu-agent', ['nwu-agent/README'])]
      )
