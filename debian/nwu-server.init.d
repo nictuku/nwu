@@ -19,10 +19,11 @@ case "$1" in
 	log_end_msg 1
 	echo "   !! No config file (${CONFIG}) fonud."
         echo "      Please take a look at /usr/share/doc/nwu-server/README"
+	echo "      Example available at /usr/share/doc/nwu-server/example/"
     elif [ ! -f ${SSLCERT} ]; then
 	log_end_msg 1
 	echo "   !! No SSL Certificate (${SSLCERT}) found."
-        echo "      Please take a look at /usr/share/doc/nwu-server/README"
+        echo "      Instructions for creating a certificate at /usr/share/doc/nwu-server/README"
     else
 	${NWUSERVER}
 	log_end_msg 0
@@ -31,7 +32,7 @@ case "$1" in
   stop)
     log_begin_msg "Stoping Network Wide Updates Server"
     PID=`cat ${PIDFILE}`
-    if [ ${PID} != "" ]; then
+    if [ ${PID} != "" ] && [ -d /proc/${PID} ]; then
 	kill ${PID}
 	log_end_msg 0
     else
