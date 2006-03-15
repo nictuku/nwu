@@ -13,6 +13,14 @@ grep -q "^$USER_NAME:" /etc/group > /dev/null 2>&1
 if [ "$?" == "1" ]; then CREATE_GROUP=1; fi 
 
 if [ "$CREATE_USER" == 1 ]; then
+# if user had previously installed, it need to remove
+# /var/lib/nwu. Otherwise adduser will say the homedir
+# doesn't belong to the user
+
+  if [ -d /var/lib/nwu ]; then
+     rm -rf /var/lib/nwu
+  fi
+
 #if ! id -u $USER_NAME >/dev/null 2>&1; then
   adduser --quiet --system --home /var/lib/nwu --group \
           --shell /bin/sh --disabled-login \
@@ -30,7 +38,6 @@ if ! test -d /var/lib/nwu; then
 fi
 chown -R $USER_NAME.$USER_NAME /var/lib/nwu
 chown -R $USER_NAME.$USER_NAME /var/run/nwu-server/
-chmod 640 /etc/nwu/server.conf
-chown $USER_NAME.$USER_NAME /etc/nwu/server.conf
 chmod 770 /var/lib/nwu -R
 #DEBHELPER#
+

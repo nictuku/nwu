@@ -2,3 +2,4 @@ debian/tmp/usr/bin/nwu-maint usr/sbin
 debian/tmp/usr/bin/nwu-agent usr/bin
 debian/tmp/etc/nwu/agent.conf etc/nwu
 debian/tmp/usr/lib/*/site-packages/nwu_agent usr/lib/site-python
+debian/tmp/usr/share/doc/nwu-agent/README usr/share/doc/nwu-agent
