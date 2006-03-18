@@ -52,11 +52,33 @@ sysinfo_logger.addHandler(ch)
 
 pkgs = sysinfo.software.packages()
 
+def verify(conn, cert, errnum, depth, ok):
+    print 'So-far =',ok
+    print 'errno =',errnum
+    print 'conn =',conn
+    print 'oi', cert.get_issuer()
+    print '    Subject: ', cert.get_subject()
+    print "ok"
+    print '        O     : %s' % cert.get_subject().O
+    print '        OU    : %s' % cert.get_subject().OU
+    print '        CN    : %s' % cert.get_subject().CN
+    print '        email : %s' % cert.get_subject().emailAddress
+    print '    Serial : %s' % cert.get_serial_number()
+    print '    SHash  : %s' % cert.subject_name_hash()
+    print '   Expired : %s' % cert.has_expired()
+    print '   CN : %s' % cert
+    return ok
+
 def XClient(server_uri):
-    ctx = SSL.Context()
-    #ctx.load_cert_chain('client.pem')
-    #ctx.load_verify_location('ca.pem')
-    #ctx.set_verify(SSL.verify_peer, 10)
+    ctx = SSL.Context('sslv3')
+    ctx.load_cert_chain('/tmp/server.pem')
+    ctx.set_allow_unknown_ca(1)
+#    ctx.load_cert('/tmp/server.pem')
+#    ctx.load_verify_info('/tmp/cacert.pem')
+#    ctx.load_client_ca('/tmp/cacert.pem')
+    print "ve1"
+    ctx.set_verify(SSL.verify_peer, 10)
+    print "ve2"
     xs = Server(server_uri, SSL_Transport(ctx))
     return xs
 

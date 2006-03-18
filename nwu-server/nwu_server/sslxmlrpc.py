@@ -1,6 +1,7 @@
 from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
+
 class SSLXMLRPCServer(SSL.SSLServer, SimpleXMLRPCServer):
     def __init__(self, ssl_context, server_uri):
         handler = SimpleXMLRPCRequestHandler
@@ -17,13 +18,15 @@ class SSLServer:
         self.ssl_context = self.ctx()
 
     def ctx(self):
-        ctx = SSL.Context()
+        ctx = SSL.Context('sslv3')
+        print self.pemfile
         ctx.load_cert(self.pemfile)
-#        ctx.load_client_ca(pemfile)
 #        ctx.load_verify_info(pemfile)
+        ctx.load_client_ca('/etc/nwu/cacert.pem')
+        ctx.load_verify_info('/etc/nwu/cacert.pem')
 #        ctx.set_verify(self.verify, self.verify_depth)
 #        ctx.set_session_id_ctx('xmlrpcssl')
-#        ctx.set_info_callback(self.callback)
+        #ctx.set_info_callback(verify)
         return ctx
 
     def start_server(self, host, port):
