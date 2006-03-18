@@ -19,7 +19,6 @@ class SSLServer:
 
     def ctx(self):
         ctx = SSL.Context('sslv3')
-        print self.pemfile
         ctx.load_cert(self.pemfile)
 #        ctx.load_verify_info(pemfile)
         ctx.load_client_ca('/etc/nwu/cacert.pem')

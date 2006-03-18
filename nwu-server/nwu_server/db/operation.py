@@ -118,7 +118,13 @@ class task(SQLObject):
     action = StringCol(length=255)
     details = StringCol(default=None)
     machine = ForeignKey('machine')
-        
+
+class users(SQLObject):
+
+    username = StringCol(length=255)
+    password = StringCol(length=255)
+    userlevel=IntCol()
+            
 def create_tables():
     """Creates required tables in the database.
     """
@@ -153,7 +159,12 @@ def create_tables():
     except:
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
             str(sys.exc_value))
-
+    try:
+        users.createTable()
+    except:
+        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
+             str(sys.exc_value))
+ 
 
 if __name__ == '__main__':
 

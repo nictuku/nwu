@@ -39,7 +39,7 @@ log.setLevel(logging.INFO)
 
 # FIXME: fix ident info for SOAP
 ident = '$Id: nwu-server, v 0.1 $'
-DAEMONIZE = 0
+DAEMONIZE = 1
 
 def read_config():
     """Reads configuration data from the config file.
