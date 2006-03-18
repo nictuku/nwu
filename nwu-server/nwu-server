@@ -21,6 +21,7 @@ import os
 import sys
 import ConfigParser
 from nwu_server.db.operation import *
+from nwu_server.rpc_admin import nwu_admin
 from nwu_server import apt, auth, sslxmlrpc
 import logging
 import logging.handlers
@@ -38,8 +39,8 @@ log.addHandler(hdlr)
 log.setLevel(logging.INFO)
 
 # FIXME: fix ident info for SOAP
-ident = '$Id: nwu-server, v 0.1 $'
-DAEMONIZE = 1
+ident = '$Id: nwu-server, v 0.1.3 $'
+DAEMONIZE = 0 
 
 def read_config():
     """Reads configuration data from the config file.
@@ -185,6 +186,8 @@ def main():
 
     create_tables()
 
+    nadmin = nwu_admin()
+
     ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
     server = ssl.start_server(host, port)
 
@@ -195,7 +198,8 @@ def main():
     server.register_function(get_tasks)
     server.register_function(wipe_tasks)
     server.register_function(add_machine)
-    
+    server.register_function(nadmin.get_info)
+    server.register_function(nadmin.machine_remove)
     server.serve_forever()
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ This will be replaced by rpc_data.py sometime.
 import sys
 # svn test only
 sys.path.append('../nwu-server')
-from nwu_server.db.operation import *
+from nwu_server.db import operation
 
 class nwu_data:
     """Maintain nwu host data in the database.
@@ -14,20 +14,29 @@ class nwu_data:
     # Make the operations of this class as pythonic as possible
     # Remember another class will be made for xml-rpc but using the same interfaces
 
-    nodes = None
     tasks = None 
 
     def __init__(self):
+        # Converting table data objects to list of dictionaries
+        self.machines = []
+        m = self.machine.select()
+        machine_objects = list(m)
+        for mach in machine_objects:
+            # Notice we are not exporting password here. There is no need for that.
+            self.machines.append({ 
+                    'id' : mach.id,
+                    'uniq' : mach.uniq,
+                    'hostname' : mach.hostname,
+                    'os_version' : mach.os_version,
+                    'os_name' : mach.os_name,
+                    })
 
-        m = machine.select()
-        self.nodes = list(m)
-
-        t = task.select()
+        t = self.task.select()
         self.tasks = list(t)
     
-    class machine(machine):
+    class machine(operation.machine):
         def __init__(self):
-            pass
+            operation.machine.__init__(self)
 
         # FIXME: move to db/operations.py
         def remove(self, machine_id):
@@ -35,8 +44,10 @@ class nwu_data:
             m = machine.select(machine.q.id==machine_id)
             ma = list(m)
             q = len(ma)
+            if q == 0:
+                raise Exception, "Machine not found in the database."
             if q != 1:
-                raise Exception, "There are " +  q +  " machine(s) with'" + uniq + "\
+                raise Exception, "There are " +  str(q) +  " machine(s) with'" + uniq + "\
         'uniq string and it should have exactly one."
 
             client_machine = ma[0]
@@ -48,7 +59,7 @@ class nwu_data:
 
             conn.query(delquery)
 
-    class task(machine, task):
+    class task(machine, operation.task):
         def __init__(self):
             pass
         

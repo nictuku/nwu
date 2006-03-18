@@ -3,7 +3,35 @@
 import gtk
 import gtk.glade
 import gobject
-import local_data
+from M2Crypto import SSL
+from M2Crypto.m2xmlrpclib import Server, SSL_Transport
+
+class nwu_data:
+    """Setups an interface to the nwu server using XML-RPC
+    """
+    
+    def __init__(self):
+        # FIXME: do not hardcode the server_uri
+        server_uri = 'https://localhost:8088'
+        self.rpc = self._XClient(server_uri)
+        self.machines = self.rpc.get_info('machines')
+        self.tasks = self.rpc.get_info('tasks')
+       
+    def machine_remove(self, machine_id):
+        self.rpc.machine_remove(machine_id)
+
+    def _XClient(self, server_uri):
+        ctx = SSL.Context('sslv3')
+        #ctx.load_cert_chain('/tmp/server.pem')
+        #ctx.set_allow_unknown_ca(1)
+    #    ctx.load_cert('/tmp/server.pem')
+    #    ctx.load_verify_info('/tmp/cacert.pem')
+    #    ctx.load_client_ca('/tmp/cacert.pem')
+        #print "ve1"
+        #ctx.set_verify(SSL.verify_peer, 10)
+        #print "ve2"
+        xs = Server(server_uri, SSL_Transport(ctx))
+        return xs
 
 class list_nodes:
     """Build the GTK interface for Nwu Admin, using Glade interface
@@ -17,13 +45,12 @@ class list_nodes:
     listnodes = None
     listnodes_model = None
     signals = {}
-    data = None
     nodes_popup = object
     remove_ok = object
 
     def __init__(self):
 
-        self.data = local_data.nwu_data()
+        self.data = nwu_data()
         self.nodes= self.data.nodes
         self.gladefile = gtk.glade.XML("glade/listnodes.glade")
         self.listnodes = self.gladefile.get_widget('treeview1')
@@ -89,7 +116,7 @@ class list_nodes:
   
     def nodes_reload(self, *args):
         print "reload"
-        self.data = local_data.nwu_data()
+        self.data = nwu_data()
         self.nodes= self.data.nodes
         self.listnodes_model.clear()
         self.fill_nodes()    
@@ -117,11 +144,12 @@ class list_nodes:
             model, iter = selection.get_selected()
             if iter:
                 machine_id = model.get_value(iter, 0)
-                machine = self.data.machine()
-                machine.remove(machine_id)
+                # Ask the server to remove the machine from the database
+                self.data.machine_remove(machine_id)
                 model.remove(iter)
         remove_ok.hide()
         return 1
+  
     def on_update1_clicked(self, button, model):
         print "click"
         selection = model.get_selection()
@@ -129,11 +157,10 @@ class list_nodes:
         if iter:
             machine_id = model.get_value(iter, 0)
             print "machine id:", machine_id
-            task_list = self.data.task()
             new_task = { 'machine_id' : machine_id,
                         'task_name' : 'update'
                         }
-            task_list.append(new_task)
+            self.data.rpc.task_append(new_task)
             #model.remove(iter)
 
     def main(self):

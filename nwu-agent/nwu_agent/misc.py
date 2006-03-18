@@ -71,14 +71,14 @@ def verify(conn, cert, errnum, depth, ok):
 
 def XClient(server_uri):
     ctx = SSL.Context('sslv3')
-    ctx.load_cert_chain('/tmp/server.pem')
+    #ctx.load_cert_chain('/tmp/server.pem')
     ctx.set_allow_unknown_ca(1)
 #    ctx.load_cert('/tmp/server.pem')
 #    ctx.load_verify_info('/tmp/cacert.pem')
 #    ctx.load_client_ca('/tmp/cacert.pem')
-    print "ve1"
-    ctx.set_verify(SSL.verify_peer, 10)
-    print "ve2"
+    #print "ve1"
+    #ctx.set_verify(SSL.verify_peer, 10)
+    #print "ve2"
     xs = Server(server_uri, SSL_Transport(ctx))
     return xs
 

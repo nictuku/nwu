@@ -30,33 +30,35 @@ log = logging.getLogger('nwu_server.db.operation')
 
 #FIXME: Organize this properly, object-oriented
 
-config = ConfigParser.ConfigParser()
-config.read("/etc/nwu/server.conf")
+class setup:
 
-db_type = config.get("database", "type")
-db_host = config.get("database", "host")
-db_database = config.get("database", "database")
-db_user = config.get("database", "user")
-db_password = config.get("database", "password")
+    def __init__(self):
+        config = ConfigParser.ConfigParser()
+        config.read("/etc/nwu/server.conf")
+
+        db_type = config.get("database", "type")
+        db_host = config.get("database", "host")
+        db_database = config.get("database", "database")
+        db_user = config.get("database", "user")
+        db_password = config.get("database", "password")
 
 
-log.debug("Using" + db_type + " as my database.")
+        log.debug("Using" + db_type + " as my database.")
 
-if db_type == 'sqlite':
-    connection_string = db_type + "://" + db_database
-else:
-    connection_string = db_type + "://" + db_user + ":" + db_password + "@" +\
-     db_host + "/" + db_database
+        if db_type == 'sqlite':
+            connection_string = db_type + "://" + db_database
+        else:
+            connection_string = db_type + "://" + db_user + ":" + db_password + "@" +\
+             db_host + "/" + db_database
 
-log.debug("conn string:" + connection_string)
+        log.debug("conn string:" + connection_string)
 
-conn = connectionForURI(connection_string)
+        self.conn = connectionForURI(connection_string)
 
-conn.debug=0
+        self.conn.debug=0
 
+conn = setup().conn
 __connection__ = conn
-
-
 
 class machine(SQLObject):
 
