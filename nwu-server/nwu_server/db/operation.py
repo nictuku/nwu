@@ -121,7 +121,7 @@ class task(SQLObject):
 
 class users(SQLObject):
 
-    username = StringCol(length=255)
+    username = StringCol(length=255, unique=True)
     password = StringCol(length=255)
     userlevel=IntCol()
             
