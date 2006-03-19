@@ -1,4 +1,21 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import gtk
 import gtk.glade
@@ -13,12 +30,15 @@ class nwu_data:
     def __init__(self):
         # FIXME: do not hardcode the server_uri
         server_uri = 'https://localhost:8088'
+        # FIXME: do not hardcode auth info
+        self.auth = ['yvesjm', 'bla']
         self.rpc = self._XClient(server_uri)
-        self.computers = self.rpc.get_info('computers')
-        self.tasks = self.rpc.get_info('tasks')
+        self.computers = self.rpc.get_info(self.auth, 'computers')
+        self.tasks = self.rpc.get_info(self.auth, 'tasks')
+        print "comps", self.computers
        
     def computer_remove(self, computer_id):
-        self.rpc.computer_remove(computer_id)
+        self.rpc.computer_del(self.auth,computer_id)
 
     def _XClient(self, server_uri):
         ctx = SSL.Context('sslv3')
@@ -33,20 +53,13 @@ class nwu_data:
         xs = Server(server_uri, SSL_Transport(ctx))
         return xs
 
-class list_computers:
+class ui_computers:
     """Build the GTK interface for Nwu Admin, using Glade interface
     file.
     
     The listcomputers.glade file must be located in glade/listcomputers.glade
     at the current directory.
     """
-    computers = []
-    gladefile = None 
-    listcomputers = None
-    listcomputers_model = None
-    signals = {}
-    computers_popup = object
-    remove_ok = object
 
     def __init__(self):
 
@@ -62,7 +75,6 @@ class list_computers:
         self.listcomputers.set_model(self.listcomputers_model)
 
         self.computers_popup= self.gladefile.get_widget('menu14')
-        print "nada"
         self.remove_ok = self.gladefile.get_widget('remove_ok')
         self.remove_ok.hide()
         #print "aqui"
@@ -110,10 +122,10 @@ class list_computers:
    
     def fill_computers(self):
          for computer in self.computers:
-            self.insert_computer(self.listcomputers_model, None, computer.id, computer.hostname,
-                computer.os_name, computer.os_version)
+            self.insert_computer(self.listcomputers_model, None, \
+            computer['id'], computer['hostname'], computer['os_name'],
+            computer['os_version'])
 
-  
     def computers_reload(self, *args):
         print "reload"
         self.data = nwu_data()
@@ -160,7 +172,7 @@ class list_computers:
             new_task = { 'computer_id' : computer_id,
                         'task_name' : 'update'
                         }
-            self.data.rpc.task_append(new_task)
+            self.data.rpc.task_append(self.auth, new_task)
             #model.remove(iter)
 
     def main(self):

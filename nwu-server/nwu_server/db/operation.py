@@ -19,7 +19,7 @@
 
 """Defines the nwu database scheme and tables.
 """
-  
+ 
 from sqlobject import *
 from sqlobject.sqlbuilder import *
 import sys
@@ -91,7 +91,7 @@ class task(SQLObject):
     details = StringCol(default=None)
     computer = ForeignKey('computer')
 
-class users(SQLObject):
+class user(SQLObject):
 
     username = StringCol(length=255, unique=True)
     password = StringCol(length=255)
@@ -132,7 +132,7 @@ def create_tables():
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
             str(sys.exc_value))
     try:
-        users.createTable()
+        user.createTable()
     except:
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
              str(sys.exc_value))

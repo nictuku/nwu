@@ -19,41 +19,53 @@
 """This class is accessed from the RPC interface by administration tools and
 provides data and methods for controlling the nwu hosts database.
 """
-
+from md5 import md5
 import logging
 from db.operation import *
 log = logging.getLogger('nwu_server.rpc_admin')
 
 class nwu_admin:
-    
+    """RPC methods that control the database using
+    local_data.nwu_data
+    """
+
     def __init__(self):
-        # These are RPC methods that control the database using 
-        # local_data.nwu_data
-        self.info = {}
+        pass
+ 
+    def get_info(self, auth, info):
+        print "oi"
+        if not self._verify_auth(auth, admin=True):
+            raise Exception, "Wrong auth"
+        else:
+            print "AUTH OK"
+        export = []
+        # This was in __init__, but we must try to avoid caching
+        if info == 'computers':
+            for mach in computer.select():
+                export.append({
+                    'id' : mach.id,
+                    'uniq' : mach.uniq,
+                    'hostname' : mach.hostname,
+                    'os_version' : mach.os_version,
+                    'os_name' : mach.os_name,
+                    })
 
-        self.info['computers'] = []
-        for mach in computer.select():
-            self.info['computers'].append({
-                'id' : mach.id,
-                'uniq' : mach.uniq,
-                'hostname' : mach.hostname,
-                'os_version' : mach.os_version,
-                'os_name' : mach.os_name,
-                })
-
-        self.info['tasks'] = []
-        for tk in task.select():
-            self.info['tasks'].append({
-                'id' : tk.id,
-                'computer_id' : tk.computerID,
-                'action' : tk.action,
-                'details' : tk.details,
-                })
-    
-    def get_info(self, info):
-        return self.info[info]
+        elif info == 'tasks':
+            for tk in task.select():
+                export.append({
+                    'id' : tk.id,
+                    'computer_id' : tk.computerID,
+                    'action' : tk.action,
+                    'details' : tk.details,
+                    })
+     
+        return export
 
     def computer_del(self, computer_id):
+
+        if not self._verify_auth(auth, admin=True):
+            raise Exception, "Wrong auth"
+
         m = computer.select(computer.q.id==computer_id)
         ma = list(m)
         q = len(ma)
@@ -72,8 +84,12 @@ class nwu_admin:
             (computer.q.id ==  client_computer.id)))
 
         conn.query(delquery)
+        return True 
 
     def task_append(self, new_task_dict):
+        if not self._verify_auth(auth, admin=True):
+            raise Exception, "Wrong auth"
+
         computer_id = new_task['computer_id']
         task_name = new_task['task_name']
 
@@ -91,6 +107,17 @@ class nwu_admin:
 
             t = task(computer=computer_id, action=task_name,details=task_detail)
 
+    def _verify_auth(self, auth, admin=True):
+        (username, password) = auth
+        u = user.select(user.q.username==username)
+        for login in u:
+            if not md5(password).hexdigest() == login.password:
+                return False
+            elif admin == True and login.userlevel == 1:
+                return True
+            else:
+                return True
+                        
 if __name__ == '__main__':
     na = nwu_admin()
     print na.get_info('computers')

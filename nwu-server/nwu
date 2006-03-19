@@ -16,7 +16,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
+from md5 import md5
 import getpass
 import sys
 from nwu_server.db.operation import *
@@ -98,7 +98,11 @@ elif sub_command == 'adduser':
             p = getpass.getpass()
             name = args[0]
             level = args[1]
-            u = users(username=name, userlevel=level,password=p)
+            password = md5(p).hexdigest()
+            try:
+                u = user(username=name, userlevel=level,password=password)
+            except:
+                print "Error adding user. Username duplicated?"
         else:
             usage()
     else:

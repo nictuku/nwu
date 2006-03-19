@@ -34,6 +34,11 @@ import logging
 log = logging.getLogger('nwu_agent.misc')
 
 config = ConfigParser.ConfigParser()
+conffile = '/etc/nwu/agent.conf'
+
+if not os.access(conffile, os.R_OK):
+    raise "Config file " + conffile + " is not readable by the current user."
+
 r = config.read("/etc/nwu/agent.conf")
 
 server_uri = config.get("connection", "server_uri")
