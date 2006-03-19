@@ -27,9 +27,7 @@ class nwu_data:
     """Setups an interface to the nwu server using XML-RPC
     """
     
-    def __init__(self):
-        # FIXME: do not hardcode the server_uri
-        server_uri = 'https://localhost:8088'
+    def __init__(self, server_uri):
         # FIXME: do not hardcode auth info
         self.auth = ['yvesjm', 'bla']
         self.rpc = self._XClient(server_uri)
@@ -63,8 +61,8 @@ class ui_computers:
 
     def __init__(self):
 
-        self.data = nwu_data()
-        self.computers= self.data.computers
+#        self.data = nwu_data()
+#        self.computers= self.data.computer
         self.gladefile = gtk.glade.XML("glade/listcomputers.glade")
         self.listcomputers = self.gladefile.get_widget('treeview1')
         self.listcomputers_model=gtk.TreeStore(gobject.TYPE_STRING,
@@ -75,6 +73,9 @@ class ui_computers:
         self.listcomputers.set_model(self.listcomputers_model)
 
         self.computers_popup= self.gladefile.get_widget('menu14')
+        self.open_server = self.gladefile.get_widget('connect_dialog')
+        self.open_server.hide()
+
         self.remove_ok = self.gladefile.get_widget('remove_ok')
         self.remove_ok.hide()
         #print "aqui"
@@ -90,10 +91,14 @@ class ui_computers:
             "on_remove_cancel_clicked" : self.on_remove_cancel_clicked,
             "on_remove_ok_closed" : self.on_remove_ok_closed,
             "on_remove_ok_destroy_event" : self.on_remove_ok_closed,
+            "on_open1_activate" : self.on_open1_activate,
             }
 
 
         self.gladefile.signal_autoconnect(self.signals)
+
+        self.server_uri = ''
+
     def on_treeview1_button_press_event(self, treeview, event):
         if event.button == 3:
             x = int(event.x)
@@ -128,11 +133,14 @@ class ui_computers:
 
     def computers_reload(self, *args):
         print "reload"
-        self.data = nwu_data()
-        self.computers= self.data.computers
-        self.listcomputers_model.clear()
-        self.fill_computers()    
-        self.listcomputers.show()
+        if self.server_uri:
+            self.data = nwu_data(self.server_uri)
+            self.computers= self.data.computers
+            self.listcomputers_model.clear()
+            self.fill_computers()    
+            self.listcomputers.show()
+        else:
+            print "server uri not defined"
 #       print model
 #        print iter
  
@@ -147,6 +155,20 @@ class ui_computers:
 #        self.remove_ok.destroy()
         pass
 
+    def on_open1_activate(self, model):
+        open_server = self.gladefile.get_widget('connect_dialog')
+        res = open_server.run()
+        if res == gtk.RESPONSE_OK:
+            uri_text = self.gladefile.get_widget('entry1')
+            server_uri = uri_text.get_text()
+            print "respondeu", server_uri
+            self.server_uri = server_uri
+            self.run_connect(server_uri)
+
+        open_server.hide()
+        return 1
+  
+ 
     def on_remove1_clicked(self, button, model):
         remove_ok = self.gladefile.get_widget('remove_ok')
         res = remove_ok.run()
@@ -175,7 +197,7 @@ class ui_computers:
             self.data.rpc.task_append(self.auth, new_task)
             #model.remove(iter)
 
-    def main(self):
+    def run_connect(self, server_uri):
         # model
         # titles
         i = 0
@@ -184,10 +206,14 @@ class ui_computers:
             column=gtk.TreeViewColumn(title,renderer, text=i)
             self.listcomputers.append_column(column)
             i += 1
+
+        self.data = nwu_data(server_uri)
+        self.computers= self.data.computers
         
         #self.listcomputers.show()
         self.fill_computers()
 
+    def main(self):
         gtk.main() 
            
 
