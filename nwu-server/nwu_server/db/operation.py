@@ -23,44 +23,14 @@
 from sqlobject import *
 from sqlobject.sqlbuilder import *
 import sys
-import ConfigParser
 import logging
-
+import setup
 log = logging.getLogger('nwu_server.db.operation')
 
-#FIXME: Organize this properly, object-oriented
-
-class setup:
-
-    def __init__(self):
-        config = ConfigParser.ConfigParser()
-        config.read("/etc/nwu/server.conf")
-
-        db_type = config.get("database", "type")
-        db_host = config.get("database", "host")
-        db_database = config.get("database", "database")
-        db_user = config.get("database", "user")
-        db_password = config.get("database", "password")
-
-
-        log.debug("Using" + db_type + " as my database.")
-
-        if db_type == 'sqlite':
-            connection_string = db_type + "://" + db_database
-        else:
-            connection_string = db_type + "://" + db_user + ":" + db_password + "@" +\
-             db_host + "/" + db_database
-
-        log.debug("conn string:" + connection_string)
-
-        self.conn = connectionForURI(connection_string)
-
-        self.conn.debug=0
-
-conn = setup().conn
+conn = setup.cfg().conn
 __connection__ = conn
 
-class machine(SQLObject):
+class computer(SQLObject):
 
     uniq = StringCol(length=32,alternateID=True)
     hostname = StringCol(length=255)
@@ -78,7 +48,7 @@ class auth(SQLObject):
 
     password = StringCol(length=255)
 
-    machine = ForeignKey('machine')
+    computer = ForeignKey('computer')
 
 class apt_current_packages(SQLObject):
 
@@ -86,7 +56,7 @@ class apt_current_packages(SQLObject):
     version = StringCol(length=30)
     _defaultOrder = 'name'
 
-    machine = ForeignKey('machine')
+    computer = ForeignKey('computer')
 
 class apt_update_candidates(SQLObject):
 
@@ -94,7 +64,7 @@ class apt_update_candidates(SQLObject):
     version = StringCol(length=30)
     _defaultOrder = 'name'
 
-    machine = ForeignKey('machine')
+    computer = ForeignKey('computer')
 
 
 class apt_repositories(SQLObject):
@@ -113,13 +83,13 @@ class apt_repositories(SQLObject):
     distribution = StringCol(length=255)
     components = StringCol() # space separated list of components
 
-    machine = ForeignKey('machine')
+    computer = ForeignKey('computer')
 
 class task(SQLObject):
     
     action = StringCol(length=255)
     details = StringCol(default=None)
-    machine = ForeignKey('machine')
+    computer = ForeignKey('computer')
 
 class users(SQLObject):
 
@@ -132,7 +102,7 @@ def create_tables():
     """
     log.debug("Creating necessary tables in the database.")
     try:
-        machine.createTable()
+        computer.createTable()
     except:
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
              str(sys.exc_value))
@@ -173,16 +143,16 @@ if __name__ == '__main__':
     create_tables()
 
     # FIXME: os name and version from sysinfo
-    m = machine(hostname='localhost', uniq='32109832109832109831209832190321weee', os_name='Linux', os_version='2.6.x')
+    m = computer(hostname='localhost', uniq='32109832109832109831209832190321weee', os_name='Linux', os_version='2.6.x')
 
-    installed = apt_current_packages(machine=m, name='gcc', version='1.1')
-    installed = apt_current_packages(machine=m, name='znes', version='4.1')
+    installed = apt_current_packages(computer=m, name='gcc', version='1.1')
+    installed = apt_current_packages(computer=m, name='znes', version='4.1')
     
-    reps = apt_repositories(machine=m, filename='/etc/apt/sources.list',type='deb',
+    reps = apt_repositories(computer=m, filename='/etc/apt/sources.list',type='deb',
         uri='http://blabla', distribution='stable',
         components = 'breezy-updates main restricted')
 
-    all = machine.select(machine.q.hostname=='localhost')
+    all = computer.select(computer.q.hostname=='localhost')
 
     #print "weee",list(all)
 

@@ -23,16 +23,16 @@ import hmac
 
 def check_token(uniq, token):
     """Checks if the specified token was generated using the stored
-    machine password.
+    computer password.
     """
 
-    query_check_t = machine.select(machine.q.uniq==uniq)
+    query_check_t = computer.select(computer.q.uniq==uniq)
     check_t = list(query_check_t)
 
     password = ''
 
     if len(check_t) == 0:
-        # No machine with that specified uniq id was found.
+        # No computer with that specified uniq id was found.
         return False
     else:
         for t in check_t:

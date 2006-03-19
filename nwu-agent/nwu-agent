@@ -75,13 +75,13 @@ my_session = agent.rpc.session_setup(uniq, token)
 
 if not my_session:
     log.info("Oops. The server does not know me.")
-    add_me = agent.rpc.add_machine(password, uniq, myhost, os_name, os_version)
+    add_me = agent.rpc.add_computer(password, uniq, myhost, os_name, os_version)
 
     if add_me:
         log.info("Machine account created on the server.")
     else:
         log.error("Server did not create the account.")
-        raise Exception, "Failed to create machine account in the server."
+        raise Exception, "Failed to create computer account in the server."
 
     my_session = agent.rpc.session_setup(uniq, token)
     

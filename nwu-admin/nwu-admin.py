@@ -2,6 +2,6 @@
 
 from nwu_admin import gui
 
-showme = gui.list_nodes()
+showme = gui.list_computers()
 
 showme.main()

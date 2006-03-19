@@ -28,30 +28,30 @@ log = logging.getLogger('nwu_server.apt')
 
 def apt_set_repositories(session,reps):
     """Stores the full repositories list in the database, after
-    wiping that machine's repositories table.
+    wiping that computer's repositories table.
     """
     (uniq, token) = session
 
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    mach = machine.select(machine.q.uniq==uniq)
+    mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)
     if q != 1:
         raise Exception, "Strange. There are " +  str(q) +  \
-    " machine(s) with'" + uniq + \
+    " computer(s) with'" + uniq + \
     "'uniq string and it should have exactly one."
 
-    client_machine = l[0]
+    client_computer = l[0]
 
-    log.info("Updating repositories for: " + client_machine.hostname + \
-        '(' + str(client_machine.id) + ')' ) 
+    log.info("Updating repositories for: " + client_computer.hostname + \
+        '(' + str(client_computer.id) + ')' ) 
     
     # Deleting old reps
 
     delquery = conn.sqlrepr(Delete(apt_repositories.q, where=\
-        (apt_repositories.q.machineID ==  client_machine.id)))
+        (apt_repositories.q.computerID ==  client_computer.id)))
 
     conn.query(delquery)
 
@@ -78,12 +78,12 @@ def apt_set_repositories(session,reps):
                 log.debug("repeated distro: " +  str(k))
 
             # update repositories
-            setrep = apt_repositories(machine=client_machine, filename=filename,
+            setrep = apt_repositories(computer=client_computer, filename=filename,
                 type=rep_type, uri=rep_uri, distribution=rep_distribution,
                 components=rep_components)
 
 
-#        setrep = apt_repositories(machine=mach, filename=filename,
+#        setrep = apt_repositories(computer=mach, filename=filename,
             # rep_type='deb',
 #        rep_uri='http://de.archive.ubuntu.com/ubuntu',
 #        components = 'breezy-updates main restricted')
@@ -115,17 +115,17 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 
 
 
-    mach = machine.select(machine.q.uniq==uniq)
+    mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" +\
+        raise Exception, "Strange. There are " +  q +  " computer(s) with'" +\
             uniq + "'uniq string and it should have exactly one."
 
-    client_machine = l[0]
+    client_computer = l[0]
 
     log.debug("Updating table " + change_table + " for " + \
-       client_machine.hostname + '(' + str(client_machine.id) + ')' ) 
+       client_computer.hostname + '(' + str(client_computer.id) + ')' ) 
 
     log.debug("will delete: " + str(rm_pkgs))
     log.debug("will update: " + str(add_pkgs))
@@ -153,7 +153,7 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 
         conn.query(delquery)
 
-        table(machine=client_machine, name=add_pk_name,
+        table(computer=client_computer, name=add_pk_name,
             version=add_pk_version)
 
     return True
@@ -169,27 +169,27 @@ def apt_set_update_candidates_full(session, pkgs):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    mach = machine.select(machine.q.uniq==uniq)
+    mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" +\
+        raise Exception, "Strange. There are " +  q +  " computer(s) with'" +\
             uniq + "'uniq string and it should have exactly one."
 
-    client_machine = l[0]
+    client_computer = l[0]
 
     log.debug("Creating new update candidates list for: " \
-        + client_machine.hostname + '(' + str(client_machine.id) + ')')
+        + client_computer.hostname + '(' + str(client_computer.id) + ')')
 
     # Deleting old packages
 
     delquery = conn.sqlrepr(Delete(apt_update_candidates.q, where=\
-        (apt_update_candidates.q.machineID ==  client_machine.id)))
+        (apt_update_candidates.q.computerID ==  client_computer.id)))
 
     conn.query(delquery)
 
     for pk_name, pk_version in pkgs.iteritems():
-        apt_update_candidates(machine=client_machine, name=pk_name,
+        apt_update_candidates(computer=client_computer, name=pk_name,
             version=pk_version)
 
     return True
@@ -200,29 +200,29 @@ def apt_set_current_packages_full(session, pkgs):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    mach = machine.select(machine.q.uniq==uniq)
+    mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + \
+        raise Exception, "Strange. There are " +  q +  " computer(s) with'" + \
             uniq + "'uniq string and it should have exactly one."
 
-    client_machine = l[0]
+    client_computer = l[0]
 
     log.debug("Updating current packages list for: " \
-        + client_machine.hostname + '(' + str(client_machine.id) + ')' )
+        + client_computer.hostname + '(' + str(client_computer.id) + ')' )
 
     # Deleting old packages
     log.debug("Wiping old packages list.")
 
     delquery = conn.sqlrepr(Delete(apt_current_packages.q, where=\
-        (apt_current_packages.q.machineID ==  client_machine.id)))
+        (apt_current_packages.q.computerID ==  client_computer.id)))
 
     conn.query(delquery)
     log.debug("Adding new packages.")
 
     for pk_name, pk_version in pkgs.iteritems():
-        apt_current_packages(machine=client_machine, name=pk_name,
+        apt_current_packages(computer=client_computer, name=pk_name,
             version=pk_version)
     log.debug("End.")
     return True

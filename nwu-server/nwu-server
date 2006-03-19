@@ -53,12 +53,12 @@ def read_config():
     config = { 'host' : host, 'port' : port }
     return config
 
-def add_machine(password, uniq, hostname, os_name, os_version):
-    """Adds the given machine to the nodes database.
+def add_computer(password, uniq, hostname, os_name, os_version):
+    """Adds the given computer to the computers database.
     """
-    log.info("Creating machine " + uniq + " " + hostname + " " +\
+    log.info("Creating computer " + uniq + " " + hostname + " " +\
          os_name + " " + os_version)
-    m = machine(uniq=uniq,hostname=hostname, os_name=os_name,
+    m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
         os_version=os_version,password=password)
     return True
 
@@ -71,10 +71,10 @@ def session_setup(uniq, token):
     communcation steps.
     """
 
-    log.info("Setting session for machine " + uniq + ".")
+    log.info("Setting session for computer " + uniq + ".")
   
     # FIXME: test if token is valid here.
-    query_check_m = machine.select(machine.q.uniq==uniq)
+    query_check_m = computer.select(computer.q.uniq==uniq)
     check_m = list(query_check_m)
     
     password = ''
@@ -95,24 +95,24 @@ def get_tasks(session):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    m = machine.select(machine.q.uniq==uniq)
+    m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
     if q != 1:
-        raise Exception, "Strange. There are more then 1 machine with uniq string =" + uniq
+        raise Exception, "Strange. There are more then 1 computer with uniq string =" + uniq
     
-    client_machine = ma[0]
+    client_computer = ma[0]
 
-    log.info("Checking pending tasks for " + client_machine.hostname + '(' + str(client_machine.id) + ')'  )
+    log.info("Checking pending tasks for " + client_computer.hostname + '(' + str(client_computer.id) + ')'  )
 
     remote_tasks = []
 #    task._connection.debug = True    
-    t = task.select(task.q.id==client_machine.id)
+    t = task.select(task.q.id==client_computer.id)
     ta = list(t)
     qta = len(ta)
 
     if qta == 0:
-        log.info("No pending tasks found for "  + client_machine.hostname + '(' + str(client_machine.id) + ')' )
+        log.info("No pending tasks found for "  + client_computer.hostname + '(' + str(client_computer.id) + ')' )
         return remote_tasks
         
     for tas in ta:
@@ -128,20 +128,20 @@ def wipe_tasks(session):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    m = machine.select(machine.q.uniq==uniq)
+    m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " machine(s) with'" + uniq + "\
+        raise Exception, "Strange. There are " +  q +  " computer(s) with'" + uniq + "\
 'uniq string and it should have exactly one."
 
-    client_machine = ma[0]
+    client_computer = ma[0]
 
-    log.info("Wiping tasks for "   + client_machine.hostname + '(' + str(client_machine.id) + ')' )
+    log.info("Wiping tasks for "   + client_computer.hostname + '(' + str(client_computer.id) + ')' )
 
 
     delquery = conn.sqlrepr(Delete(task.q, where=\
-        (task.q.machineID ==  client_machine.id)))
+        (task.q.computerID ==  client_computer.id)))
 
     conn.query(delquery)
 
@@ -197,9 +197,9 @@ def main():
     server.register_function(apt.apt_set_list_diff)
     server.register_function(get_tasks)
     server.register_function(wipe_tasks)
-    server.register_function(add_machine)
+    server.register_function(add_computer)
     server.register_function(nadmin.get_info)
-    server.register_function(nadmin.machine_remove)
+    server.register_function(nadmin.computer_del)
     server.serve_forever()
 
 if __name__ == '__main__':
