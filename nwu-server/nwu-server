@@ -171,7 +171,7 @@ def daemonize():
         os.setsid()
         os.umask(0)
 
-        dev_null = file('/dev/null', 'r')
+        dev_null = file('/dev/null', 'a+')
         os.dup2(dev_null.fileno(), sys.stdout.fileno())
         os.dup2(dev_null.fileno(), sys.stderr.fileno())
         os.dup2(dev_null.fileno(), sys.stdin.fileno())
