@@ -1,8 +1,47 @@
-Nwu-server installation
------------------------
+NWU
+
+== NWU development version ==
+=============================
+
+Network wide updates for systems which use APT.
 - Yves Junqueira <yves@cetico.org>
 
---- SSL Certificate File ---
+https://dev.ubuntubrasil.org/trac/nwu
+
+NWU features
+-------------
+
+# Manage Debian-like systems in the network using a CLI tool 
+  (PyGTK interface under development)
+# Install packages in the remote computers
+# List pending updates
+# Roll security upgrades to computers
+# Update the remote nodes packages cache
+
+The nodes talks to the server using SSL+XML-RPC regularly, sending changes
+in APT repositories, list of installed softwares and even pending updates.
+
+All those information are stored in the server's database, which can be
+either PostgreSQL, MySQL or SQLite, and the can be viewed using a CLI
+tool or with a GTK tool, still in early development stages.
+
+If the nwu operator wants so, he or she can trigger tasks to be executed
+in the remote computers, like install packages, update the APT cache or
+upgrade the system.
+
+= NWU Server =
+==============
+
+NWU Server is used to control computers that have nwu agent installed. 
+
+It must be configured to use a database system and have a SSL certificate
+in place.
+
+= Nwu-server installation =
+===========================
+
+SSL Certificate File
+--------------------
 
 You must create a SSL certificate for the server. In the current version,
 a self-signed certificate will do, but in later versions the agents
@@ -34,7 +73,8 @@ chown nwuserver.nwuserver /etc/nwu/server.pem
 
 chmod 660 /etc/nwu/server.pem
 
---- DATABASE ---
+Database setup
+--------------
 
 In order to use nwu-server you need a database backend compatible with python
 sqlobject (MySQL, PostgreSQL, SQLite).
@@ -73,7 +113,8 @@ ALTER DATABASE nwu OWNER TO nwu
 \q
 EOF
 
---- Nwu-server config file ---
+Nwu-server config file
+----------------------
 
 You have to configure nwu-server parameters in the /etc/nwu/server.conf file.
 This file must only be readable by the nwuserver user, since it has sensitive
@@ -108,7 +149,8 @@ password =
 #password = PASSHERE
 ------------------------
 
---- Start the server ---
+Start the server
+----------------
 
 nwu-server comes with a init script.
 
@@ -116,7 +158,8 @@ The init calls nwu-server which dameonizes itself. It creates a pid file in
 /var/run/nwu-server/nwu-server.pid and goes to the background. Check the 
 syslog to see if everything went fine.
 
---- Nwu admin CLI tool ---
+Nwu admin CLI tool
+------------------
 
 In order to manage nwu, in the current version, the admin must be a member
 of the nwuserver group, so he/she can read /etc/nwu/server.conf and use
@@ -126,3 +169,18 @@ adduser johndoe nwuserver
 
 In later versions all management activities will use XML-RPC calls, so you will
 will be able to use nwu admin tools (both CLI and PyGTK) from a remote machine.
+
+Feedback
+--------
+
+Please send all feedback to nictuku@ubuntubrasil.org.
+
+The project bugs are managed in a trac, placed in
+https://dev.ubuntubrasil.org/trac/nwu
+
+Please file any bugs there.
+
+Thank you,
+
+Yves Junqueira
+<yves@cetico.org>
