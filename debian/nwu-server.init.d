@@ -31,7 +31,7 @@ case "$1" in
   ;;
   stop)
     log_begin_msg "Stopping Network Wide Updates Server"
-    PID=`cat ${PIDFILE}`
+    PID=`cat ${PIDFILE} 2>&1 ||echo ""`
     if [ ${PID} != "" ] && [ -d /proc/${PID} ]; then
 	kill ${PID}
 	log_end_msg 0
