@@ -4,7 +4,7 @@
 
 #!/bin/sh
 
-NWUSERVER="/usr/bin/nwu-server"
+NWUSERVER="/usr/sbin/nwu-server"
 CONFIG="/etc/nwu/server.conf"
 SSLCERT="/etc/nwu/server.pem"
 PIDFILE="/var/run/nwu-server/nwu-server.pid"
@@ -30,7 +30,7 @@ case "$1" in
     fi
   ;;
   stop)
-    log_begin_msg "Stoping Network Wide Updates Server"
+    log_begin_msg "Stopping Network Wide Updates Server"
     PID=`cat ${PIDFILE}`
     if [ ${PID} != "" ] && [ -d /proc/${PID} ]; then
 	kill ${PID}
