@@ -1,3 +1,10 @@
+Version 0.1.4
+2006-03-XX
+
+- nwu-server now dropping privileges
+- nwu-gtk using XML-RPC
+- Improved README's
+
 Version 0.1.3
 2006-03-13
 
