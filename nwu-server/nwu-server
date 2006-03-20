@@ -133,12 +133,13 @@ def wipe_tasks(session):
     ma = list(m)
     q = len(ma)
     if q != 1:
-        raise Exception, "Strange. There are " +  q +  " computer(s) with'" + uniq + "\
-'uniq string and it should have exactly one."
+        raise Exception, "Strange. There are " +  q +  " computer(s) with'" \
+        + uniq + "'uniq string and it should have exactly one."
 
     client_computer = ma[0]
 
-    log.info("Wiping tasks for "   + client_computer.hostname + '(' + str(client_computer.id) + ')' )
+    log.info("Wiping tasks for "   + client_computer.hostname + '(' + \
+        str(client_computer.id) + ')' )
 
 
     delquery = conn.sqlrepr(Delete(task.q, where=\
@@ -161,13 +162,19 @@ def daemonize():
                 # exit first parent
                 sys.exit(0)
         except OSError, e:
-            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
+            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, \
+                e.strerror)
             sys.exit(1)
 
         # decouple from parent environment
         os.chdir("/")   #don't prevent unmounting....
         os.setsid()
         os.umask(0)
+
+        dev_null = file('/dev/null', 'r')
+        os.dup2(dev_null.fileno(), sys.stdout.fileno())
+        os.dup2(dev_null.fileno(), sys.stderr.fileno())
+        os.dup2(dev_null.fileno(), sys.stdin.fileno())
 
         # do second fork
         try:
