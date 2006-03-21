@@ -1,3 +1,9 @@
+nwu (0.1.4-2) unstable; urgency=low
+
+  * Fixed init script which was expecting a PIDFILE to always exist
+
+ -- Yves Junqueira (nictuku) <yves@cetico.org>  Tue, 21 Mar 2006 00:36:49 -0300
+
 nwu (0.1.4-1) unstable; urgency=low
 
   * New upstream release
