@@ -1,9 +1,0 @@
-Template: nwu-agent/connection_string
-Type: string
-Description: Server connection
- Nwu agent requires a server to which it will send data and get
- maintenance tasks. Please type the server address followed by ':'
- and the port number.
- .
- Example: 10.23.45.33:8088
-
