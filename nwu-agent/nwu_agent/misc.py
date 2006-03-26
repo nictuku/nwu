@@ -37,7 +37,7 @@ config = ConfigParser.ConfigParser()
 conffile = '/etc/nwu/agent.conf'
 
 if not os.access(conffile, os.R_OK):
-    raise "Config file " + conffile + " is not readable by the current user."
+    raise Exception, "Config file " + conffile + " is not readable by the current user."
 
 r = config.read("/etc/nwu/agent.conf")
 
@@ -303,12 +303,7 @@ def store_spool(spool, item_list, wipe_old=False):
         if not store.has_section(section):
             # create section in the task file
             store.add_section(section)
-
-#        if not store.has_option(section, option):
-            # add action to the task file
-            # None is the action detail, reserved for future need
- #           store.add_option(section, option)
-
+   
         store.set(section, option, value)
     
     try:

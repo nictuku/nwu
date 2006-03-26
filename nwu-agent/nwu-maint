@@ -43,7 +43,7 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    accepted_actions = ['update', 'install', 'upgrade', 'repadd']
+    accepted_actions = ['update', 'install', 'upgrade', 'addrep']
     status = {}
     task_spool_path = "/var/spool/nwu/nw.tasks"
 
@@ -55,7 +55,7 @@ def main():
     action_file = ConfigParser.ConfigParser()
     r = action_file.read(task_spool_path)
     if len(r) == 0:
-        log.warn("Could not read the task file in", task_spool_path)
+        log.warn("Could not read the task file in" + task_spool_path)
         exit(1)
         
     actions = action_file.sections()
@@ -67,7 +67,7 @@ def main():
         # act = install, details = ['package1', 'package2', 'package3']
 
         if act not in accepted_actions:
-            log.warn("Bogus task section found. Deleting" , act, ".")
+            log.warn("Bogus task section found. Deleting" + act + ".")
             action_file.remove_section(act)
             continue
 
@@ -95,8 +95,8 @@ def main():
 
             log.info("Found a pending task: " + act + detail_s)
 
-            if act == 'repadd' and is_safe(detail) and is_safe(extra, http=True):
-                    print "add new: "  + extra
+            if act == 'addrep' and is_safe(detail) and is_safe(extra, http=True):
+                    rep_add(extra)
                     action_file.remove_option(act, detail)  
 
             elif act == 'update':

@@ -37,11 +37,47 @@ def is_safe(str, http=False):
 
     return [x for x in str if x.lower() not in OK_CHARS] == []
 
-def repadd(newrep):
+def rep_valid(repository):
+    """Validate repository string
+    """
+
+    # FIXME: use a validational regexp
+
+    if not is_safe(repository,http=True):
+        log.warn("Ignoring repository: strange characters")
+        return False
+    
+    rep_elements = repository.split()
+    if len(rep_elements) < 3:
+        log.warn("Ignoring repository: missing elements")
+        return False
+
+    rep_type = rep_elements[0]
+    rep_uri = rep_elements[1]
+    rep_distribution = rep_elements[2]
+    rep_components = " ".join(rep_elements[3:])
+
+    valid_types = ['deb', 'deb-src']
+
+    if not rep_type in valid_types:
+        log.warn("Ignoring repository: rep-type not valid")
+        return False
+    
+    return True
+
+def rep_add(newrep):
     """Add a new repository to the sources.list file.
     newrep is a dictionary with "type", "uri", "distribution" and "components" keys.
     """
 
-    if is_safe(rep_string):
-        print "New rep is safe: " + rep_string 
+    if rep_valid(newrep):
+                
+        # Write to sources.list
+        # FIXME: if apt version support, we could use /etc/apt/sources.list.ld
+        log.info("Writing new repository to sources.list")
+        src = open('/etc/apt/sources.list', 'a')
+        src.write("\n" + newrep + "\n")
+        return True
 
+    else:
+        return False
