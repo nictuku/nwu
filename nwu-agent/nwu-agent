@@ -41,7 +41,9 @@ if os.geteuid() == 0:
 
 log.info("Starting nwu-agent")
 # FIXME: sysinfo should not generate output here
+
 from nwu_agent import misc as agent
+
 [cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('pkgs')
 
 # Format the current packages list ready to store in spool
