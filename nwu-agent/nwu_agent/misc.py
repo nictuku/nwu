@@ -239,7 +239,7 @@ def read_spool(category):
     cache = ConfigParser.ConfigParser()
     result = cache.read(cache_path)
 
-    if len(result) < 1:
+    if not result or len(result) < 1:
         log.error("Could not read " + category + "cache")
         return {}
     
