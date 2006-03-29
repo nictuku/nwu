@@ -1,4 +1,4 @@
-nwu (0.1.4) dapper; urgency=low
+nwu (0.1.4-1) unstable; urgency=low
 
   * New upstream release
   * Fixed missing dependencies, suggestions and recommendations
