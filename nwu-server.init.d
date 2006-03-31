@@ -12,6 +12,14 @@ PIDFILE="/var/run/nwu-server/nwu-server.pid"
 # Carregando funções lsb
 . /lib/lsb/init-functions
 
+NO_START=0
+
+. /etc/default/nwu-server
+
+if [ "$NO_START" == 1 ]; then
+  exit
+fi
+
 case "$1" in
   start)
     log_begin_msg "Starting Network Wide Updates Server"

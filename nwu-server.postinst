@@ -30,6 +30,10 @@ if ! test -d /var/lib/nwu; then
 fi
 chown -R $USER_NAME.$USER_NAME /var/lib/nwu
 chown -R $USER_NAME.$USER_NAME /var/run/nwu-server/
+chown -R $USER_NAME.$USER_NAME /etc/nwu/server.conf
+
 chmod 770 /var/lib/nwu -R
+chmod 660 /etc/nwu/server.conf
+
 #DEBHELPER#
 
