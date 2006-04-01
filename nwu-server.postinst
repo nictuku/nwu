@@ -4,13 +4,15 @@ USER_NAME=nwuserver
 
 # Due to older deb packages, sometimes the system has the user but
 # does not have the group
-CREATE_USER=0 
 CREATE_GROUP=0
-id -u $USER_NAME >/dev/null 2>&1
-if [ "$?" == "1" ]; then CREATE_USER=1; fi
 
-grep -q "^$USER_NAME:" /etc/group > /dev/null 2>&1
-if [ "$?" == "1" ]; then CREATE_GROUP=1; fi 
+if ! getent passwd $USER_NAME >/dev/null; then
+	CREATE_USER=1;
+fi
+	
+if ! getent group $USER_NAME > /dev/null ; then
+	CREATE_GROUP=1
+fi 
 
 if [ "$CREATE_USER" == 1 ]; then
 
