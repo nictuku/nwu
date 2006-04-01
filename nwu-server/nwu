@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
@@ -130,7 +130,8 @@ def main():
         elif len(args) == 1:
 
             if args[0] == 'outdated':
-                sel = conn.sqlrepr(Select((computer.q.id, computer.q.hostname),\
+                sel = conn.sqlrepr(Select((apt_update_candidates.q.computerID,\
+		computer.q.hostname),\
                    groupBy = computer.q.id, orderBy=computer.q.hostname))
                 outd = list(conn.queryAll(sel))
                 for (id, host) in outd:
@@ -172,7 +173,7 @@ def main():
                 elif view_what == 'tasks':
                     print "Reading tasks for computer " + mach_print
                     for t in mach.tasks:
-                       print t.action + ": " + t.details
+                       print t.action + ": " + str(t.details)
 
                 else: usage()
 
