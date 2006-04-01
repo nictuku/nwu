@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
@@ -113,14 +113,14 @@ def main():
                         # FIXME: This should probably be breaken in many lines
                         log.error(status[task_id][1])
                     else:
-                        # If sucessful, remove that detail from the task list
-                        action_file.remove_option(act, detail)
                         log.info("Apt update finished.")
                         # FIXME: break in many lines?
                         log.debug(status[task_id][1])
-
+                    # Sucessful or not, remove that detail from the task list
+                    action_file.remove_option(act, detail)
+ 
                 else:
-                     action_file.remove_option(act, detail)
+                    action_file.remove_option(act, detail)
 
             elif act == 'upgrade':
 
@@ -162,10 +162,11 @@ def main():
                             log.error("Failed to install package. Output:")
                             log.error(status[task_id][1])
                         else:
-                            # If sucessful, remove that detail from the task list
                             log.debug(status[task_id][1])
                             log.info("Clearing task " + act + " " + detail)
-                            action_file.remove_option(act, detail)
+
+                        action_file.remove_option(act, detail)
+
                     else:
                         action_file.remove_option(act, detail)
 
