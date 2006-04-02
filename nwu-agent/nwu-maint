@@ -54,7 +54,7 @@ def main():
 
     action_file = ConfigParser.ConfigParser()
     r = action_file.read(task_spool_path)
-    if len(r) == 0:
+    if r and len(r) == 0:
         log.warn("Could not read the task file in" + task_spool_path)
         exit(1)
         
