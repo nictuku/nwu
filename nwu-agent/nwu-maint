@@ -47,7 +47,8 @@ def main():
     status = {}
     task_spool_path = "/var/spool/nwu/nw.tasks"
 
-    if not os.access(task_spool_path, os.W_OK):
+    if os.access(task_spool_path, os.F_OK) and \
+          not os.access(task_spool_path, os.W_OK):
         err = "Tasks file " + task_spool_path + " is not writable by the current user."
         log.error(err)
         raise Exception, err
