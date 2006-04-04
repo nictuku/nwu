@@ -28,7 +28,7 @@ if [ -n "$RET" ]; then
    grep -q -e '^[[:space:]]*server_uri[[:space:]]*=' /etc/nwu/agent.conf
 
    if [ "$?" == 0 ]; then
-      sed -i /etc/nwu/agent.conf -e "s/^\s*server_uri\s*/server_uri\ \=\ $server/"
+      sed -i /etc/nwu/agent.conf -e "s/^\s*server_uri.*/server_uri\ \=\ $server/"
    else
       echo "server_uri = $server" >> /etc/nwu/agent.conf
    fi
