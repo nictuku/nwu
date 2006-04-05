@@ -1,8 +1,9 @@
 Version 0.1.4
-2006-03-XX
+2006-04-04
 
 - nwu-server now dropping privileges
 - nwu-gtk using XML-RPC
+- Deb packages is really nice now
 - Improved README's
 - Fixed random bugs
 
