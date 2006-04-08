@@ -49,12 +49,8 @@ def main():
 
 
     if not os.access(task_spool_path, os.F_OK):
-        log.error("Task file not found. Exiting.")
+        log.info("Task file not found. Exiting.")
         exit(1)
-    if os.access(task_spool_path, os.W_OK):
-        err = "Tasks file " + task_spool_path + " is not writable by the current user."
-        log.error(err)
-        raise Exception, err
 
     action_file = ConfigParser.ConfigParser()
     r = action_file.read(task_spool_path)
