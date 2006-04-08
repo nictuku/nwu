@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
@@ -102,7 +102,8 @@ def get_tasks(session):
     
     client_computer = ma[0]
 
-    log.info("Checking pending tasks for " + client_computer.hostname + '(' + str(client_computer.id) + ')'  )
+    log.info("Checking pending tasks for " + client_computer.hostname + \
+       '(' + str(client_computer.id) + ')'  )
 
     remote_tasks = []
 #    task._connection.debug = True    
@@ -111,12 +112,15 @@ def get_tasks(session):
     qta = len(ta)
 
     if qta == 0:
-        log.info("No pending tasks found for "  + client_computer.hostname + '(' + str(client_computer.id) + ')' )
+        log.info("No pending tasks found for "  + client_computer.hostname + \
+	   '(' + str(client_computer.id) + ')' )
         return remote_tasks
         
     for tas in ta:
         if tas.action is None: tas.action = ''
         if tas.details is None: tas.details = ''
+	log.info("Task found for "  + client_computer.hostname +  \
+         '(' + str(client_computer.id) + '): ' + tas.action + ' ' + tas.details)
         remote_tasks.append((tas.action, tas.details))
 
     return remote_tasks
