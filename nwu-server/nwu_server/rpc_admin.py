@@ -33,12 +33,12 @@ class nwu_admin:
         pass
  
     def get_info(self, auth, info):
-        print "oi"
         if not self._verify_auth(auth, admin=True):
             raise Exception, "Wrong auth"
         else:
-            print "AUTH OK"
+            log.debug("AUTH OK")
         export = []
+	
         # This was in __init__, but we must try to avoid caching
         if info == 'computers':
             for mach in computer.select():
@@ -108,6 +108,9 @@ class nwu_admin:
             t = task(computer=computer_id, action=task_name,details=task_detail)
 
     def _verify_auth(self, auth, admin=True):
+        # verify given user against the user database
+	# FIXME: is this really safe?
+
         (username, password) = auth
         u = user.select(user.q.username==username)
         for login in u:
