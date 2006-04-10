@@ -130,13 +130,13 @@ def main():
         elif len(args) == 1:
 
             if args[0] == 'outdated':
-                sel = conn.sqlrepr(Select((apt_update_candidates.q.computerID,\
-		computer.q.hostname),\
-                   groupBy = computer.q.id, orderBy=computer.q.hostname))
-                outd = list(conn.queryAll(sel))
-                for (id, host) in outd:
-                    print host + "[" + str(id) + "]"
-            else:
+		olds = {}
+		for candidate in apt_update_candidates.select():
+		    olds[candidate.computerID] = True
+		for mach in computer.select():
+		    if olds.has_key(mach.id):
+			print mach.hostname + "[" + str(mach.id) + "]"
+	    else:
                 usage()
         else: usage()
 
