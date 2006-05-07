@@ -22,7 +22,8 @@ from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 
-class SSLXMLRPCServer(SSL.SSLServer, SimpleXMLRPCServer):
+class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
+       SSL.SSLServer, SimpleXMLRPCServer):
     def __init__(self, ssl_context, server_uri):
         handler = SimpleXMLRPCRequestHandler
         #    self.handle_error = self._quietErrorHandler
