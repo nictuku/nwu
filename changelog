@@ -1,9 +1,11 @@
-nwu (0.1.5-1) unstable; urgency-low
+nwu (0.1.5-1) unstable; urgency=low
 
-  * Updated for 0.1.5
-  * Fixed dependencies issues
-  * Fixed bug in debconf script for nwu-agent
-  
+  * Updated to 0.1.5
+  * Fixed minor bugs
+  * Fixed debconf script for nwu-agent
+
+ -- Yves Junqueira <yves@cetico.org>  Sun,  7 May 2006 17:14:43 -0300
+
 nwu (0.1.4-1) unstable; urgency=low
 
   * New upstream release
