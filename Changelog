@@ -1,3 +1,9 @@
+Version 0.1.5
+2006-05-07
+
+- Many bug fixed, including the growing memory usage issue
+- Deb packaging improvements
+
 Version 0.1.4
 2006-04-04
 
