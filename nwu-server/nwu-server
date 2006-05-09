@@ -41,7 +41,7 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.INFO)
 
-DAEMONIZE = 0 
+DAEMONIZE = 1 
 
 def read_config():
     """Reads configuration data from the config file.
