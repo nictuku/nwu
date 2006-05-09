@@ -137,6 +137,79 @@ def create_tables():
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
              str(sys.exc_value))
  
+def add_computer(password, uniq, hostname, os_name, os_version):
+    """Adds the given computer to the computers database.
+    """
+    log.info("Creating computer " + uniq + " " + hostname + " " +\
+         os_name + " " + os_version)
+    m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
+        os_version=os_version,password=password)
+    return True
+
+def get_tasks(session):
+
+    (uniq, token) = session
+
+    if not auth.check_token(uniq, token):
+        raise Exception, "Invalid authentication token"
+
+    m = computer.select(computer.q.uniq==uniq)
+    ma = list(m)
+    q = len(ma)
+    if q != 1:
+        raise Exception, "Strange. There are more then 1 computer with uniq string =" + uniq
+
+    client_computer = ma[0]
+
+    log.info("Checking pending tasks for " + client_computer.hostname + \
+       '(' + str(client_computer.id) + ')'  )
+    remote_tasks = []
+#    task._connection.debug = True
+    t = task.select(task.q.computerID==client_computer.id)
+    ta = list(t)
+    qta = len(ta)
+
+    if qta == 0:
+        log.info("No pending tasks found for "  + client_computer.hostname + \
+       '(' + str(client_computer.id) + ')' )
+        return remote_tasks
+
+    for tas in ta:
+        if tas.action is None: tas.action = ''
+        if tas.details is None: tas.details = ''
+    log.info("Task found for "  + client_computer.hostname +  \
+         '(' + str(client_computer.id) + '): ' + tas.action + ' ' + tas.details)
+    remote_tasks.append((tas.action, tas.details))
+
+    return remote_tasks
+
+def wipe_tasks(session):
+    (uniq, token) = session
+
+    if not auth.check_token(uniq, token):
+        raise Exception, "Invalid authentication token"
+
+    m = computer.select(computer.q.uniq==uniq)
+    ma = list(m)
+    q = len(ma)
+    if q != 1:
+        raise Exception, "Strange. There are " +  q +  " computer(s) with'" \
+        + uniq + "'uniq string and it should have exactly one."
+
+    client_computer = ma[0]
+
+    log.info("Wiping tasks for "   + client_computer.hostname + '(' + \
+        str(client_computer.id) + ')' )
+
+
+    delquery = conn.sqlrepr(Delete(task.q, where=\
+        (task.q.computerID ==  client_computer.id)))
+
+    conn.query(delquery)
+
+    return True
+
+
 
 if __name__ == '__main__':
 
