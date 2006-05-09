@@ -25,9 +25,10 @@ from sqlobject.sqlbuilder import *
 import sys
 import logging
 import setup
-log = logging.getLogger('nwu_server.db.operation')
 
-conn = setup.cfg().conn
+log = logging.getLogger('nwu_server.db.operation')
+db_conf = setup.read_conf().connection_string
+conn = setup.cfg(db_conf).conn
 __connection__ = conn
 
 class computer(SQLObject):
@@ -97,119 +98,6 @@ class user(SQLObject):
     password = StringCol(length=255)
     userlevel=IntCol()
             
-def create_tables():
-    """Creates required tables in the database.
-    """
-    log.debug("Creating necessary tables in the database.")
-    try:
-        computer.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-             str(sys.exc_value))
-    try:
-        apt_current_packages.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        apt_update_candidates.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-             str(sys.exc_value))
-    try:
-        apt_repositories.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        task.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        auth.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        user.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-             str(sys.exc_value))
- 
-def add_computer(password, uniq, hostname, os_name, os_version):
-    """Adds the given computer to the computers database.
-    """
-    log.info("Creating computer " + uniq + " " + hostname + " " +\
-         os_name + " " + os_version)
-    m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
-        os_version=os_version,password=password)
-    return True
-
-def get_tasks(session):
-
-    (uniq, token) = session
-
-    if not auth.check_token(uniq, token):
-        raise Exception, "Invalid authentication token"
-
-    m = computer.select(computer.q.uniq==uniq)
-    ma = list(m)
-    q = len(ma)
-    if q != 1:
-        raise Exception, "Strange. There are more then 1 computer with uniq string =" + uniq
-
-    client_computer = ma[0]
-
-    log.info("Checking pending tasks for " + client_computer.hostname + \
-       '(' + str(client_computer.id) + ')'  )
-    remote_tasks = []
-#    task._connection.debug = True
-    t = task.select(task.q.computerID==client_computer.id)
-    ta = list(t)
-    qta = len(ta)
-
-    if qta == 0:
-        log.info("No pending tasks found for "  + client_computer.hostname + \
-       '(' + str(client_computer.id) + ')' )
-        return remote_tasks
-
-    for tas in ta:
-        if tas.action is None: tas.action = ''
-        if tas.details is None: tas.details = ''
-    log.info("Task found for "  + client_computer.hostname +  \
-         '(' + str(client_computer.id) + '): ' + tas.action + ' ' + tas.details)
-    remote_tasks.append((tas.action, tas.details))
-
-    return remote_tasks
-
-def wipe_tasks(session):
-    (uniq, token) = session
-
-    if not auth.check_token(uniq, token):
-        raise Exception, "Invalid authentication token"
-
-    m = computer.select(computer.q.uniq==uniq)
-    ma = list(m)
-    q = len(ma)
-    if q != 1:
-        raise Exception, "Strange. There are " +  q +  " computer(s) with'" \
-        + uniq + "'uniq string and it should have exactly one."
-
-    client_computer = ma[0]
-
-    log.info("Wiping tasks for "   + client_computer.hostname + '(' + \
-        str(client_computer.id) + ')' )
-
-
-    delquery = conn.sqlrepr(Delete(task.q, where=\
-        (task.q.computerID ==  client_computer.id)))
-
-    conn.query(delquery)
-
-    return True
-
-
 
 if __name__ == '__main__':
 

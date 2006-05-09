@@ -24,6 +24,8 @@ import ConfigParser
 from nwu_server.db.operation import *
 from nwu_server.rpc_admin import nwu_admin
 from nwu_server import apt, auth, sslxmlrpc
+from nwu_server.rpc_agents import *
+
 import logging
 import logging.handlers
 
@@ -39,7 +41,7 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.INFO)
 
-DAEMONIZE = 1 
+DAEMONIZE = 0 
 
 def read_config():
     """Reads configuration data from the config file.
@@ -51,32 +53,6 @@ def read_config():
     port = int(config_p.get("webservice", "port"))
     config = { 'host' : host, 'port' : port }
     return config
-
-def session_setup(uniq, token):
-    """Setups the session for agent-aggregator or agent-manager communication.
-    
-    The token string comes from the authentication process.
-
-    Returns session object to be used by the agent in later
-    communcation steps.
-    """
-
-    log.info("Setting session for computer " + uniq + ".")
-  
-    # FIXME: test if token is valid here.
-    query_check_m = computer.select(computer.q.uniq==uniq)
-    check_m = list(query_check_m)
-    
-    password = ''
-
-    if len(check_m) == 0:
-        return False
-
-    if auth.check_token(uniq, token):
-        return uniq, token
-
-    # FIXME: return False or raise an exception?
-    raise Exception, "Wrong token for " + uniq
 
 def daemonize():
 

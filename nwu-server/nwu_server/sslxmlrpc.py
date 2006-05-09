@@ -21,7 +21,6 @@ import SocketServer
 from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
-
 class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
        SSL.SSLServer, SimpleXMLRPCServer):
     def __init__(self, ssl_context, server_uri):
@@ -31,6 +30,20 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
         self.funcs = {}
         self.logRequests = 0
         self.instance = None
+
+    def handle_request(self):
+        """Handle one request, possibly blocking."""
+        try:
+            request, client_address = self.get_request()
+        except socket.error:
+            return
+        if self.verify_request(request, client_address):
+            try:
+                self.process_request(request, client_address)
+            except:
+                self.handle_error(request, client_address)
+                self.close_request(request)
+
 
 class SSLServer:
     

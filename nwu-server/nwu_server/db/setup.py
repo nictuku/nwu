@@ -27,6 +27,13 @@ from sqlobject import *
 log = logging.getLogger('nwu_server.db.setup')
 
 class cfg:
+    def __init__(self, connection_string):
+        log.debug("conn string:" + connection_string)
+        self.conn = connectionForURI(connection_string)
+
+        self.conn.debug=0
+
+class read_conf:
     def __init__(self):
         config = ConfigParser.ConfigParser()
         config.read("/etc/nwu/server.conf")
@@ -37,19 +44,13 @@ class cfg:
         db_user = config.get("database", "user")
         db_password = config.get("database", "password")
 
-
         log.debug("Using" + db_type + " as my database.")
 
         if db_type == 'sqlite':
-            connection_string = db_type + "://" + db_database
+            self.connection_string = db_type + "://" + db_database + '?cache=True'
         else:
-            connection_string = db_type + "://" + db_user + ":" + db_password + "@" +\
-             db_host + "/" + db_database
-
-        log.debug("conn string:" + connection_string)
-        self.conn = connectionForURI(connection_string)
-
-        self.conn.debug=0
+            self.connection_string = db_type + "://" + db_user + ":" + db_password + "@" +\
+             db_host + "/" + db_database + '?cache=True'
 
 if __name__ == '__main__':
     print cfg().conn
