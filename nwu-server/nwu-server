@@ -21,19 +21,14 @@ import os
 import sys
 import pwd
 import ConfigParser
-from nwu_server.db.operation import *
-from nwu_server.rpc_admin import nwu_admin
-from nwu_server import apt, auth, sslxmlrpc
-from nwu_server.rpc_agents import *
-
+import gc
+gc.set_debug(gc.DEBUG_STATS | gc.DEBUG_UNCOLLECTABLE | gc.DEBUG_OBJECTS)
 import logging
 import logging.handlers
-
 log = logging.getLogger()
 
 hdlr = logging.handlers.SysLogHandler(
   "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
-  
 formatter = logging.Formatter(
 "nwu_server[%(process)d] %(levelname)s %(message)s"
     )
@@ -41,7 +36,15 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.INFO)
 
-DAEMONIZE = 1 
+
+from nwu_server.db.operation import *
+from nwu_server.db.setup import PackageHub
+from nwu_server.rpc_admin import nwu_admin
+from nwu_server import apt, auth, sslxmlrpc
+from nwu_server.rpc_agents import *
+
+ 
+DAEMONIZE = 0 
 
 def read_config():
     """Reads configuration data from the config file.

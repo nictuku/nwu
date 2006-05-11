@@ -24,12 +24,19 @@ from sqlobject import *
 from sqlobject.sqlbuilder import *
 import sys
 import logging
-import setup
+from setup import PackageHub
 
 log = logging.getLogger('nwu_server.db.operation')
-db_conf = setup.read_conf().connection_string
-conn = setup.cfg(db_conf).conn
-__connection__ = conn
+#db_conf = setup.read_conf().connection_string
+#conn = setup.cfg(db_conf).conn
+#__connection__ = conn
+
+hub = PackageHub()
+__connection__ = hub
+
+print "c1"
+conn = hub.getConnection()
+print "c2"
 
 class computer(SQLObject):
 
