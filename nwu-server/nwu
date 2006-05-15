@@ -113,7 +113,7 @@ def main():
                 level = args[1]
                 password = md5(p).hexdigest()
                 try:
-                    u = user(username=name, userlevel=level,password=password)
+                    u = users(username=name, userlevel=level,password=password)
                 except:
                     print "Error adding user. Username duplicated?"
             else:
