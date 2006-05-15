@@ -73,7 +73,11 @@ def is_safe(str, http=False):
     return [x for x in str if x.lower() not in OK_CHARS] == []
 
 def main():
-    
+    hub = PackageHub()
+    __connection__ = hub
+
+    hub.begin()
+
     args = len(sys.argv)
 
     if args < 2 or sys.argv[1] not in sub_commands:
@@ -192,7 +196,8 @@ def main():
             m = computer.select(computer.q.id==id)
             ma = list(m)
             for mach in ma:
-                #print "Found computer id=" + id + " in the database. Requesting " + sub_command + "."
+                print "Found computer id=" + id + " in the database. Requesting\
+ " + sub_command + "."
                 t = task(computer=mach, action=sub_command)
         else:
             usage()
@@ -204,9 +209,12 @@ def main():
             m = computer.select(computer.q.id==id)
             ma = list(m)
             for mach in ma:
+               print "Found computer id=" + id + " in the database. Requesting\
+ " + sub_command + " " + details + "."
                t = task(computer=mach, action=sub_command,details=details)
 
         else:
             usage()
-
+    hub.commit()
+    hub.end()
 main()
