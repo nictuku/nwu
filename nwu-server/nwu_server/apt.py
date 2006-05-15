@@ -27,6 +27,7 @@ log = logging.getLogger('nwu_server.apt')
 # FIXME: there is a lot of code repetition here, you insane coder
 hub = PackageHub()
 __connection__ = hub
+
 def apt_set_repositories(session,reps):
     """Stores the full repositories list in the database, after
     wiping that computer's repositories table.
@@ -34,7 +35,7 @@ def apt_set_repositories(session,reps):
     (uniq, token) = session
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
-   
+
     hub.begin()
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
@@ -50,7 +51,7 @@ def apt_set_repositories(session,reps):
         '(' + str(client_computer.id) + ')' ) 
     
     # Deleting old reps
-
+    conn = hub.getConnection()
     delquery = conn.sqlrepr(Delete(apt_repositories.q, where=\
         (apt_repositories.q.computerID ==  client_computer.id)))
 
@@ -58,7 +59,8 @@ def apt_set_repositories(session,reps):
 
     #rep_data = pickle.loads(reps)
 
-    hub.commit()
+#    hub.commit()
+#   hub.begin()
     for source in reps:
 
         filename = source.pop(0)
@@ -118,6 +120,7 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 
 
     hub.begin()
+    conn = hub.getConnection()
 
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
@@ -175,7 +178,7 @@ def apt_set_update_candidates_full(session, pkgs):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
     hub.begin()
-
+    conn = hub.getConnection()
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)
@@ -209,7 +212,8 @@ def apt_set_current_packages_full(session, pkgs):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
     hub.begin()
-
+    conn = hub.getConnection()
+ 
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)

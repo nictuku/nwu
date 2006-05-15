@@ -41,7 +41,7 @@ from nwu_server.rpc_admin import nwu_admin
 from nwu_server import apt, auth, sslxmlrpc
 from nwu_server.rpc_agents import *
 
-DAEMONIZE = 1 
+DAEMONIZE = 0 
 
 def read_config():
     """Reads configuration data from the config file.

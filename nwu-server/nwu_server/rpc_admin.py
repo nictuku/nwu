@@ -71,6 +71,8 @@ class nwu_admin:
             raise Exception, "Wrong auth"
 
         hub.begin()
+        conn = hub.getConnection()
+
         m = computer.select(computer.q.id==computer_id)
         ma = list(m)
         q = len(ma)

@@ -93,6 +93,8 @@ def wipe_tasks(session):
         raise Exception, "Invalid authentication token"
 
     hub.begin()
+    conn = hub.getConnection()
+
     m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
