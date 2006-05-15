@@ -1,5 +1,5 @@
 # From sqlobject 0.6, licensed under the LGPL
-from threading import local
+from backport_thread import local
 import logging
 log = logging.getLogger("nwu_server.db.backport")
 

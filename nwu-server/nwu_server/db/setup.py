@@ -25,7 +25,10 @@ import ConfigParser
 from sqlobject import *
 from sqlobject.dbconnection import ConnectionURIOpener, TheURIOpener,\
    Transaction
-from sqlobject.dbconnection import ConnectionHub #sqlobject >= 0.7 only
+try:
+    from sqlobject.dbconnection import ConnectionHub #sqlobject >= 0.7 only
+except ImportError:
+    from backport import ConnectionHub
 
 log = logging.getLogger('nwu_server.db.setup')
 

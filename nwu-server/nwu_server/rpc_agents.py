@@ -26,7 +26,7 @@ def create_tables():
     for table in ['computer', 'apt_current_packages', 'apt_update_candidates',
         'apt_repositories', 'task', 'authcomputer', 'users']:
         try:
-           t = eval(table)
+            t = eval(table)
             t.createTable()
         except:
             log.warning("Could not create table " + table + ": " + \
