@@ -20,52 +20,31 @@ __connection__ = hub
 def create_tables():
     """Creates required tables in the database.
     """
-    conn = hub.getConnection()
+    hub.begin()
     log.debug("Creating necessary tables in the database.")
-    try:
-        computer.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-             str(sys.exc_value))
-    try:
-        apt_current_packages.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        apt_update_candidates.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-             str(sys.exc_value))
-    try:
-        apt_repositories.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        task.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        auth.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-            str(sys.exc_value))
-    try:
-        users.createTable()
-    except:
-        log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
-             str(sys.exc_value))
+
+    for table in ['computer', 'apt_current_packages', 'apt_update_candidates',
+        'apt_repositories', 'task', 'authcomputer', 'users']:
+        try:
+           t = eval(table)
+            t.createTable()
+        except:
+            log.warning("Could not create table " + table + ": " + \
+                str(sys.exc_type) + ' ' + str(sys.exc_value))
+    hub.commit()
+    hub.end()
  
 def add_computer(password, uniq, hostname, os_name, os_version):
     """Adds the given computer to the computers database.
     """
-    conn = hub.getConnection()
+    hub.begin()
     log.info("Creating computer " + uniq + " " + hostname + " " +\
          os_name + " " + os_version)
     m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
         os_version=os_version,password=password)
+
+    hub.commit()
+    hub.end()
     return True
 
 def get_tasks(session):
@@ -74,7 +53,7 @@ def get_tasks(session):
 
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
-    conn = hub.getConnection()
+    hub.begin()
     m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
@@ -103,6 +82,8 @@ def get_tasks(session):
          '(' + str(client_computer.id) + '): ' + tas.action + ' ' + tas.details)
     remote_tasks.append((tas.action, tas.details))
 
+    hub.commit()
+    hub.end()
     return remote_tasks
 
 def wipe_tasks(session):
@@ -111,7 +92,7 @@ def wipe_tasks(session):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    conn = hub.getConnection()
+    hub.begin()
     m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
@@ -130,6 +111,8 @@ def wipe_tasks(session):
 
     conn.query(delquery)
 
+    hub.commit()
+    hub.end()
     return True
 
 def session_setup(uniq, token):
@@ -140,7 +123,7 @@ def session_setup(uniq, token):
     Returns session object to be used by the agent in later
     communcation steps.
     """
-    conn = hub.getConnection()
+    hub.begin()
     log.info("Setting session for computer " + uniq + ".")
 
     # FIXME: test if token is valid here.
@@ -149,6 +132,8 @@ def session_setup(uniq, token):
 
     password = ''
 
+    hub.commit()
+    hub.end()
     if len(check_m) == 0:
         return False
 

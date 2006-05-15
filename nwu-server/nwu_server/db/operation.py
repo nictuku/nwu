@@ -47,10 +47,10 @@ class computer(SQLObject):
     current_packages = MultipleJoin('apt_current_packages')
     update_candidates = MultipleJoin('apt_update_candidates')
     repositories = MultipleJoin('apt_repositories')
-    auth = MultipleJoin('auth')
+    authcomputer = MultipleJoin('authcomputer')
     task = MultipleJoin('task')
 
-class auth(SQLObject):
+class authcomputer(SQLObject):
 
     password = StringCol(length=255)
 

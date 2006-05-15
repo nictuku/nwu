@@ -29,8 +29,6 @@ from sqlobject.dbconnection import ConnectionHub #sqlobject >= 0.7 only
 
 log = logging.getLogger('nwu_server.db.setup')
 
-hub_registry = set()
-
 cfg = None
 
 class read_conf:
@@ -68,7 +66,6 @@ class AutoConnectHub(ConnectionHub):
 
         self.uri = uri
         self.supports_transactions = supports_transactions
-        hub_registry.add(self)
         ConnectionHub.__init__(self)
 
     def getConnection(self):
