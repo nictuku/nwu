@@ -19,15 +19,13 @@
 
 """Configures database access
 """
-
+import threading # only for ident
 import logging
 import ConfigParser
 from sqlobject import *
-from sqlobject.dbconnection import ConnectionURIOpener, TheURIOpener
-try:
-    from sqlobject.dbconnection import ConnectionHub
-except ImportError:
-    from backport import ConnectionHub
+from sqlobject.dbconnection import ConnectionURIOpener, TheURIOpener,\
+   Transaction
+from sqlobject.dbconnection import ConnectionHub #sqlobject >= 0.7 only
 
 log = logging.getLogger('nwu_server.db.setup')
 
@@ -56,18 +54,20 @@ class read_conf:
                db_password + "@" + db_host + "/" + db_database + '?cache=True'
 
 class AutoConnectHub(ConnectionHub):
-    """Connects to the database once per thread."""
-    # Based on turbogear's code, without transaction support, though.
+    """Connects to the database once per thread. The AutoConnectHub also
+    provides convenient methods for managing transactions."""
+    # Based on turbogear's code
     uri = None
     params = {}
 
-    def __init__(self, uri=None):
+    def __init__(self, uri=None, supports_transactions=True):
         if not uri:
             global cfg
             cfg = read_conf()
             uri = cfg.connection_string
 
         self.uri = uri
+        self.supports_transactions = supports_transactions
         hub_registry.add(self)
         ConnectionHub.__init__(self)
 
@@ -85,7 +85,7 @@ class AutoConnectHub(ConnectionHub):
                 if self.uri.startswith("sqlite"):
                     TheURIOpener.cachedURIs = {}
                 self.threadingLocal.connection = conn
-                return conn # self.begin(conn), but no trans needed
+                return self.begin(conn)
             raise AttributeError(
                 "No connection has been defined for this thread "
                 "or process")
@@ -94,6 +94,64 @@ class AutoConnectHub(ConnectionHub):
         """Used for testing purposes. This drops all of the connections
         that are being held."""
         self.threadingLocal = threading_local()
+
+    def begin(self, conn=None):
+        "Starts a transaction."
+        if not self.supports_transactions:
+            return conn
+        if not conn:
+            conn = self.getConnection()
+        if isinstance(conn, Transaction):
+            if conn._obsolete:
+                conn.begin()
+            return conn
+        self.threadingLocal.old_conn = conn
+        try:
+            trans = conn.transaction()
+        except AttributeError:
+            log.info("Transaction support disabled.")
+            self.support_transactions = False
+            return conn
+        self.threadingLocal.connection = trans
+        return trans
+
+    def commit(self):
+        "Commits the current transaction."
+        if not self.supports_transactions:
+            return
+        try:
+            conn = self.threadingLocal.connection
+        except AttributeError:
+            return
+        if isinstance(conn, Transaction):
+            self.threadingLocal.connection.commit()
+
+    def rollback(self):
+        "Rolls back the current transaction."
+        if not self.supports_transactions:
+            return
+        try:
+            conn = self.threadingLocal.connection
+        except AttributeError:
+            return
+        if isinstance(conn, Transaction) and not conn._obsolete:
+            self.threadingLocal.connection.rollback()
+
+    def end(self):
+        "Ends the transaction, returning to a standard connection."
+        if not self.supports_transactions:
+            return
+        try:
+            conn = self.threadingLocal.connection
+        except AttributeError:
+            return
+        if not isinstance(conn, Transaction):
+            return
+        if not conn._obsolete:
+            conn.rollback()
+        self.threadingLocal.connection = self.threadingLocal.old_conn
+        del self.threadingLocal.old_conn
+        self.threadingLocal.connection.cache.clear()
 
 
 #This dictionary stores the AutoConnectHubs used for each
@@ -138,10 +196,16 @@ class PackageHub(object):
         dburi = cfg.connection_string
 
         if not dburi:
-            raise Exception, "No database configuration found."
+            raise KeyError, "No database configuration found."
+        if dburi.startswith("notrans_"):
+            dburi = dburi[8:]
+            trans = False
+        else:
+            trans = True
         hub = _hubs.get(dburi, None)
         if not hub:
-            hub = AutoConnectHub(dburi)
+            log.info("New conn: " + str(threading._get_ident()))
+            hub = AutoConnectHub(dburi, supports_transactions=trans)
             _hubs[dburi] = hub
         self.hub = hub
 

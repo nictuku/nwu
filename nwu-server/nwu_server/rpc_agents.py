@@ -14,10 +14,13 @@
 """
 from db.operation import *
 import auth
+hub = PackageHub()
+__connection__ = hub
 
 def create_tables():
     """Creates required tables in the database.
     """
+    conn = hub.getConnection()
     log.debug("Creating necessary tables in the database.")
     try:
         computer.createTable()
@@ -50,7 +53,7 @@ def create_tables():
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
             str(sys.exc_value))
     try:
-        user.createTable()
+        users.createTable()
     except:
         log.warning("Could not create table " + str(sys.exc_type) + ' ' +\
              str(sys.exc_value))
@@ -58,6 +61,7 @@ def create_tables():
 def add_computer(password, uniq, hostname, os_name, os_version):
     """Adds the given computer to the computers database.
     """
+    conn = hub.getConnection()
     log.info("Creating computer " + uniq + " " + hostname + " " +\
          os_name + " " + os_version)
     m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
@@ -70,7 +74,7 @@ def get_tasks(session):
 
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
-
+    conn = hub.getConnection()
     m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
@@ -107,6 +111,7 @@ def wipe_tasks(session):
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
+    conn = hub.getConnection()
     m = computer.select(computer.q.uniq==uniq)
     ma = list(m)
     q = len(ma)
@@ -135,7 +140,7 @@ def session_setup(uniq, token):
     Returns session object to be used by the agent in later
     communcation steps.
     """
-
+    conn = hub.getConnection()
     log.info("Setting session for computer " + uniq + ".")
 
     # FIXME: test if token is valid here.

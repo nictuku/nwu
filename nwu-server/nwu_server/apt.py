@@ -25,16 +25,17 @@ import logging
 log = logging.getLogger('nwu_server.apt')
 
 # FIXME: there is a lot of code repetition here, you insane coder
-
+hub = PackageHub()
+__connection__ = hub
 def apt_set_repositories(session,reps):
     """Stores the full repositories list in the database, after
     wiping that computer's repositories table.
     """
     (uniq, token) = session
-
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
-
+   
+    hub.begin()
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
     q = len(l)
@@ -57,7 +58,7 @@ def apt_set_repositories(session,reps):
 
     #rep_data = pickle.loads(reps)
 
-    
+    hub.commit()
     for source in reps:
 
         filename = source.pop(0)
@@ -87,6 +88,8 @@ def apt_set_repositories(session,reps):
             # rep_type='deb',
 #        rep_uri='http://de.archive.ubuntu.com/ubuntu',
 #        components = 'breezy-updates main restricted')
+    hub.commit()
+    hub.end()
     return True
 
 def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
@@ -114,6 +117,7 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
         pkgs['add_pkgs'] = {}
 
 
+    hub.begin()
 
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
@@ -156,6 +160,8 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
         table(computer=client_computer, name=add_pk_name,
             version=add_pk_version)
 
+    hub.commit()
+    hub.end()
     return True
 
 
@@ -168,6 +174,7 @@ def apt_set_update_candidates_full(session, pkgs):
 
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
+    hub.begin()
 
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
@@ -192,6 +199,8 @@ def apt_set_update_candidates_full(session, pkgs):
         apt_update_candidates(computer=client_computer, name=pk_name,
             version=pk_version)
 
+    hub.commit()
+    hub.end()
     return True
 
 def apt_set_current_packages_full(session, pkgs):
@@ -199,6 +208,7 @@ def apt_set_current_packages_full(session, pkgs):
 
     if not auth.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
+    hub.begin()
 
     mach = computer.select(computer.q.uniq==uniq)
     l = list(mach)
@@ -225,5 +235,7 @@ def apt_set_current_packages_full(session, pkgs):
         apt_current_packages(computer=client_computer, name=pk_name,
             version=pk_version)
     log.debug("End.")
+    hub.commit()
+    hub.end()
     return True
 

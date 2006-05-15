@@ -20,12 +20,14 @@
 
 from db.operation import *
 import hmac
+hub = PackageHub()
+__connection__ = hub
 
 def check_token(uniq, token):
     """Checks if the specified token was generated using the stored
     computer password.
     """
-
+    hub.begin()
     query_check_t = computer.select(computer.q.uniq==uniq)
     check_t = list(query_check_t)
 
@@ -40,8 +42,12 @@ def check_token(uniq, token):
 
     valid_token = hmac.new(password, uniq).hexdigest()
 
+    hub.commit()
+    hub.end()
     if valid_token == token:
         # Yeah, this is a valid token!
         return True
+    else:
+        return False
 
 

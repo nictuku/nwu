@@ -21,7 +21,7 @@ import getpass
 import sys
 from nwu_server.db.operation import *
 
-VERSION = '0.1.4'
+VERSION = '0.1.5'
 
 appendix = """NWU is a remote upgrades manager for systems that use APT.
 For more information, see https://dev.ubuntubrasil.org/trac/nwu/

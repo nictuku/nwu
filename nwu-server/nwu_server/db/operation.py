@@ -34,9 +34,7 @@ log = logging.getLogger('nwu_server.db.operation')
 hub = PackageHub()
 __connection__ = hub
 
-print "c1"
 conn = hub.getConnection()
-print "c2"
 
 class computer(SQLObject):
 
@@ -62,17 +60,17 @@ class apt_current_packages(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
-    _defaultOrder = 'name'
-
     computer = ForeignKey('computer')
+    class sqlmeta:
+        defaultOrder = 'name'
 
 class apt_update_candidates(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
-    _defaultOrder = 'name'
-
     computer = ForeignKey('computer')
+    class sqlmeta:
+        defaultOrder = 'name'
 
 
 class apt_repositories(SQLObject):
@@ -99,7 +97,7 @@ class task(SQLObject):
     details = StringCol(default=None)
     computer = ForeignKey('computer')
 
-class user(SQLObject):
+class users(SQLObject):
 
     username = StringCol(length=255, unique=True)
     password = StringCol(length=255)
