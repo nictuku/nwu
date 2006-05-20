@@ -1,4 +1,7 @@
 # Change to 1 to run nwu-server at the startup
 # You must edit /etc/nwu/server.conf and set it to your needs
+#
+# Also, don't forget to populate the database by using the -i parameter
+# of nwu-server
 
 NO_START=1
