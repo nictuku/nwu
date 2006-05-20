@@ -21,6 +21,7 @@ import os
 import sys
 import logging
 import logging.handlers
+import hmac
 
 log = logging.getLogger()
 
@@ -42,7 +43,9 @@ if os.geteuid() == 0:
 log.info("Starting nwu-agent")
 # FIXME: sysinfo should not generate output here
 
-from nwu_agent import misc as agent
+from nwu_agent import misc
+
+agent = misc.agent_talk()
 
 [cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('pkgs')
 
@@ -65,7 +68,7 @@ repositories = agent.read_sources_list(sourcefiles)
 #update_candidates = agent.get_current('update_candidates')
 
 (uniq, password) = agent.get_auth()
-token = agent.hmac.new(password, uniq).hexdigest()
+token = hmac.new(password, uniq).hexdigest()
 uname = os.uname()
 os_name = uname[0]
 myhost = uname[1] # Alternative: socket.gethostname()
