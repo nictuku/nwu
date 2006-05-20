@@ -33,8 +33,13 @@ case "$1" in
 	echo "   !! No SSL Certificate (${SSLCERT}) found."
         echo "      Instructions for creating a certificate at /usr/share/doc/nwu-server/README"
     else
-	${NWUSERVER}
-	log_end_msg 0
+    	${NWUSERVER}
+        echo
+        if [ "$?" == 0 ]; then
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
     fi
   ;;
   stop)
