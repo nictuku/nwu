@@ -96,13 +96,19 @@ GRANT ALL PRIVILEGES ON nwu.* TO 'nwu'@'%' IDENTIFIED BY 'YOURPASSWORD' WITH GRA
 
 Create tables:
 
-Don't worry. In the current version, nwu will try to create the tables in
-every run. It's ugly, but it works.
+# nwu-server -i
+
+This command will create all required tables and then exit. Check the syslog
+for problems.
 
 B) - SQLite - 
 
-Leave everything to nwu-server and it will create the database file in
-/var/lib/nwu/nwu.db, with all required tables.
+Start nwu-server with the following command:
+
+# nwu-server -i
+
+It will create the database file in
+/var/lib/nwu/nwu.db, with all required tables. Check the syslog for problems.
 
 C) - PostgreSQL -
 
@@ -112,6 +118,13 @@ sudo -u postgres psql nwu << EOF
 ALTER DATABASE nwu OWNER TO nwu
 \q
 EOF
+
+To populate the tables:
+
+# nwu-server -i
+
+It will create all required tables and then exit. Check the syslog for 
+possible problems.
 
 Nwu-server config file
 ----------------------
@@ -131,8 +144,7 @@ Sample config file:
 -----------------------
 [webservice]
 
-# The host your clients will connect to.
-host = nictuku.dyndns.org
+host = 0.0.0.0
 port = 8088
 
 [database]
@@ -154,9 +166,17 @@ Start the server
 
 nwu-server comes with a init script.
 
-The init calls nwu-server which dameonizes itself. It creates a pid file in 
+The init calls nwu-server which daemonizes itself. It creates a pid file in 
 /var/run/nwu-server/nwu-server.pid and goes to the background. Check the 
 syslog to see if everything went fine.
+
+nwu-server also has some command-line options. For example, to run it
+in the foreground and see the logs in stderr, run it with the '-f'
+parameter.
+
+For more options, type:
+
+# nwu-server -h
 
 Nwu admin CLI tool
 ------------------
