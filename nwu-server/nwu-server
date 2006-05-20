@@ -29,7 +29,7 @@ parser = OptionParser()
 
 parser.add_option("-i", "--initialize", dest="init", action="store_true",
                   default=False, 
-                  help="Initialize the server environment (database)")
+                  help="Initialize the server environment (database) and exit")
 
 parser.add_option("-f", "--foreground", dest="daemonize", action="store_false",
                     default=True,
@@ -40,6 +40,9 @@ loglevels=('DEBUG','INFO','WARNING', 'WARN','ERROR','FATAL')
 parser.add_option("-l", "--loglevel", dest="loglevel", metavar="LOGLEVEL",
                 help="Set verbosity to LOGLEVEL", type="choice",
                 default="INFO", choices=loglevels)
+
+parser.add_option("-u", "--user", dest="user", metavar="USER",
+                help="Run as user USER", type="string", default="nwuserver")
 
 (options, args) = parser.parse_args()
 
@@ -70,6 +73,7 @@ if options.loglevel in loglevels:
     log.setLevel(eval('logging.' + options.loglevel))
 
 log.info("Starting NWU.")
+
 from nwu_server.db.operation import *
 from nwu_server.db.setup import PackageHub
 from nwu_server.rpc_admin import nwu_admin
@@ -87,6 +91,13 @@ def read_config():
     port = int(config_p.get("webservice", "port"))
     config = { 'host' : host, 'port' : port }
     return config
+
+def drop_privileges():
+        log.info("Running as user '" + str(options.user) + "'.")
+        (pw_name,pw_passwd,pw_uid, pw_gid,pw_gecos,pw_dir,pw_shell) =\
+            pwd.getpwnam(options.user)
+        os.setegid(pw_gid)
+        os.seteuid(pw_uid)
 
 def daemonize():
 
@@ -127,10 +138,7 @@ def daemonize():
             print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
             sys.exit(1)
 
-        (pw_name,pw_passwd,pw_uid, pw_gid,pw_gecos,pw_dir,pw_shell) =\
-            pwd.getpwnam('nwuserver')
-        os.setegid(pw_gid)
-        os.seteuid(pw_uid)
+        drop_privileges()
 
 def main():
     config = read_config()
@@ -154,10 +162,18 @@ def main():
     server.register_function(nadmin.get_info)
     server.register_function(nadmin.computer_del)
 
+    if options.init:
+        # Create database and tables, but using the unprivileged
+        # user, so it can access file later when needed
+        drop_privileges()
+        log.info("Creating required database structure.")
+        create_tables()
+        sys.exit(0)
+ 
     if options.daemonize:
         log.info("Daemonizing.")
         daemonize()
-
+   
     server.serve_forever()
 
 if __name__ == '__main__':
