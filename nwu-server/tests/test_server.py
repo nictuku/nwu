@@ -17,3 +17,18 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+import sys
+sys.path.append('.')
+print sys.path
+import nwu_server.apt
+
+class TestServer:
+ 
+    def setup_method(self, method):
+        nwu_server.apt.check_token = self.istrue
+
+    def test_fake_check_token(self):
+        assert nwu_server.apt.check_token('a', 'b') == True
+
+    def istrue(self, a, b):
+        return True

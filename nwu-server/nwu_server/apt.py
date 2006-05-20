@@ -25,6 +25,7 @@ import logging
 log = logging.getLogger('nwu_server.apt')
 
 # FIXME: there is a lot of code repetition here, you insane coder
+# FIXME: organize these in classes, use inheritance for auth methods, etc
 hub = PackageHub()
 __connection__ = hub
 
@@ -98,14 +99,14 @@ def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
 #    import pdb ; pdb.set_trace()
     (uniq, token) = session
 
+    if not auth.check_token(uniq, token):
+        raise Exception, "Invalid authentication token"
+
     if change_table not in ['apt_update_candidates', 'apt_current_packages']:
         raise Exception, 'Unknown table'
 
     table = eval(change_table)
-
-    if not auth.check_token(uniq, token):
-        raise Exception, "Invalid authentication token"
-   
+  
     pkgs = {}
      
     if type(rm_pkgs) is dict:

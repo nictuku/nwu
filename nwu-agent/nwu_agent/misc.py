@@ -34,31 +34,32 @@ log = logging.getLogger('nwu_agent.misc')
 
 class agent_talk:
 
-    def __init__(self):
-        self.conffile = '/etc/nwu/agent.conf'
-        config = ConfigParser.ConfigParser()
+    def __init__(self, load_config=True):
+        if load_config:
+            self.conffile = '/etc/nwu/agent.conf'
+            config = ConfigParser.ConfigParser()
 
-        if not os.access(self.conffile, os.R_OK):
-            raise Exception, "Config file " + conffile + " is not readable by the current user."
+            if not os.access(self.conffile, os.R_OK):
+                raise Exception, "Config file " + conffile + " is not readable by the current user."
 
-        r = config.read("/etc/nwu/agent.conf")
+            r = config.read("/etc/nwu/agent.conf")
 
-        self.server_uri = config.get("connection", "server_uri")
+            self.server_uri = config.get("connection", "server_uri")
 
-        # grr I don't want to have to do this. Fix sysinfo
-        format = "%(asctime)s cacic[%(process)d] %(levelname)s %(name)s:%(lineno)d: %(message)s"
-        sysinfo_logger = logging.getLogger("sysinfo")
-        sysinfo_logger.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(format)
-        ch.setFormatter(formatter)
-        sysinfo_logger.addHandler(ch)
+            # grr I don't want to have to do this. Fix sysinfo
+            format = "%(asctime)s cacic[%(process)d] %(levelname)s %(name)s:%(lineno)d: %(message)s"
+            sysinfo_logger = logging.getLogger("sysinfo")
+            sysinfo_logger.setLevel(logging.DEBUG)
+            ch = logging.StreamHandler()
+            ch.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(format)
+            ch.setFormatter(formatter)
+            sysinfo_logger.addHandler(ch)
 
-        #Config.simplify_objects = 1 
+            #Config.simplify_objects = 1 
 
-        self.pkgs = sysinfo.software.packages()
-        self.rpc = self.XClient(self.server_uri)
+            self.pkgs = sysinfo.software.packages()
+            self.rpc = self.XClient(self.server_uri)
 
     def verify(self, conn, cert, errnum, depth, ok):
         print 'So-far =',ok

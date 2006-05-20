@@ -23,15 +23,20 @@ sys.path.append('.')
 import nwu_agent
 import nwu_agent.misc
 
+agent = nwu_agent.misc.agent_talk(load_config=False)
+
 class TestAgent:
  
     def setup_method(self, method):
         pass 
 
     def test_diff_dicts(self):
-        old_dict = {'A' : 123, 'B': '....', 'C': False }
-        new_dict = {'A' : 123, 'B': '....', 'C': False }
-        assert nwu_agent.misc.diff_dicts(old_dict, new_dict) == {}
+        dict1 = {'A' : 123, 'B': '....', 'C': False }
+        dict2 = {'A' : 123, 'B': '....', 'C': False }
+        assert agent.diff_dicts(dict1, dict2) == ({},{})
+        dict2 = {}
+        assert agent.diff_dicts(dict1, dict2) == ({}, dict1)
+        assert agent.diff_dicts(dict2, dict1) == (dict1, {})
+        assert agent.diff_dicts({}, {}) == ({}, {})    
 
-    def istrue(self, a, b):
-        return True
+
