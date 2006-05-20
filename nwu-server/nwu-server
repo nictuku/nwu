@@ -20,27 +20,57 @@
 import os
 import sys
 import pwd
+from optparse import OptionParser
 import ConfigParser
 import logging
 import logging.handlers
+
+parser = OptionParser()
+
+parser.add_option("-i", "--initialize", dest="init", action="store_true",
+                  default=False, 
+                  help="Initialize the server environment (database)")
+
+parser.add_option("-f", "--foreground", dest="daemonize", action="store_false",
+                    default=True,
+                help="Run NWU in the foreground and print logs to stderr")
+
+loglevels=('DEBUG','INFO','WARNING', 'WARN','ERROR','FATAL')
+
+parser.add_option("-l", "--loglevel", dest="loglevel", metavar="LOGLEVEL",
+                help="Set verbosity to LOGLEVEL", type="choice",
+                default="INFO", choices=loglevels)
+
+#parser.add_option("-q", "--quiet",
+#                  action="store_false", dest="verbose", default=True,
+#                  help="don't print status messages to stdout")
+
+(options, args) = parser.parse_args()
+
 log = logging.getLogger()
 
-try:
-    hdlr = logging.handlers.SysLogHandler(
-  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
-except:
-    print "Error while connecting logger instance to the syslog. Is the syslog\
- daemon running?"
+if options.daemonize:
 
-    sys.exit(1)
+    try:
+        hdlr = logging.handlers.SysLogHandler(
+      "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+    except:
+        print "Error while connecting logger instance to the syslog. Is the syslog\
+     daemon running?"
 
-formatter = logging.Formatter(
-"nwu_server[%(process)d] %(levelname)s %(message)s"
-    )
+        sys.exit(1)
+
+    formatter = logging.Formatter(
+    "nwu_server[%(process)d] %(levelname)s %(message)s"
+        )
+else:
+    hdlr = logging.StreamHandler()
+    formatter = logging.Formatter('%(message)s')
+
 hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
-log.setLevel(logging.INFO)
-
+if options.loglevel in loglevels: 
+    log.setLevel(eval('logging.' + options.loglevel))
 
 from nwu_server.db.operation import *
 from nwu_server.db.setup import PackageHub
@@ -48,7 +78,6 @@ from nwu_server.rpc_admin import nwu_admin
 from nwu_server import apt, auth, sslxmlrpc
 from nwu_server.rpc_agents import *
 
-DAEMONIZE = 1 
 
 def read_config():
     """Reads configuration data from the config file.
@@ -111,8 +140,6 @@ def main():
     port = config['port']
     log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
         ".")
-
-    create_tables()
 
     nadmin = nwu_admin()
 
