@@ -41,16 +41,12 @@ parser.add_option("-l", "--loglevel", dest="loglevel", metavar="LOGLEVEL",
                 help="Set verbosity to LOGLEVEL", type="choice",
                 default="INFO", choices=loglevels)
 
-#parser.add_option("-q", "--quiet",
-#                  action="store_false", dest="verbose", default=True,
-#                  help="don't print status messages to stdout")
-
 (options, args) = parser.parse_args()
 
 log = logging.getLogger()
 
 if options.daemonize:
-
+    # Log to syslog by default
     try:
         hdlr = logging.handlers.SysLogHandler(
       "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
@@ -64,6 +60,7 @@ if options.daemonize:
     "nwu_server[%(process)d] %(levelname)s %(message)s"
         )
 else:
+    # Log to stderr if staying in the foreground
     hdlr = logging.StreamHandler()
     formatter = logging.Formatter('%(message)s')
 
@@ -72,6 +69,7 @@ log.addHandler(hdlr)
 if options.loglevel in loglevels: 
     log.setLevel(eval('logging.' + options.loglevel))
 
+log.info("Starting NWU.")
 from nwu_server.db.operation import *
 from nwu_server.db.setup import PackageHub
 from nwu_server.rpc_admin import nwu_admin
@@ -156,7 +154,7 @@ def main():
     server.register_function(nadmin.get_info)
     server.register_function(nadmin.computer_del)
 
-    if DAEMONIZE == 1:
+    if options.daemonize:
         log.info("Daemonizing.")
         daemonize()
 

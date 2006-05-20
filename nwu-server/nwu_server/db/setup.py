@@ -45,7 +45,7 @@ class read_conf:
         db_user = config.get("database", "user")
         db_password = config.get("database", "password")
 
-        log.info("Using" + db_type + " as my database.")
+        log.info("Using " + db_type + " as database backend.")
 
         if db_type == 'sqlite':
             self.connection_string = db_type + "://" + db_database + \
@@ -204,7 +204,7 @@ class PackageHub(object):
             trans = True
         hub = _hubs.get(dburi, None)
         if not hub:
-            log.info("New conn: " + str(threading._get_ident()))
+            log.debug("New conn: " + str(threading._get_ident()))
             hub = AutoConnectHub(dburi, supports_transactions=trans)
             _hubs[dburi] = hub
         self.hub = hub
