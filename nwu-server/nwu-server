@@ -25,8 +25,15 @@ import logging
 import logging.handlers
 log = logging.getLogger()
 
-hdlr = logging.handlers.SysLogHandler(
+try:
+    hdlr = logging.handlers.SysLogHandler(
   "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+except:
+    print "Error while connecting logger instance to the syslog. Is the syslog\
+ daemon running?"
+
+    sys.exit(1)
+
 formatter = logging.Formatter(
 "nwu_server[%(process)d] %(levelname)s %(message)s"
     )
