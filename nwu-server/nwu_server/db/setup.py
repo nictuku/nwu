@@ -44,7 +44,6 @@ class read_conf:
         db_database = config.get("database", "database")
         db_user = config.get("database", "user")
         db_password = config.get("database", "password")
-
         log.info("Using " + db_type + " as database backend.")
 
         if db_type == 'sqlite':

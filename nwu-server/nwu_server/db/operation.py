@@ -23,6 +23,7 @@
 from sqlobject import *
 from sqlobject.sqlbuilder import *
 import sys
+import hmac
 import logging
 from setup import PackageHub
 
@@ -33,8 +34,6 @@ log = logging.getLogger('nwu_server.db.operation')
 
 hub = PackageHub()
 __connection__ = hub
-
-conn = hub.getConnection()
 
 class computer(SQLObject):
 
@@ -49,6 +48,66 @@ class computer(SQLObject):
     repositories = MultipleJoin('apt_repositories')
     authcomputer = MultipleJoin('authcomputer')
     task = MultipleJoin('task')
+
+    def session_setup(self,uniq, token):
+        """Sets up the session for agent-aggregator or agent-manager communication.
+
+        The token string comes from the authentication process.
+
+        Returns session object to be used by the agent in later
+        communcation steps.
+        """
+    #    hub.begin()
+    #    conn = hub.getConnection()
+        log.info("Setting session for computer " + uniq + ".")
+
+        # FIXME: test if token is valid here.
+        query_check_m = computer.select(computer.q.uniq==uniq)
+        check_m = list(query_check_m)
+        log.debug("check")
+
+        password = ''
+
+    #    hub.commit()
+    #    hub.end()
+        if len(check_m) == 0:
+            return False
+
+        if self.check_token(uniq, token):
+            return uniq, token
+
+        # FIXME: return False or raise an exception?
+        raise Exception, "Wrong token for " + uniq
+
+    def check_token(uniq, token):
+        """Checks if the specified token was generated using the stored
+        computer password.
+        """
+#        hub.begin()
+        query_check_t = computer.select(computer.q.uniq==uniq)
+        check_t = list(query_check_t)
+
+        password = ''
+
+        if len(check_t) == 0:
+            # No computer with that specified uniq id was found.
+            return False
+        else:
+            for t in check_t:
+                password = t.password
+
+        valid_token = hmac.new(password, uniq).hexdigest()
+
+#        hub.commit()
+#        hub.end()
+        if valid_token == token:
+            # Yeah, this is a valid token!
+            return True
+        else:
+            return False
+
+    session_setup=classmethod(session_setup)
+    check_token=staticmethod(check_token)    
 
 class authcomputer(SQLObject):
 

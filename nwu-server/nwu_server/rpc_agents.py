@@ -37,6 +37,7 @@ def create_tables():
 def add_computer(password, uniq, hostname, os_name, os_version):
     """Adds the given computer to the computers database.
     """
+#    import pdb; pdb.set_trace()
     hub.begin()
     log.info("Creating computer " + uniq + " " + hostname + " " +\
          os_name + " " + os_version)
@@ -51,7 +52,7 @@ def get_tasks(session):
 
     (uniq, token) = session
 
-    if not auth.check_token(uniq, token):
+    if not computer.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
     hub.begin()
     m = computer.select(computer.q.uniq==uniq)
@@ -117,7 +118,7 @@ def wipe_tasks(session):
     hub.end()
     return True
 
-def session_setup(uniq, token):
+def OFFsession_setup(uniq, token):
     """Setups the session for agent-aggregator or agent-manager communication.
 
     The token string comes from the authentication process.
@@ -131,6 +132,7 @@ def session_setup(uniq, token):
     # FIXME: test if token is valid here.
     query_check_m = computer.select(computer.q.uniq==uniq)
     check_m = list(query_check_m)
+    log.debug("check") 
 
     password = ''
 
