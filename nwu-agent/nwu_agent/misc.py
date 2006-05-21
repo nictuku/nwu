@@ -29,6 +29,7 @@ import ConfigParser
 from M2Crypto import SSL
 from M2Crypto.m2xmlrpclib import Server, SSL_Transport
 import logging
+import sys
 
 log = logging.getLogger('nwu_agent.misc')
 
@@ -40,7 +41,8 @@ class agent_talk:
             config = ConfigParser.ConfigParser()
 
             if not os.access(self.conffile, os.R_OK):
-                raise Exception, "Config file " + conffile + " is not readable by the current user."
+                log.error("Config file " + self.conffile + " is not readable by the current user.")
+                sys.exit(1)
 
             r = config.read("/etc/nwu/agent.conf")
 
