@@ -25,61 +25,12 @@ import ConfigParser
 import logging
 import logging.handlers
 
-parser = OptionParser()
-
-parser.add_option("-i", "--initialize", dest="init", action="store_true",
-                  default=False, 
-                  help="Initialize the server environment (database) and exit")
-
-parser.add_option("-f", "--foreground", dest="daemonize", action="store_false",
-                    default=True,
-                help="Run NWU in the foreground and print logs to stderr")
-
-loglevels=('DEBUG','INFO','WARNING', 'WARN','ERROR','FATAL')
-
-parser.add_option("-l", "--loglevel", dest="loglevel", metavar="LOGLEVEL",
-                help="Set verbosity to LOGLEVEL", type="choice",
-                default="INFO", choices=loglevels)
-
-parser.add_option("-u", "--user", dest="user", metavar="USER",
-                help="Run as user USER", type="string", default="nwuserver")
-
-(options, args) = parser.parse_args()
-
-log = logging.getLogger()
-
-if options.daemonize:
-    # Log to syslog by default
-    try:
-        hdlr = logging.handlers.SysLogHandler(
-      "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
-    except:
-        print "Error while connecting logger instance to the syslog. Is the syslog\
-     daemon running?"
-
-        sys.exit(1)
-
-    formatter = logging.Formatter(
-    "nwu_server[%(process)d] %(levelname)s %(message)s"
-        )
-else:
-    # Log to stderr if staying in the foreground
-    hdlr = logging.StreamHandler()
-    formatter = logging.Formatter('%(message)s')
-
-hdlr.setFormatter(formatter)
-log.addHandler(hdlr)
-if options.loglevel in loglevels: 
-    log.setLevel(eval('logging.' + options.loglevel))
-
-log.info("Starting NWU.")
 
 from nwu_server.db.operation import *
 from nwu_server.db.setup import PackageHub
 from nwu_server.rpc_admin import nwu_admin
 from nwu_server import apt, auth, sslxmlrpc
 from nwu_server.rpc_agents import *
-
 
 def read_config():
     """Reads configuration data from the config file.
@@ -92,12 +43,17 @@ def read_config():
     config = { 'host' : host, 'port' : port }
     return config
 
-def drop_privileges():
-        log.info("Running as user '" + str(options.user) + "'.")
+def drop_privileges(user):
+        log.info("Running as user '" + str(user) + "'.")
         (pw_name,pw_passwd,pw_uid, pw_gid,pw_gecos,pw_dir,pw_shell) =\
-            pwd.getpwnam(options.user)
-        os.setegid(pw_gid)
-        os.seteuid(pw_uid)
+            pwd.getpwnam(user)
+        try:
+            os.setegid(pw_gid)
+            os.seteuid(pw_uid)
+        except OSError, e:
+            log.fatal("Could not drop privileges: "+ str(e.errno) + \
+                " " + str(e.strerror))
+            sys.exit(1)
 
 def daemonize():
 
@@ -138,9 +94,71 @@ def daemonize():
             print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
             sys.exit(1)
 
-        drop_privileges()
+def getopts():
+    parser = OptionParser()
+    loglevels=('DEBUG','INFO','WARNING', 'WARN','ERROR','FATAL')
+
+    parser.add_option("-i", "--initialize", dest="init", action="store_true",
+        help="Initialize the server environment (database) and exit")
+    parser.add_option("-f", "--foreground", dest="daemonize", 
+        action="store_false",
+        help="Run NWU in the foreground and print logs to stderr")
+    parser.add_option("-l", "--loglevel", dest="loglevel", metavar="LOGLEVEL",
+        help="Set verbosity to LOGLEVEL", type="choice",
+        choices=loglevels)
+    parser.add_option("-u", "--user", dest="user", metavar="USER",
+        help="Run as user USER", type="string")
+    parser.set_defaults(init=False, daemonize=True, loglevel="INFO",
+        user="nwuserver")
+    
+    (options, args) = parser.parse_args()
+    return options
 
 def main():
+    options = getopts()
+    log = logging.getLogger()
+
+    if options.init:
+        options.daemonize = False
+
+    if options.daemonize:
+        # Log to syslog by default
+        try:
+            hdlr = logging.handlers.SysLogHandler(
+          "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+        except:
+            print "Error while connecting logger instance to the syslog. Is \
+the syslog daemon running?"
+            sys.exit(1)
+
+        formatter = logging.Formatter(
+        "nwu_server[%(process)d] %(levelname)s %(message)s"
+            )
+    else:
+        # Log to stderr if staying in the foreground
+        hdlr = logging.StreamHandler()
+        formatter = logging.Formatter('%(message)s')
+
+    hdlr.setFormatter(formatter)
+    log.addHandler(hdlr)
+
+    if options.init:
+        # Create database and tables, but using the unprivileged
+        # user, so it can access file later when needed
+        # FIXME: this is not showing
+        log.info("Creating required database structure.")
+        drop_privileges(options.user)
+        create_tables()
+        sys.exit(0)
+ 
+    if options.daemonize:
+        daemonize()
+        drop_privileges()
+
+    # optparse will take care of only accepting the specified loglevels
+    log.setLevel(eval('logging.' + options.loglevel)) 
+    log.info("Starting NWU.")
+
     config = read_config()
     host = config['host']
     port = config['port']
@@ -151,29 +169,19 @@ def main():
 
     ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
     server = ssl.start_server(host, port)
-
     server.register_function(apt.apt_set_repositories)
     server.register_function(apt.apt_set_current_packages_full)
-    server.register_function(session_setup)
+    server.register_function(computer.session_setup)
     server.register_function(apt.apt_set_list_diff)
     server.register_function(get_tasks)
     server.register_function(wipe_tasks)
-    server.register_function(add_computer)
+    server.register_function(computer.add_computer)
     server.register_function(nadmin.get_info)
     server.register_function(nadmin.computer_del)
 
-    if options.init:
-        # Create database and tables, but using the unprivileged
-        # user, so it can access file later when needed
-        drop_privileges()
-        log.info("Creating required database structure.")
-        create_tables()
-        sys.exit(0)
- 
     if options.daemonize:
         log.info("Daemonizing.")
         daemonize()
-   
     server.serve_forever()
 
 if __name__ == '__main__':

@@ -17,7 +17,7 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-"""Defines the nwu database scheme and tables.
+"""Defines the nwu database scheme, tables and operations.
 """
  
 from sqlobject import *
@@ -28,9 +28,6 @@ import logging
 from setup import PackageHub
 
 log = logging.getLogger('nwu_server.db.operation')
-#db_conf = setup.read_conf().connection_string
-#conn = setup.cfg(db_conf).conn
-#__connection__ = conn
 
 hub = PackageHub()
 __connection__ = hub
@@ -48,6 +45,21 @@ class computer(SQLObject):
     repositories = MultipleJoin('apt_repositories')
     authcomputer = MultipleJoin('authcomputer')
     task = MultipleJoin('task')
+    
+    def add_computer(password, uniq, hostname, os_name, os_version):
+        """Adds the given computer to the computers database.
+        """
+    #    import pdb; pdb.set_trace()
+        conn = hub.getConnection()
+        hub.begin()
+        log.info("Creating computer " + uniq + " " + hostname + " " +\
+             os_name + " " + os_version)
+        m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
+            os_version=os_version,password=password)
+
+        hub.commit()
+        hub.end()
+        return True
 
     def session_setup(self,uniq, token):
         """Sets up the session for agent-aggregator or agent-manager communication.
@@ -57,8 +69,6 @@ class computer(SQLObject):
         Returns session object to be used by the agent in later
         communcation steps.
         """
-    #    hub.begin()
-    #    conn = hub.getConnection()
         log.info("Setting session for computer " + uniq + ".")
 
         # FIXME: test if token is valid here.
@@ -68,8 +78,6 @@ class computer(SQLObject):
 
         password = ''
 
-    #    hub.commit()
-    #    hub.end()
         if len(check_m) == 0:
             return False
 
@@ -83,7 +91,6 @@ class computer(SQLObject):
         """Checks if the specified token was generated using the stored
         computer password.
         """
-#        hub.begin()
         query_check_t = computer.select(computer.q.uniq==uniq)
         check_t = list(query_check_t)
 
@@ -98,8 +105,6 @@ class computer(SQLObject):
 
         valid_token = hmac.new(password, uniq).hexdigest()
 
-#        hub.commit()
-#        hub.end()
         if valid_token == token:
             # Yeah, this is a valid token!
             return True
@@ -107,7 +112,8 @@ class computer(SQLObject):
             return False
 
     session_setup=classmethod(session_setup)
-    check_token=staticmethod(check_token)    
+    check_token=staticmethod(check_token)
+    add_computer=staticmethod(add_computer)
 
 class authcomputer(SQLObject):
 

@@ -17,10 +17,18 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 from md5 import md5
+from optparse import OptionParser
 import getpass
 import sys
 from nwu_server.db.operation import *
 
+parser = OptionParser()
+
+parser.add_option("update", type="string", nargs=1, dest="update"
+    help="Update APT cache in the computer.")
+parser.add_option("install", type="string", nargs=2, dest="install",
+    metavar="
+    help="Install 
 VERSION = '0.1.5'
 
 appendix = """NWU is a remote upgrades manager for systems that use APT.
@@ -28,7 +36,6 @@ For more information, see https://dev.ubuntubrasil.org/trac/nwu/
 """
 
 sub_commands = {
-"update" : " <computer>             : Update APT cache in the computer",
 "install" : "<computer> <packages>  : Install defined packages in the computer",
 "help" : "                          : This help message",
 "upgrade" : "<computer>             : Upgrade all packages in the computer",

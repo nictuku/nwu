@@ -34,20 +34,6 @@ def create_tables():
     hub.commit()
     hub.end()
  
-def add_computer(password, uniq, hostname, os_name, os_version):
-    """Adds the given computer to the computers database.
-    """
-#    import pdb; pdb.set_trace()
-    hub.begin()
-    log.info("Creating computer " + uniq + " " + hostname + " " +\
-         os_name + " " + os_version)
-    m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
-        os_version=os_version,password=password)
-
-    hub.commit()
-    hub.end()
-    return True
-
 def get_tasks(session):
 
     (uniq, token) = session
@@ -117,33 +103,3 @@ def wipe_tasks(session):
     hub.commit()
     hub.end()
     return True
-
-def OFFsession_setup(uniq, token):
-    """Setups the session for agent-aggregator or agent-manager communication.
-
-    The token string comes from the authentication process.
-
-    Returns session object to be used by the agent in later
-    communcation steps.
-    """
-    hub.begin()
-    log.info("Setting session for computer " + uniq + ".")
-
-    # FIXME: test if token is valid here.
-    query_check_m = computer.select(computer.q.uniq==uniq)
-    check_m = list(query_check_m)
-    log.debug("check") 
-
-    password = ''
-
-    hub.commit()
-    hub.end()
-    if len(check_m) == 0:
-        return False
-
-    if auth.check_token(uniq, token):
-        return uniq, token
-
-    # FIXME: return False or raise an exception?
-    raise Exception, "Wrong token for " + uniq
-
