@@ -20,6 +20,7 @@ __connection__ = hub
 def create_tables():
     """Creates required tables in the database.
     """
+    conn = hub.getConnection()
     hub.begin()
     log.debug("Creating necessary tables in the database.")
 
@@ -30,7 +31,7 @@ def create_tables():
             t.createTable()
         except:
             log.warning("Could not create table " + table + ": " + \
-                str(sys.exc_type) + ' ' + str(sys.exc_value))
+                str(sys.exc_type) + '- ' + str(sys.exc_value))
     hub.commit()
     hub.end()
  

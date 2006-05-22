@@ -61,7 +61,7 @@ class computer(SQLObject):
         hub.end()
         return True
 
-    def session_setup(self,uniq, token):
+    def session_setup(uniq, token):
         """Sets up the session for agent-aggregator or agent-manager communication.
 
         The token string comes from the authentication process.
@@ -81,7 +81,7 @@ class computer(SQLObject):
         if len(check_m) == 0:
             return False
 
-        if self.check_token(uniq, token):
+        if computer.check_token(uniq, token):
             return uniq, token
 
         # FIXME: return False or raise an exception?
@@ -111,7 +111,7 @@ class computer(SQLObject):
         else:
             return False
 
-    session_setup=classmethod(session_setup)
+    session_setup=staticmethod(session_setup)
     check_token=staticmethod(check_token)
     add_computer=staticmethod(add_computer)
 
@@ -167,7 +167,7 @@ class apt_current_packages(SQLObject):
 
         client_computer = l[0]
 
-        log.debug("Updating table " + change_table + " for " + \
+        log.info("Updating " + change_table + " for " + \
            client_computer.hostname + '(' + str(client_computer.id) + ')' )
 
         log.debug("will delete: " + str(rm_pkgs))
@@ -205,7 +205,7 @@ class apt_current_packages(SQLObject):
     def apt_set_current_packages_full(session, pkgs):
         (uniq, token) = session
 
-        if not auth.check_token(uniq, token):
+        if not computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
         conn = hub.getConnection()
         hub.begin()
@@ -238,6 +238,7 @@ class apt_current_packages(SQLObject):
         hub.end()
         return True
 
+    apt_set_list_diff=staticmethod(apt_set_list_diff)
 
 class apt_update_candidates(SQLObject):
 
@@ -254,7 +255,7 @@ class apt_update_candidates(SQLObject):
         if type(pkgs) is str:
             pkgs = {}
 
-        if not auth.check_token(uniq, token):
+        if not computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
         conn = hub.getConnection()
@@ -305,7 +306,7 @@ class apt_repositories(SQLObject):
         wiping that computer's repositories table.
         """
         (uniq, token) = session
-        if not auth.check_token(uniq, token):
+        if not computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
         conn = hub.getConnection()
@@ -356,7 +357,7 @@ class apt_repositories(SQLObject):
         hub.commit()
         hub.end()
         return True
-
+    apt_set_repositories=staticmethod(apt_set_repositories)
 
 class task(SQLObject):
     
