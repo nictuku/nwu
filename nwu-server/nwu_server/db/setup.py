@@ -36,6 +36,7 @@ cfg = None
 
 class read_conf:
     def __init__(self):
+        log.debug("Reading nwu server config")
         config = ConfigParser.ConfigParser()
         config.read("/etc/nwu/server.conf")
 
@@ -74,7 +75,7 @@ class AutoConnectHub(ConnectionHub):
         try:
             #print "g1"
             conn = self.threadingLocal.connection
-            return conn # different from sqlobject. no transaction needed
+            return self.begin(conn) 
         except AttributeError:
             if self.uri:
                 conn = connectionForURI(self.uri)
@@ -203,7 +204,7 @@ class PackageHub(object):
             trans = True
         hub = _hubs.get(dburi, None)
         if not hub:
-            log.debug("New conn: " + str(threading._get_ident()))
+            log.debug("New conn: " + str(threading._get_ident()) + " " + str(dburi))
             hub = AutoConnectHub(dburi, supports_transactions=trans)
             _hubs[dburi] = hub
         self.hub = hub

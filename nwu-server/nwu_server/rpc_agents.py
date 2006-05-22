@@ -14,16 +14,13 @@
 """
 from db.operation import *
 import auth
-hub = PackageHub()
-__connection__ = hub
+import os
 
 def create_tables():
     """Creates required tables in the database.
     """
-    conn = hub.getConnection()
-    hub.begin()
     log.debug("Creating necessary tables in the database.")
-
+#    os.unlink('/var/lib/nwu/nwu.db')
     for table in ['computer', 'apt_current_packages', 'apt_update_candidates',
         'apt_repositories', 'task', 'authcomputer', 'users']:
         try:
@@ -32,8 +29,6 @@ def create_tables():
         except:
             log.warning("Could not create table " + table + ": " + \
                 str(sys.exc_type) + '- ' + str(sys.exc_value))
-    hub.commit()
-    hub.end()
  
 def get_tasks(session):
 

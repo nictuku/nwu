@@ -25,12 +25,11 @@ import ConfigParser
 import logging
 import logging.handlers
 
-
 from nwu_server.db.operation import *
-from nwu_server.db.setup import PackageHub
 from nwu_server.rpc_admin import nwu_admin
-from nwu_server import apt, auth, sslxmlrpc
+from nwu_server import sslxmlrpc
 from nwu_server.rpc_agents import *
+
 
 def read_config():
     """Reads configuration data from the config file.
@@ -44,55 +43,65 @@ def read_config():
     return config
 
 def drop_privileges(user):
-        log.info("Running as user '" + str(user) + "'.")
-        (pw_name,pw_passwd,pw_uid, pw_gid,pw_gecos,pw_dir,pw_shell) =\
-            pwd.getpwnam(user)
-        try:
-            os.setegid(pw_gid)
-            os.seteuid(pw_uid)
-        except OSError, e:
-            log.fatal("Could not drop privileges: "+ str(e.errno) + \
-                " " + str(e.strerror))
-            sys.exit(1)
+    log.info("Running as user '" + str(user) + "'.")
+    (pw_name,pw_passwd,pw_uid, pw_gid,pw_gecos,pw_dir,pw_shell) =\
+        pwd.getpwnam(user)
+    try:
+        os.setegid(pw_gid)
+        os.seteuid(pw_uid)
+    except OSError, e:
+        print >>sys.stderr, "Could not drop privileges: "+ str(e.errno) + \
+            " " + str(e.strerror)
+        sys.exit(1)
 
-def daemonize():
+def daemonize(PIDFILE):
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Credits:
+    # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012
+    # do the UNIX double-fork magic, see Stevens' "Advanced
+    # Programming in the UNIX Environment" for details (ISBN 0201563177)
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit first parent
+            sys.exit(0)
+    except OSError, e:
+        print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, \
+            e.strerror)
+        sys.exit(1)
 
-        # Credits:
-        # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012
-        PIDFILE = '/var/run/nwu-server/nwu-server.pid'
-        # do the UNIX double-fork magic, see Stevens' "Advanced
-        # Programming in the UNIX Environment" for details (ISBN 0201563177)
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # exit first parent
-                sys.exit(0)
-        except OSError, e:
-            print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, \
-                e.strerror)
-            sys.exit(1)
+    # decouple from parent environment
+    os.chdir("/")   #don't prevent unmounting....
+    os.setsid()
+    os.umask(0)
 
-        # decouple from parent environment
-        os.chdir("/")   #don't prevent unmounting....
-        os.setsid()
-        os.umask(0)
+    dev_null = file('/tmp/log.txt', 'a+')
+    
+    # Save stderr because we can need it later
+    stderr_old = file('/dev/null', 'a+')
 
-        dev_null = file('/dev/null', 'a+')
-        os.dup2(dev_null.fileno(), sys.stdout.fileno())
-        os.dup2(dev_null.fileno(), sys.stderr.fileno())
-        os.dup2(dev_null.fileno(), sys.stdin.fileno())
+    os.dup2(sys.stderr.fileno(), stderr_old.fileno())
+    os.dup2(dev_null.fileno(), sys.stdout.fileno())
+    os.dup2(dev_null.fileno(), sys.stderr.fileno())
+    os.dup2(dev_null.fileno(), sys.stdin.fileno())
 
-        # do second fork
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # exit from second parent, print eventual PID before
-                #print "Daemon PID %d" % pid
+    # do second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit from second parent, print eventual PID before
+            #print "Daemon PID %d" % pid
+            try:
                 open(PIDFILE,'w').write("%d"%pid)
-                sys.exit(0)
-        except OSError, e:
-            print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
-            sys.exit(1)
+            except IOError, e:
+                print >>stderr_old, "Open %s failed: %d (%s)" % (PIDFILE, e.errno, e.strerror)
+                sys.exit(1)
+            sys.exit(0)
+    except OSError, e:
+        print >>stderr_old, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
+        sys.exit(1)
+    stderr_old.close()
 
 def getopts():
     parser = OptionParser()
@@ -108,8 +117,11 @@ def getopts():
         choices=loglevels)
     parser.add_option("-u", "--user", dest="user", metavar="USER",
         help="Run as user USER", type="string")
+    parser.add_option("-p", "--pidfile", dest="pidfile", metavar="PIDFILE",
+        help="Use PIDFILE to store pid.")
+
     parser.set_defaults(init=False, daemonize=True, loglevel="INFO",
-        user="nwuserver")
+        user="nwuserver",pidfile="/var/run/nwu-server/nwu-server.pid")
     
     (options, args) = parser.parse_args()
     return options
@@ -141,22 +153,22 @@ the syslog daemon running?"
 
     hdlr.setFormatter(formatter)
     log.addHandler(hdlr)
+    log.setLevel(eval('logging.' + options.loglevel)) 
 
     if options.init:
         # Create database and tables, but using the unprivileged
         # user, so it can access file later when needed
         # FIXME: this is not showing
-        log.info("Creating required database structure.")
         drop_privileges(options.user)
+        log.info("Creating required database structure.")
         create_tables()
         sys.exit(0)
  
     if options.daemonize:
-        daemonize()
-        drop_privileges()
+        daemonize(options.pidfile)
+        drop_privileges(options.user)
 
     # optparse will take care of only accepting the specified loglevels
-    log.setLevel(eval('logging.' + options.loglevel)) 
     log.info("Starting NWU.")
 
     config = read_config()
@@ -169,10 +181,10 @@ the syslog daemon running?"
 
     ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
     server = ssl.start_server(host, port)
-    server.register_function(apt.apt_set_repositories)
-    server.register_function(apt.apt_set_current_packages_full)
+    server.register_function(apt_repositories.apt_set_repositories)
+    server.register_function(apt_current_packages.apt_set_current_packages_full)
     server.register_function(computer.session_setup)
-    server.register_function(apt.apt_set_list_diff)
+    server.register_function(apt_current_packages.apt_set_list_diff)
     server.register_function(get_tasks)
     server.register_function(wipe_tasks)
     server.register_function(computer.add_computer)
@@ -181,7 +193,7 @@ the syslog daemon running?"
 
     if options.daemonize:
         log.info("Daemonizing.")
-        daemonize()
+        daemonize(options.pidfile)
     server.serve_forever()
 
 if __name__ == '__main__':

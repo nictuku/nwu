@@ -19,7 +19,6 @@
 
 """Defines the nwu database scheme, tables and operations.
 """
- 
 from sqlobject import *
 from sqlobject.sqlbuilder import *
 import sys
@@ -29,7 +28,7 @@ from setup import PackageHub
 
 log = logging.getLogger('nwu_server.db.operation')
 
-hub = PackageHub()
+hub = PackageHub() 
 __connection__ = hub
 
 class computer(SQLObject):
@@ -49,7 +48,6 @@ class computer(SQLObject):
     def add_computer(password, uniq, hostname, os_name, os_version):
         """Adds the given computer to the computers database.
         """
-    #    import pdb; pdb.set_trace()
         conn = hub.getConnection()
         hub.begin()
         log.info("Creating computer " + uniq + " " + hostname + " " +\
@@ -69,13 +67,13 @@ class computer(SQLObject):
         Returns session object to be used by the agent in later
         communcation steps.
         """
+        hub.begin()
         log.info("Setting session for computer " + uniq + ".")
-
         # FIXME: test if token is valid here.
         query_check_m = computer.select(computer.q.uniq==uniq)
         check_m = list(query_check_m)
         log.debug("check")
-
+        hub.end()
         password = ''
 
         if len(check_m) == 0:
@@ -249,7 +247,6 @@ class apt_update_candidates(SQLObject):
         defaultOrder = 'name'
 
     def apt_set_update_candidates_full(session, pkgs):
-    #    import pdb ; pdb.set_trace()
         (uniq, token) = session
 
         if type(pkgs) is str:
@@ -374,7 +371,9 @@ class users(SQLObject):
 
 if __name__ == '__main__':
 
-    create_tables()
+    sys.exit(0)
+    # FIXME: make a unit test so we can test db sanity
+    #create_tables()
 
     # FIXME: os name and version from sysinfo
     m = computer(hostname='localhost', uniq='32109832109832109831209832190321weee', os_name='Linux', os_version='2.6.x')
