@@ -190,6 +190,16 @@ adduser johndoe nwuserver
 In later versions all management activities will use XML-RPC calls, so you will
 will be able to use nwu admin tools (both CLI and PyGTK) from a remote machine.
 
+
+Troubleshooting
+---------------
+
+If nwu-server is behaving strangely, you can use the "-e" parameter to
+redirect python errors what would be sent to /dev/null to a log file,
+and then see what's happening. I hope this ugly feature will not be necessary
+in later versions of NWU, and all logs would be sent either to syslog OR
+to stdout.
+
 Feedback
 --------
 

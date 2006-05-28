@@ -54,7 +54,7 @@ def drop_privileges(user):
             " " + str(e.strerror)
         sys.exit(1)
 
-def daemonize(PIDFILE):
+def daemonize(PIDFILE, ERRORLOG):
     sys.stdout.flush()
     sys.stderr.flush()
     # Credits:
@@ -76,7 +76,7 @@ def daemonize(PIDFILE):
     os.setsid()
     os.umask(0)
 
-    dev_null = file('/tmp/log.txt', 'a+')
+    dev_null = file(ERRORLOG, 'a+')
     
     # Save stderr because we can need it later
     stderr_old = file('/dev/null', 'a+')
@@ -119,9 +119,14 @@ def getopts():
         help="Run as user USER", type="string")
     parser.add_option("-p", "--pidfile", dest="pidfile", metavar="PIDFILE",
         help="Use PIDFILE to store pid.")
+    parser.add_option("-e", "--errorlog", dest="errorlog", 
+        metavar="ERRORLOG", 
+        help="Send untreated python errors to ERRORLOG.")
+
 
     parser.set_defaults(init=False, daemonize=True, loglevel="INFO",
-        user="nwuserver",pidfile="/var/run/nwu-server/nwu-server.pid")
+        user="nwuserver",pidfile="/var/run/nwu-server/nwu-server.pid",
+        errorlog="/dev/null")
     
     (options, args) = parser.parse_args()
     return options
@@ -165,7 +170,7 @@ the syslog daemon running?"
         sys.exit(0)
  
     if options.daemonize:
-        daemonize(options.pidfile)
+        daemonize(options.pidfile, options.errorlog)
         drop_privileges(options.user)
 
     # optparse will take care of only accepting the specified loglevels
@@ -193,7 +198,7 @@ the syslog daemon running?"
 
     if options.daemonize:
         log.info("Daemonizing.")
-        daemonize(options.pidfile)
+        daemonize(options.pidfile, options.errorlog)
     server.serve_forever()
 
 if __name__ == '__main__':
