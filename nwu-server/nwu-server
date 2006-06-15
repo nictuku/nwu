@@ -76,15 +76,15 @@ def daemonize(PIDFILE, ERRORLOG):
     os.setsid()
     os.umask(0)
 
-    dev_null = file(ERRORLOG, 'a+')
+    errorlog = file(ERRORLOG, 'a+')
     
     # Save stderr because we can need it later
-    stderr_old = file('/dev/null', 'a+')
+    stderr_old = file(ERRORLOG, 'a+')
 
     os.dup2(sys.stderr.fileno(), stderr_old.fileno())
-    os.dup2(dev_null.fileno(), sys.stdout.fileno())
-    os.dup2(dev_null.fileno(), sys.stderr.fileno())
-    os.dup2(dev_null.fileno(), sys.stdin.fileno())
+    os.dup2(errorlog.fileno(), sys.stdout.fileno())
+    os.dup2(errorlog.fileno(), sys.stderr.fileno())
+    os.dup2(errorlog.fileno(), sys.stdin.fileno())
 
     # do second fork
     try:
@@ -101,7 +101,7 @@ def daemonize(PIDFILE, ERRORLOG):
     except OSError, e:
         print >>stderr_old, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
         sys.exit(1)
-    stderr_old.close()
+    #stderr_old.close()
 
 def getopts():
     parser = OptionParser()
@@ -192,6 +192,7 @@ the syslog daemon running?"
     server.register_function(apt_current_packages.apt_set_list_diff)
     server.register_function(get_tasks)
     server.register_function(wipe_tasks)
+    server.register_function(get_tbl_version)
     server.register_function(computer.add_computer)
     server.register_function(nadmin.get_info)
     server.register_function(nadmin.computer_del)

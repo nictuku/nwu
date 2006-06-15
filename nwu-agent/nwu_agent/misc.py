@@ -30,6 +30,7 @@ from M2Crypto import SSL
 from M2Crypto.m2xmlrpclib import Server, SSL_Transport
 import logging
 import sys
+from md5 import md5 
 
 log = logging.getLogger('nwu_agent.misc')
 
@@ -59,9 +60,13 @@ class agent_talk:
             sysinfo_logger.addHandler(ch)
 
             #Config.simplify_objects = 1 
-
+            sourcefiles = self.list_sources_list()
+            self.repositories, self.rep_md5 = self.read_sources_list(sourcefiles)
             self.pkgs = sysinfo.software.packages()
+            self.packages = self.pkgs.installed_ver
+            self.update_candidates = self.pkgs.update_candidates
             self.rpc = self.XClient(self.server_uri)
+            
 
     def verify(self, conn, cert, errnum, depth, ok):
         print 'So-far =',ok
@@ -168,14 +173,14 @@ class agent_talk:
         return session
 
      
-    def get_current(self, info):
-        #get_packages()
-        if info == 'pkgs':
-            packages = self.pkgs.installed_ver
-            return packages
-        elif info == 'update_candidates':
-            update_candidates = self.pkgs.update_candidates
-            return update_candidates    
+#    def get_current(self, info):
+#        #get_packages()
+#        if info == 'pkgs':
+#            packages = self.pkgs.installed_ver
+#            return packages
+#        elif info == 'update_candidates':
+#            update_candidates = self.pkgs.update_candidates
+#            return update_candidates    
             
       
     def list_sources_list(self):
@@ -194,6 +199,8 @@ class agent_talk:
 
     # FIXME: move this to sysinfo
     def read_sources_list(self, filenames):
+        full_string = ''
+
         repositories = []
 
         for source in filenames:
@@ -202,18 +209,18 @@ class agent_talk:
             thisrep = [source]
 
             for line in f:
-                 line = line.strip()
-                 #ignore comments and blank lines
-                 l = line.split('#',1)[0]
-                 ignore = re.search(r'^$|#|^\s+$', l)
-
-                 if not ignore :
+                full_string += line
+                line = line.strip()
+                #ignore comments and blank lines
+                l = line.split('#',1)[0]
+                ignore = re.search(r'^$|#|^\s+$', l)
+                if not ignore :
                     thisrep.append(l)
         #pik = pickle.dumps(repositories)
 
             repositories.append(thisrep)
 
-        return repositories
+        return repositories, md5(full_string).hexdigest()
 
     def diff_dicts(self, old_dict, new_dict):
         """This function detects the differences between two dicts,
@@ -236,7 +243,8 @@ class agent_talk:
 
     def read_spool(self, category):
 
-        if category not in ['pkgs', 'update_candidates']:
+        if category not in ['packages', 'update_candidates', 'tbl_ver', 
+            'repositories']:
             raise Exception, "Wrong cache category specified: " + category
 
         cache_path = "/var/spool/nwu/nw." + category
@@ -255,7 +263,6 @@ class agent_talk:
 
         return objects
 
-
     def diff_new_spool(self, info):
         """Returns a list of:
         - cached info
@@ -263,11 +270,20 @@ class agent_talk:
         - diff of previous both [updated, deleted]
         """
         cached = self.read_spool(info)
-        current = self.get_current(info)
+        current = eval('self.' + info)
         diff = self.diff_dicts(cached, current)
-
         return [cached, current, diff]
 
+    def check_diff_rep(self):
+        """Checks if the new repositories list
+        is new or not.
+        """
+        cached = self.read_spool('repositories')['md5']
+        current = self.rep_md5
+        if cached != current:
+            return True
+        else:
+            return False
 
     def store_spool(self, spool, item_list, wipe_old=False):
         """Stores data in the services pool directory.

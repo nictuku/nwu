@@ -13,7 +13,6 @@
 """Defines some RPC used by agents.
 """
 from db.operation import *
-import auth
 import os
 
 def create_tables():
@@ -22,7 +21,7 @@ def create_tables():
     log.debug("Creating necessary tables in the database.")
 #    os.unlink('/var/lib/nwu/nwu.db')
     for table in ['computer', 'apt_current_packages', 'apt_update_candidates',
-        'apt_repositories', 'task', 'authcomputer', 'users']:
+        'apt_repositories', 'task', 'authcomputer', 'users', 'tables_version']:
         try:
             t = eval(table)
             t.createTable()
@@ -72,7 +71,7 @@ def get_tasks(session):
 def wipe_tasks(session):
     (uniq, token) = session
 
-    if not auth.check_token(uniq, token):
+    if not computer.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
     hub.begin()
@@ -95,7 +94,7 @@ def wipe_tasks(session):
         (task.q.computerID ==  client_computer.id)))
 
     conn.query(delquery)
-
+    up = update_tbl_version('task', uniq)
     hub.commit()
     hub.end()
-    return True
+    return up 

@@ -31,6 +31,49 @@ log = logging.getLogger('nwu_server.db.operation')
 hub = PackageHub() 
 __connection__ = hub
 
+def get_tbl_version(session,tbl):
+    (uniq, token) = session
+
+    if not computer.check_token(uniq, token):
+        raise Exception, "Invalid authentication token"
+
+    query = tables_version.select(AND(tables_version.q.tablename==tbl, 
+        tables_version.q.uniq==uniq))
+    a = list(query)
+    if len(a) > 0:
+        return a[0].version
+    else:
+        return 0
+     
+
+def update_tbl_version(tbl, comp_uniq): 
+    """Maintains clients info versioning info to enforce data
+    syncronization."""
+#    import pdb;pdb.set_trace()
+
+    query = tables_version.select(AND(tables_version.q.tablename==tbl, 
+        tables_version.q.uniq==comp_uniq))
+    a = list(query)
+    if len(a) == 0:
+        wee = tables_version(tablename=tbl,version=1,uniq=comp_uniq)
+        return wee.version
+    
+    try:
+        o = a[0]
+        ver = o.version
+    except AttributeError:
+        wee = tables_version(tablename=tbl,version=1,uniq=comp_uniq)
+        return wee.version
+
+    o.version = ver + 1
+    return o.version
+
+class tables_version(SQLObject):
+
+    tablename = StringCol(length=255)
+    version = IntCol()
+    uniq = StringCol(length=32)
+
 class computer(SQLObject):
 
     uniq = StringCol(length=32,alternateID=True)
@@ -44,20 +87,29 @@ class computer(SQLObject):
     repositories = MultipleJoin('apt_repositories')
     authcomputer = MultipleJoin('authcomputer')
     task = MultipleJoin('task')
+
     
-    def add_computer(password, uniq, hostname, os_name, os_version):
+    def add_computer(password, iuniq, hostname, os_name, os_version):
         """Adds the given computer to the computers database.
         """
         conn = hub.getConnection()
         hub.begin()
-        log.info("Creating computer " + uniq + " " + hostname + " " +\
+        log.info("Creating computer " + iuniq + " " + hostname + " " +\
              os_name + " " + os_version)
-        m = computer(uniq=uniq,hostname=hostname, os_name=os_name,
+        m = computer(uniq=iuniq,hostname=hostname, os_name=os_name,
             os_version=os_version,password=password)
-
+        
+        versioncol = tables_version.q.version.fieldName
+        tablecol = tables_version.q.tablename.fieldName
+        conn.debug = True
+        #runthis = {'tablename':'computer','version':6}
+        #tables_version(**runthis)
+#        newversion = conn.sqlrepr(Replace('tables_version', {'tablename':'computer','version':'3'} ))
+#        print newversion
+#        conn.query(newversion)
         hub.commit()
         hub.end()
-        return True
+        return True 
 
     def session_setup(uniq, token):
         """Sets up the session for agent-aggregator or agent-manager communication.
@@ -196,9 +248,11 @@ class apt_current_packages(SQLObject):
             table(computer=client_computer, name=add_pk_name,
                 version=add_pk_version)
 
+        up = update_tbl_version(change_table, uniq)
+        log.debug(repr(up))
         hub.commit()
         hub.end()
-        return True
+        return up
 
     def apt_set_current_packages_full(session, pkgs):
         (uniq, token) = session
@@ -232,9 +286,12 @@ class apt_current_packages(SQLObject):
             apt_current_packages(computer=client_computer, name=pk_name,
                 version=pk_version)
         log.debug("End.")
+        up = update_tbl_version('apt_current_packages', uniq)
+        log.debug(repr(up))
+ 
         hub.commit()
         hub.end()
-        return True
+        return up
 
     apt_set_list_diff=staticmethod(apt_set_list_diff)
 
@@ -277,9 +334,13 @@ class apt_update_candidates(SQLObject):
         for pk_name, pk_version in pkgs.iteritems():
             apt_update_candidates(computer=client_computer, name=pk_name,
                 version=pk_version)
+
+        up = update_tbl_version('apt_update_candidates', uniq)
+        log.debug(repr(up))
+
         hub.commit()
         hub.end()
-        return True
+        return up
 
 class apt_repositories(SQLObject):
     """APT repositories table.
@@ -351,9 +412,12 @@ class apt_repositories(SQLObject):
                     type=rep_type, uri=rep_uri, distribution=rep_distribution,
                     components=rep_components)
 
+        up = update_tbl_version('apt_repositories', uniq)
+        log.debug(repr(up))
         hub.commit()
         hub.end()
-        return True
+        return up 
+ 
     apt_set_repositories=staticmethod(apt_set_repositories)
 
 class task(SQLObject):
