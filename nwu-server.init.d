@@ -16,13 +16,18 @@ NO_START=0
 
 . /etc/default/nwu-server
 
-if [ "$NO_START" == 1 ]; then
-  exit
-fi
-
 case "$1" in
   start)
     log_begin_msg "Starting Network Wide Updates Server"
+    
+    if [ "$NO_START" == 1 ]; then
+          log_end_msg 1
+	  echo "   !! Will not start."
+	  echo "      See /etc/default/nwu-server"
+	  exit
+    fi
+
+
     if [ ! -f ${CONFIG} ]; then
 	log_end_msg 1
 	echo "   !! No config file (${CONFIG}) fonud."
