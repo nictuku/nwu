@@ -252,11 +252,15 @@ class agent_talk:
         cache = ConfigParser.ConfigParser()
         result = cache.read(cache_path)
 
-        #if not result or len(result) < 1:
+        #if len(result) < 1:
         #    log.error("Could not read " + category + " cache")
-        #    return {}
+        #    return {category:'empty'} 
         
         objects = {}
+
+	if len(cache.sections()) < 1:
+	     return {category:'empty'}
+	     
         for s in cache.sections():
             for option, value in cache.items(s):
                 objects[option] = value
@@ -309,8 +313,8 @@ class agent_talk:
         store = ConfigParser.ConfigParser()
 
         r = store.read(spool_path)
-
-        for it in item_list:
+	print "item list", item_list
+	for it in item_list:
             section = it[0]
             option = it[1]
             if len(it) > 2:

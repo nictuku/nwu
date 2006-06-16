@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
@@ -33,8 +33,8 @@ def sync_task():
     log.info("Assigned tasks found: " + str(get_tasks) + ".")
 
     log.debug("Kindly asking server to wipe old tasks.")
-    taskver = agent.rpc.wipe_tasks(my_session)
-    sync_ver('task', taskver)
+    taskver = agent.rpc.wipe_this(my_session,'task')
+    sync_tbl_ver('task', taskver)
 
     store_task = []
 
@@ -48,21 +48,25 @@ def sync_task():
 def sync_apt_repositories():
     log.info("Sending repositories data.")
     repver = agent.rpc.apt_set_repositories(my_session,agent.repositories)
-    sync_ver('apt_repositories', repver)
+    sync_tbl_ver('apt_repositories', repver)
 
 def sync_apt_update_candidates():
     log.info("Sending update candidates list.")
-    updver = agent.rpc.apt_set_list_diff(my_session, 'apt_update_candidates', 
+    if diff_candidates[1].get('update_candidates','') == 'empty':
+        updver = agent.rpc.wipe_this(my_session,'apt_update_candidates')
+    else:
+        updver = agent.rpc.apt_set_list_diff(my_session, 
+	'apt_update_candidates', 
         diff_candidates[0], diff_candidates[1])
-    sync_ver('apt_update_candidates', updver)
+    sync_tbl_ver('apt_update_candidates', updver)
 
 def sync_apt_current_packages():       
     log.info("Sending current packages list.")
     pkgver = agent.rpc.apt_set_list_diff(my_session, 'apt_current_packages', 
         diff_pkgs[0], diff_pkgs[1])
-    sync_ver('apt_current_packages', pkgver)
+    sync_tbl_ver('apt_current_packages', pkgver)
 
-def sync_ver(tablename, version):
+def sync_tbl_ver(tablename, version):
 
     change_ver = [['tbl_ver', tablename, version]]
     agent.store_spool('tbl_ver', change_ver, False)
@@ -104,7 +108,7 @@ for key, val in current_pkgs.iteritems():
 for operation in diff_pkgs:
     if len(operation) > 0:
         log.info("Storing spool for current package list.")
-        sync_ver('apt_current_packages', 'please-update')
+        sync_tbl_ver('apt_current_packages', 'please-update')
         agent.store_spool('packages', pkgs_list, True)
         run_this['apt_current_packages'] = True
         print "apt_current_packages changed. Must update"
@@ -114,24 +118,33 @@ for operation in diff_pkgs:
 [cached_candidates, current_candidates, diff_candidates] \
     = agent.diff_new_spool('update_candidates')
 
+print "diff", diff_candidates
 # Format the update candidates list ready to store in spool
 candidates_list = []
 for key, val in current_candidates.iteritems():
     candidates_list.append(['cur_candidates', key, val])
 
-for operation in diff_candidates:
-    if len(operation) > 0:
-        sync_ver('apt_update_candidates', 'please-update')
-        log.info("Storing spool for update_candidates.")
-        agent.store_spool('update_candidates', candidates_list, True)
-        run_this['apt_update_candidates'] = True
-        print "apt_update_candidates changed. Must update"
+if diff_candidates[1].get('update_candidates','') == 'empty':
+    sync_tbl_ver('apt_update_candidates', 'please-update')
+    log.info("Storing spool for update_candidates.")
+    agent.store_spool('update_candidates', ['teste1', 'teste2','teste3'], True)
+    run_this['apt_update_candidates'] = True
+    print "apt_update_candidates changed. Must update"
+
+else:
+
+    for operation in diff_candidates:
+        if len(operation) > 0:
+            sync_tbl_ver('apt_update_candidates', 'please-update')
+            log.info("Storing spool for update_candidates.")
+            agent.store_spool('update_candidates', candidates_list, True)
+            run_this['apt_update_candidates'] = True
 
 # APT REPOSITORIES 
 #[cached_reps, current_reps, diff_reps] = agent.diff_new_spool('repositories')
 print agent.rep_md5
 if agent.check_diff_rep():
-    sync_ver('apt_repositories', 'please-update')
+    sync_tbl_ver('apt_repositories', 'please-update')
     log.info("Storing md5 spool for repositories list.")
     agent.store_spool('repositories', [  ['rep_md5','md5',agent.rep_md5 ] ], True)
     run_this['apt_repositories'] = True
@@ -162,7 +175,15 @@ if not my_session:
 
     my_session = agent.rpc.session_setup(uniq, token)
     
-local_versions = agent.read_spool('tbl_ver')
+local_versions = {'apt_repositories':'',
+ 'task':'', 
+ 'apt_update_candidates':'',
+ 'apt_current_packages':'',
+  }
+
+spool_versions = agent.read_spool('tbl_ver')
+print "weee", spool_versions
+local_versions.update(spool_versions)
 
 #remote_versions = {}
 for tbl in local_versions.keys():
