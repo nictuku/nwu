@@ -252,9 +252,9 @@ class agent_talk:
         cache = ConfigParser.ConfigParser()
         result = cache.read(cache_path)
 
-        if not result or len(result) < 1:
-            log.error("Could not read " + category + "cache")
-            return {}
+        #if not result or len(result) < 1:
+        #    log.error("Could not read " + category + " cache")
+        #    return {}
         
         objects = {}
         for s in cache.sections():
@@ -271,6 +271,8 @@ class agent_talk:
         """
         cached = self.read_spool(info)
         current = eval('self.' + info)
+        print "cache:", cached
+        print "current:", current
         diff = self.diff_dicts(cached, current)
         return [cached, current, diff]
 
@@ -278,7 +280,7 @@ class agent_talk:
         """Checks if the new repositories list
         is new or not.
         """
-        cached = self.read_spool('repositories')['md5']
+        cached = self.read_spool('repositories').get('md5','')
         current = self.rep_md5
         if cached != current:
             return True
