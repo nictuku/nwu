@@ -177,5 +177,7 @@ for tbl in local_versions.keys():
 for run in run_this.keys():
     eval("sync_" + run)()
 
-# FIXME: store pkg cache only if server confirms receipt
+# FIXME: Should only sync tasks if remote version differs from locals
+sync_task()
+
 
