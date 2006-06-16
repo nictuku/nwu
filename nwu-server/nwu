@@ -39,6 +39,7 @@ sub_commands = {
 "install" : "<computer> <packages>  : Install defined packages in the computer",
 "help" : "                          : This help message",
 "upgrade" : "<computer>             : Upgrade all packages in the computer",
+"update"  : "<computer>             : Update packages list",
 "list" : "   [group]                : Lists all computers or specified group",
 "view" : "   <computer> <info>      : View computer informations",
 "adduser" : "<name> <level:0|1>     : Add a new user, admin or not",
