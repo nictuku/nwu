@@ -24,11 +24,11 @@ from nwu_server.db.operation import *
 
 parser = OptionParser()
 
-parser.add_option("update", type="string", nargs=1, dest="update"
-    help="Update APT cache in the computer.")
-parser.add_option("install", type="string", nargs=2, dest="install",
-    metavar="
-    help="Install 
+#parser.add_option("update", type="string", nargs=1, dest="update",
+#    help="Update APT cache in the computer.")
+#parser.add_option("install", type="string", nargs=2, dest="install",
+#    metavar="
+#    help="Install 
 VERSION = '0.1.5'
 
 appendix = """NWU is a remote upgrades manager for systems that use APT.
