@@ -52,7 +52,7 @@ def sync_apt_repositories():
 
 def sync_apt_update_candidates():
     log.info("Sending update candidates list.")
-    if diff_candidates[1].get('update_candidates','') == 'empty':
+    if diff_candidates[1].get('update_candidates','') == 'new':
         updver = agent.rpc.wipe_this(my_session,'apt_update_candidates')
     else:
         updver = agent.rpc.apt_set_list_diff(my_session, 
@@ -118,19 +118,28 @@ for operation in diff_pkgs:
 [cached_candidates, current_candidates, diff_candidates] \
     = agent.diff_new_spool('update_candidates')
 
+print "cached", cached_candidates
+print "cur", current_candidates
 print "diff", diff_candidates
 # Format the update candidates list ready to store in spool
 candidates_list = []
 for key, val in current_candidates.iteritems():
     candidates_list.append(['cur_candidates', key, val])
 
-if diff_candidates[1].get('update_candidates','') == 'empty':
+# ARGH this is ugly, but I'll figure out a way to organize this
+if diff_candidates[1].get('update_candidates','') == 'new':
     sync_tbl_ver('apt_update_candidates', 'please-update')
     log.info("Storing spool for update_candidates.")
-    agent.store_spool('update_candidates', ['teste1', 'teste2','teste3'], True)
+    agent.store_spool('update_candidates', [['update_candidates',
+     'empty','empty']], True)
     run_this['apt_update_candidates'] = True
     print "apt_update_candidates changed. Must update"
 
+elif diff_candidates[1].get('empty','') == 'empty':
+    # This list is empty and WAS empty already. So, move on!
+    run_this['apt_update_candidates'] = False
+    print "Empty and old list. Nevermind"
+    
 else:
 
     for operation in diff_candidates:
