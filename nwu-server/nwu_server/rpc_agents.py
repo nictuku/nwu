@@ -27,11 +27,11 @@ def create_tables():
             t = eval(table)
             t.createTable()
         except:
+	    print sys.exc_type, sys.exc_value
             log.warning("Could not create table " + table + ": " + \
                 str(sys.exc_type) + '- ' + str(sys.exc_value))
     hub.commit()
     hub.end()
- 
 def get_tasks(session):
 
     (uniq, token) = session
@@ -71,12 +71,16 @@ def get_tasks(session):
     hub.end()
     return remote_tasks
 
-def wipe_tasks(session):
+def wipe_this(session, wipe_table):
     (uniq, token) = session
 
     if not computer.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
+    if wipe_table not in ['apt_current_packages', 'apt_update_candidates',
+            'apt_repositories', 'task']:
+	    raise Exception, "Illegal table."
+	    
     hub.begin()
     conn = hub.getConnection()
 
@@ -89,15 +93,15 @@ def wipe_tasks(session):
 
     client_computer = ma[0]
 
-    log.info("Wiping tasks for "   + client_computer.hostname + '(' + \
+    log.info("Wiping " + wipe_table + " for "   + 
+        client_computer.hostname + '(' + \
         str(client_computer.id) + ')' )
-
-
-    delquery = conn.sqlrepr(Delete(task.q, where=\
-        (task.q.computerID ==  client_computer.id)))
+    table = eval(wipe_table)
+    delquery = conn.sqlrepr(Delete(table.q, where=\
+        (table.q.computerID ==  client_computer.id)))
 
     conn.query(delquery)
-    up = update_tbl_version('task', uniq)
+    up = update_tbl_version(wipe_table, uniq)
     hub.commit()
     hub.end()
     return up 

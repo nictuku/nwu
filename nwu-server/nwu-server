@@ -191,7 +191,7 @@ the syslog daemon running?"
     server.register_function(computer.session_setup)
     server.register_function(apt_current_packages.apt_set_list_diff)
     server.register_function(get_tasks)
-    server.register_function(wipe_tasks)
+    server.register_function(wipe_this)
     server.register_function(get_tbl_version)
     server.register_function(computer.add_computer)
     server.register_function(nadmin.get_info)
