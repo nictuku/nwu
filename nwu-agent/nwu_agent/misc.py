@@ -241,16 +241,18 @@ class agent_talk:
 
         return (up_k, del_k)
 
-    def read_spool(self, category):
+    def read_spool(self, category, stream=None):
 
         if category not in ['packages', 'update_candidates', 'tbl_ver', 
             'repositories']:
             raise Exception, "Wrong cache category specified: " + category
 
-        cache_path = "/var/spool/nwu/nw." + category
+        if not stream:
+            cache_path = "/var/spool/nwu/nw." + category
+            stream = open(cache_path)
 
         cache = ConfigParser.ConfigParser()
-        result = cache.read(cache_path)
+        result = cache.readfp(stream)
 
         #if len(result) < 1:
         #    log.error("Could not read " + category + " cache")
@@ -258,9 +260,9 @@ class agent_talk:
         
         objects = {}
 
-	if len(cache.sections()) < 1:
-	     return {category:'empty'}
-	     
+        if len(cache.sections()) < 1:
+             return {category:'new'}
+             
         for s in cache.sections():
             for option, value in cache.items(s):
                 objects[option] = value
@@ -313,8 +315,8 @@ class agent_talk:
         store = ConfigParser.ConfigParser()
 
         r = store.read(spool_path)
-	print "item list", item_list
-	for it in item_list:
+        print "item list", item_list, spool
+    	for it in item_list:
             section = it[0]
             option = it[1]
             if len(it) > 2:
