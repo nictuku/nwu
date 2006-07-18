@@ -249,7 +249,11 @@ class agent_talk:
 
         if not stream:
             cache_path = "/var/spool/nwu/nw." + category
-            stream = open(cache_path)
+            try:
+                stream = open(cache_path, 'r')
+            except IOError:
+                log.debug("update candidates spool file not found.")
+                return {category:'new'}
 
         cache = ConfigParser.ConfigParser()
         result = cache.readfp(stream)
