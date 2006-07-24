@@ -169,10 +169,6 @@ the syslog daemon running?"
         create_tables()
         sys.exit(0)
  
-    if options.daemonize:
-        daemonize(options.pidfile, options.errorlog)
-        drop_privileges(options.user)
-
     # optparse will take care of only accepting the specified loglevels
     log.info("Starting NWU.")
 
@@ -200,6 +196,8 @@ the syslog daemon running?"
     if options.daemonize:
         log.info("Daemonizing.")
         daemonize(options.pidfile, options.errorlog)
+        drop_privileges(options.user)
+
     server.serve_forever()
 
 if __name__ == '__main__':
