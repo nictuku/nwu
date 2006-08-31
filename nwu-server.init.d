@@ -20,7 +20,7 @@ case "$1" in
   start)
     log_begin_msg "Starting Network Wide Updates Server"
     
-    if [ "$NO_START" == 1 ]; then
+    if [ "$NO_START" -eq 1 ]; then
           log_end_msg 1
 	  echo "   !! Will not start."
 	  echo "      See /etc/default/nwu-server"
@@ -40,7 +40,7 @@ case "$1" in
     else
     	${NWUSERVER}
         echo
-        if [ "$?" == 0 ]; then
+        if [ "$?" -eq 0 ]; then
             log_end_msg 0
         else
             log_end_msg 1
