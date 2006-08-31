@@ -14,15 +14,15 @@ if ! getent group $USER_NAME > /dev/null ; then
 	CREATE_GROUP=1
 fi 
 
-if [ "$CREATE_USER" == 1 ]; then
+if [ "$CREATE_USER" -eq 1 ]; then
 
   adduser --quiet --system --home /var/lib/nwu --group \
           --shell /bin/sh --disabled-login \
           --gecos 'Network Wide Updates' $USER_NAME
-  if [ "$?" == 0 ]; then CREATE_GROUP=0; fi
+  if [ "$?" -eq 0 ]; then CREATE_GROUP=0; fi
 fi
 
-if [ "$CREATE_GROUP" == 1 ]; then
+if [ "$CREATE_GROUP" -eq 1 ]; then
   addgroup --quiet --system $USER_NAME
   adduser --quiet $USER_NAME $USER_NAME
 fi
