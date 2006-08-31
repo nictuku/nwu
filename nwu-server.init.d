@@ -28,12 +28,7 @@ case "$1" in
     fi
 
 
-    if [ ! -f ${CONFIG} ]; then
-	log_end_msg 1
-	echo "   !! No config file (${CONFIG}) fonud."
-        echo "      Please take a look at /usr/share/doc/nwu-server/README"
-	echo "      Example available at /usr/share/doc/nwu-server/example/"
-    elif [ ! -f ${SSLCERT} ]; then
+    if [ ! -f ${SSLCERT} ]; then
 	log_end_msg 1
 	echo "   !! No SSL Certificate (${SSLCERT}) found."
         echo "      Instructions for creating a certificate at /usr/share/doc/nwu-server/README"

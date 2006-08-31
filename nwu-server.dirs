@@ -2,6 +2,5 @@ usr/bin
 usr/sbin
 var/run/nwu-server
 var/lib/nwu
-usr/share/doc/nwu-server/example
 etc/nwu
 etc/default
