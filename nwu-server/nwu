@@ -164,21 +164,22 @@ def main():
 
                 if view_what == 'packages':
                     print "Reading current packages in computer " + mach_print
-                    for package in mach.apt_current_packageses:
+                    print dir(mach)
+                    for package in mach.current_packages:
                         fill = 45 - len(package.name)
                         fill_blank = " " * fill 
                         print package.name + fill_blank +  package.version
 
                 elif view_what == 'update-candidates':
                     print "Reading update candidades for computer " + mach_print
-                    for package in mach.apt_update_candidateses:
+                    for package in mach.update_candidates:
                         fill = 45 - len(package.name)
                         fill_blank = " " * fill 
                         print package.name  + fill_blank + package.version
 
                 elif view_what == 'repositories':
                     print "Reading repositories for computer " + mach_print
-                    for rep in mach.apt_repositorieses:
+                    for rep in mach.repositories:
                         print rep.type + " " + rep.uri + " " + rep.distribution + \
                             " " + rep.components + "  (" + rep.filename + ")"
 

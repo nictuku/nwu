@@ -455,7 +455,7 @@ if __name__ == '__main__':
 
     for ma in all:
         print ma.hostname
-        for package in ma.apt_current_packageses:
+        for package in ma.apt_current_packages:
             print package.name, package.version
 
         for rep in ma.apt_repositorieses:
