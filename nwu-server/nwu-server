@@ -25,11 +25,6 @@ import ConfigParser
 import logging
 import logging.handlers
 
-from nwu_server.db.operation import *
-from nwu_server.rpc_admin import nwu_admin
-from nwu_server import sslxmlrpc
-from nwu_server.rpc_agents import *
-
 
 def read_config():
     """Reads configuration data from the config file.
@@ -59,8 +54,7 @@ def daemonize(PIDFILE, ERRORLOG):
     sys.stderr.flush()
     # Credits:
     # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012
-    # do the UNIX double-fork magic, see Stevens' "Advanced
-    # Programming in the UNIX Environment" for details (ISBN 0201563177)
+    
     try:
         pid = os.fork()
         if pid > 0:
@@ -131,12 +125,10 @@ def getopts():
     (options, args) = parser.parse_args()
     return options
 
-def main():
-    options = getopts()
-    log = logging.getLogger()
+def nwu_main():
 
-    if options.init:
-        options.daemonize = False
+#    if options.init:
+#        options.daemonize = False
 
     if options.daemonize:
         # Log to syslog by default
@@ -160,15 +152,7 @@ the syslog daemon running?"
     log.addHandler(hdlr)
     log.setLevel(eval('logging.' + options.loglevel)) 
 
-    if options.init:
-        # Create database and tables, but using the unprivileged
-        # user, so it can access file later when needed
-        # FIXME: this is not showing
-        drop_privileges(options.user)
-        log.info("Creating required database structure.")
-        create_tables()
-        sys.exit(0)
- 
+
     # optparse will take care of only accepting the specified loglevels
     log.info("Starting NWU.")
 
@@ -201,7 +185,18 @@ the syslog daemon running?"
     server.serve_forever()
 
 if __name__ == '__main__':
-    try:
-        sys.exit (main ())
-    except KeyboardInterrupt:
-        sys.exit (0)
+    log = logging.getLogger()
+    options = getopts()
+    if options.init:
+        drop_privileges(options.user)
+        log.info("Creating required database structure.")
+        from nwu_server.db.operation import create_tables
+        create_tables()
+        sys.exit(0)
+
+    from nwu_server.db.operation import *
+    from nwu_server.rpc_admin import nwu_admin
+    from nwu_server import sslxmlrpc
+    from nwu_server.rpc_agents import *
+
+    nwu_main()

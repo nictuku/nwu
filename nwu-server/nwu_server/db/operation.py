@@ -431,7 +431,21 @@ class users(SQLObject):
     username = StringCol(length=255, unique=True)
     password = StringCol(length=255)
     userlevel=IntCol()
-            
+
+def create_tables():
+    """Creates required tables in the database.
+    """
+    log.debug("Creating necessary tables in the database.")
+#    os.unlink('/var/lib/nwu/nwu.db')
+    for table in ['computer', 'apt_current_packages', 'apt_update_candidates',
+        'apt_repositories', 'task', 'authcomputer', 'users', 'tables_version']:
+        try:
+            t = eval(table)
+            t.createTable()
+        except:
+            print sys.exc_type, sys.exc_value
+            log.warning("Could not create table " + table + ": " + \
+                str(sys.exc_type) + '- ' + str(sys.exc_value))
 
 if __name__ == '__main__':
 

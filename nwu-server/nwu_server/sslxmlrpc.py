@@ -21,6 +21,7 @@ import socket
 import SocketServer
 from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+from nwu_server.rpc_admin import nwu_admin
 
 class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
        SSL.SSLServer, SimpleXMLRPCServer):
@@ -45,7 +46,28 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
                 self.handle_error(request, client_address)
                 self.close_request(request)
 
+    def start(self):
+        host = config['host']
+        port = config['port']
+        log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
+        ".")
+ 
+        nadmin = nwu_admin()
 
+        ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
+        server = ssl.start_server(host, port)
+        server.register_function(apt_repositories.apt_set_repositories)
+        server.register_function(apt_current_packages.apt_set_current_packages_full)
+        server.register_function(computer.session_setup)
+        server.register_function(apt_current_packages.apt_set_list_diff)
+        server.register_function(get_tasks)
+        server.register_function(wipe_this)
+        server.register_function(get_tbl_version)
+        server.register_function(computer.add_computer)
+        server.register_function(nadmin.get_info)
+        server.register_function(nadmin.computer_del)
+        return server
+ 
 class SSLServer:
     
     def __init__(self,pemfile):
@@ -67,4 +89,6 @@ class SSLServer:
         ssl_context = self.ctx() 
         address = (host, port)
         server = SSLXMLRPCServer(ssl_context, address)
-        return server      
+        return server     
+
+
