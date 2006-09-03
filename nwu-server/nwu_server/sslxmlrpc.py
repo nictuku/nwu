@@ -39,6 +39,8 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
             request, client_address = self.get_request()
         except socket.error:
             return
+        except SSL.SSLError:
+            return
         if self.verify_request(request, client_address):
             try:
                 self.process_request(request, client_address)
