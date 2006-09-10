@@ -14,6 +14,10 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 #install: build $(PYVERS:%=install-python%)
 #install-python%:
 #	python$* setup.py install --root $(CURDIR)/debian/tmp
+
+binary-install/python-sysinfo::
+	dh_pysupport -ppython-sysinfo
+	dh_python	-ppython-sysinfo
     
 binary-install/nwu-server::
 	dh_pysupport -pnwu-server

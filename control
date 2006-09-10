@@ -3,7 +3,6 @@ Section: admin
 Priority: optional
 Maintainer: Yves Junqueira (nictuku) <yves@cetico.org>
 Build-Depends: cdbs (>= 0.4.41), debhelper (>= 5.0.37.2), python-all-dev (>= 2.3.5-11), python-support (>= 0.4.1)
-XS-Python-Version: 2.3, 2.4
 Standards-Version: 3.6.2
 
 Package: nwu-agent
@@ -34,3 +33,17 @@ Description: Network-wide updates for systems which use APT - server
  ormation.
  .
  This package installs the nwu server software
+
+Package: python-sysinfo
+Architecture: all
+XB-Python-Version: ${python:Versions}
+Depends: lshw, aptitude (>= 0.2.15.9-2), python2.4-apt (>= 0.5.10) | python-apt (>= 0.5.10)
+Description: Multi-platform system information library
+ Python-sysinfo provides an abstraction layer to system information for
+ hardware, software and services in the local computer.
+ .
+ The GNU/Linux version uses lshw to collect hardware info and the other data
+ come from config files, /proc and such.
+ .
+ python-sysinfo is part of NWU (Network Wide Updates) 
+ See http://cetico.org/nwu
