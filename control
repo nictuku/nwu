@@ -23,7 +23,7 @@ Description: Network-wide updates for systems which use APT - agent
 Package: nwu-server
 Architecture: all
 XB-Python-Version: ${python:Versions}
-Depends: adduser, lsb-base, python (>= 2.3), python (<< 2.5), m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
+Depends: adduser, rcconf, lsb-base, python (>= 2.3), python (<< 2.5), m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
 Recommends: openssl
 Description: Network-wide updates for systems which use APT - server
  Nwu lets administrators manage APT of remote machines from one central point.
@@ -37,7 +37,7 @@ Description: Network-wide updates for systems which use APT - server
 Package: python-sysinfo
 Architecture: all
 XB-Python-Version: ${python:Versions}
-Depends: lshw, aptitude (>= 0.2.15.9-2), python2.3-apt (>= 0.5.10) 
+Depends: lshw, aptitude (>= 0.2.15.9-2), python-apt (>= 0.5.10) 
 Description: Multi-platform system information library
  Python-sysinfo provides an abstraction layer to system information for
  hardware, software and services in the local computer.
