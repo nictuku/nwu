@@ -1,5 +1,7 @@
+debian/tmp/usr/lib/python*/site-packages/nwu_agent/__init__.py usr/lib/python2.3/site-packages/nwu_agent 
+debian/tmp/usr/lib/python*/site-packages/nwu_agent/maint.py usr/lib/python2.3/site-packages/nwu_agent
+debian/tmp/usr/lib/python*/site-packages/nwu_agent/misc.py usr/lib/python2.3/site-packages/nwu_agent
 debian/tmp/usr/bin/nwu-maint usr/sbin
 debian/tmp/usr/bin/nwu-agent usr/bin
-debian/tmp/etc/nwu/agent.conf etc/nwu
-debian/tmp/usr/lib/*/site-packages/nwu_agent usr/lib/site-python
-debian/tmp/usr/share/doc/nwu-agent/README usr/share/doc/nwu-agent
+nwu-agent/sample_conf/agent.conf etc/nwu
+nwu-agent/README usr/share/doc/nwu-agent

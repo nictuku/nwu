@@ -1,3 +1,28 @@
 #!/usr/bin/make -f
+DEB_PYTHON_SYSTEM=pysupport
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
+
+#PYVERS=$(shell pyversions -vr)
+
+#build: $(PYVERS:%=build-python%)
+#	touch $@
+
+#build-python%:
+#	python$* setup.py build
+#	touch $@
+#install: build $(PYVERS:%=install-python%)
+#install-python%:
+#	python$* setup.py install --root $(CURDIR)/debian/tmp
+
+binary-install/python-sysinfo::
+	dh_pysupport -ppython-sysinfo
+	dh_python	-ppython-sysinfo
+    
+binary-install/nwu-server::
+	dh_pysupport -pnwu-server
+	dh_python	-pnwu-server
+
+binary-install/nwu-agent::
+	dh_pysupport -pnwu-agent
+	dh_python	-pnwu-agent

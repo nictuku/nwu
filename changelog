@@ -1,8 +1,8 @@
-nwu (0.1.5-3mds1) unstable; urgency=low
+nwu (0.1.5-3) unstable; urgency=low
 
-  * Internal version only 
+  * New Python Policy in Debian 
 
- -- root <root@mds525.mds.net>  Fri, 16 Jun 2006 11:29:01 -0300
+ -- Yves Junqueira (nictuku) <yves@cetico.org>  Sat,  2 Sep 2006 20:30:47 -0300
 
 nwu (0.1.5-1) unstable; urgency=low
 
