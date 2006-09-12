@@ -53,11 +53,10 @@ def sync_apt_repositories():
 def sync_apt_update_candidates():
     log.info("Sending update candidates list.")
     if diff_candidates[1].get('update_candidates','') == 'new':
-        updver = agent.rpc.wipe_this(my_session,'apt_update_candidates')
-    else:
-        updver = agent.rpc.apt_set_list_diff(my_session, 
-	'apt_update_candidates', 
-        diff_candidates[0], diff_candidates[1])
+            updver = agent.rpc.wipe_this(my_session,'apt_update_candidates')
+    updver = agent.rpc.apt_set_list_diff(my_session, 
+	        'apt_update_candidates', 
+            diff_candidates[0], diff_candidates[1])
     sync_tbl_ver('apt_update_candidates', updver)
 
 def sync_apt_current_packages():       

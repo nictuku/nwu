@@ -190,8 +190,9 @@ if __name__ == '__main__':
     if options.init:
         drop_privileges(options.user)
         log.info("Creating required database structure.")
-        from nwu_server.db.operation import create_tables
+        from nwu_server.db.operation import create_tables, hub
         create_tables()
+        hub.commit()
         sys.exit(0)
 
     from nwu_server.db.operation import *
