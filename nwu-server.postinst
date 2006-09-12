@@ -1,10 +1,11 @@
 #!/bin/sh -e
 
 USER_NAME=nwuserver
+CREATE_GROUP=0
+CREATE_USER=0
 
 # Due to older deb packages, sometimes the system has the user but
 # does not have the group
-CREATE_GROUP=0
 
 if ! getent passwd $USER_NAME >/dev/null; then
 	CREATE_USER=1;
