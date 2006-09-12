@@ -185,7 +185,7 @@ def main():
 
                 elif view_what == 'tasks':
                     print "Reading tasks for computer " + mach_print
-                    for t in mach.tasks:
+                    for t in mach.task:
                        print t.action + ": " + str(t.details)
 
                 else: usage()
