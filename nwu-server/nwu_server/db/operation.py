@@ -458,15 +458,10 @@ if __name__ == '__main__':
 
     installed = apt_current_packages(computer=m, name='gcc', version='1.1')
     installed = apt_current_packages(computer=m, name='znes', version='4.1')
-    
     reps = apt_repositories(computer=m, filename='/etc/apt/sources.list',type='deb',
         uri='http://blabla', distribution='stable',
         components = 'breezy-updates main restricted')
-
     all = computer.select(computer.q.hostname=='localhost')
-
-    #print "weee",list(all)
-
     for ma in all:
         print ma.hostname
         for package in ma.apt_current_packages:

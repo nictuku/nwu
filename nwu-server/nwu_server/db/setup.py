@@ -66,7 +66,6 @@ class AutoConnectHub(ConnectionHub):
             global cfg
             cfg = read_conf()
             uri = cfg.connection_string
-
         self.uri = uri
         self.supports_transactions = supports_transactions
         ConnectionHub.__init__(self)
@@ -152,6 +151,12 @@ class AutoConnectHub(ConnectionHub):
         self.threadingLocal.connection = self.threadingLocal.old_conn
         del self.threadingLocal.old_conn
         self.threadingLocal.connection.cache.clear()
+
+    def end_close(self):
+        """Ends the transaction and closes the connection."""
+        self.end()
+        log.debug("Closing database connection opened by the current thread.")
+        self.threadingLocal.connection.close()
 
 
 #This dictionary stores the AutoConnectHubs used for each

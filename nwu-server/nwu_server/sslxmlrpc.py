@@ -17,16 +17,26 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+import logging
 import socket
 import SocketServer
 from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from nwu_server.rpc_admin import nwu_admin
+from nwu_server.db.operation import hub
+
+log = logging.getLogger("nwu_server.db.sslxmlrpc")
+
+class NWURequestHandler(SimpleXMLRPCRequestHandler):
+    def finish(self):
+        log.debug("Request finished.")
+        hub.end_close()
+
 
 class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
        SSL.SSLServer, SimpleXMLRPCServer):
     def __init__(self, ssl_context, server_uri):
-        handler = SimpleXMLRPCRequestHandler
+        handler = NWURequestHandler
         #    self.handle_error = self._quietErrorHandler
         SSL.SSLServer.__init__(self, server_uri, handler, ssl_context) 
         self.funcs = {}

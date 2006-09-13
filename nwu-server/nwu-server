@@ -25,7 +25,6 @@ import ConfigParser
 import logging
 import logging.handlers
 
-
 def read_config():
     """Reads configuration data from the config file.
     """
@@ -130,38 +129,12 @@ def nwu_main():
 #    if options.init:
 #        options.daemonize = False
 
-    if options.daemonize:
-        # Log to syslog by default
-        try:
-            hdlr = logging.handlers.SysLogHandler(
-          "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
-        except:
-            print "Error while connecting logger instance to the syslog. Is \
-the syslog daemon running?"
-            sys.exit(1)
-
-        formatter = logging.Formatter(
-        "nwu_server[%(process)d] %(levelname)s %(message)s"
-            )
-    else:
-        # Log to stderr if staying in the foreground
-        hdlr = logging.StreamHandler()
-        formatter = logging.Formatter('%(message)s')
-
-    hdlr.setFormatter(formatter)
-    log.addHandler(hdlr)
-    log.setLevel(eval('logging.' + options.loglevel)) 
-
-
     # optparse will take care of only accepting the specified loglevels
-    log.info("Starting NWU.")
-
     config = read_config()
     host = config['host']
     port = config['port']
     log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
         ".")
-
     nadmin = nwu_admin()
 
     ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
@@ -185,8 +158,9 @@ the syslog daemon running?"
     server.serve_forever()
 
 if __name__ == '__main__':
-    log = logging.getLogger()
     options = getopts()
+    log = logging.getLogger()
+    
     if options.init:
         drop_privileges(options.user)
         log.info("Creating required database structure.")
@@ -194,6 +168,28 @@ if __name__ == '__main__':
         create_tables()
         hub.commit()
         sys.exit(0)
+
+    if options.daemonize:
+        # Log to syslog by default
+        try:
+            hdlr = logging.handlers.SysLogHandler(
+          "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+        except:
+            print "Error while connecting log instance to the syslog. Is \
+the syslog daemon running?"
+            sys.exit(1)
+
+        formatter = logging.Formatter(
+        "nwu_server[%(process)d] %(levelname)s %(message)s"
+            )
+    else:
+        # Log to stderr if staying in the foreground
+        hdlr = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s (%(levelname)s): %(message)s')
+
+    hdlr.setFormatter(formatter)
+    log.addHandler(hdlr)
+    log.setLevel(eval('logging.' + options.loglevel)) 
 
     from nwu_server.db.operation import *
     from nwu_server.rpc_admin import nwu_admin
