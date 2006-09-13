@@ -35,20 +35,16 @@ from md5 import md5
 log = logging.getLogger('nwu_agent.misc')
 
 class agent_talk:
-
     def __init__(self, load_config=True):
         if load_config:
             self.conffile = '/etc/nwu/agent.conf'
             config = ConfigParser.ConfigParser()
-
             if not os.access(self.conffile, os.R_OK):
-                log.error("Config file " + self.conffile + " is not readable by the current user.")
+                log.error("Config file " + self.conffile + 
+                    " is not readable by the current user.")
                 sys.exit(1)
-
             r = config.read("/etc/nwu/agent.conf")
-
             self.server_uri = config.get("connection", "server_uri")
-
             # grr I don't want to have to do this. Fix sysinfo
             format = "%(asctime)s cacic[%(process)d] %(levelname)s %(name)s:%(lineno)d: %(message)s"
             sysinfo_logger = logging.getLogger("sysinfo")
@@ -58,50 +54,37 @@ class agent_talk:
             formatter = logging.Formatter(format)
             ch.setFormatter(formatter)
             sysinfo_logger.addHandler(ch)
-
             #Config.simplify_objects = 1 
             sourcefiles = self.list_sources_list()
-            self.repositories, self.rep_md5 = self.read_sources_list(sourcefiles)
+            self.repositories, self.rep_md5 = self.read_sources_list(
+                    sourcefiles)
             self.pkgs = sysinfo.software.packages()
             self.packages = self.pkgs.installed_ver
             self.update_candidates = self.pkgs.update_candidates
             self.rpc = self.XClient(self.server_uri)
-            
 
-    def verify(self, conn, cert, errnum, depth, ok):
-        print 'So-far =',ok
-        print 'errno =',errnum
-        print 'conn =',conn
-        print 'oi', cert.get_issuer()
-        print '    Subject: ', cert.get_subject()
-        print "ok"
-        print '        O     : %s' % cert.get_subject().O
-        print '        OU    : %s' % cert.get_subject().OU
-        print '        CN    : %s' % cert.get_subject().CN
-        print '        email : %s' % cert.get_subject().emailAddress
-        print '    Serial : %s' % cert.get_serial_number()
-        print '    SHash  : %s' % cert.subject_name_hash()
-        print '   Expired : %s' % cert.has_expired()
-        print '   CN : %s' % cert
-        return ok
+    def my_ctx(self):
+        ctx = SSL.Context('sslv3')
+        # FIXME: currently ignored
+        ctx.set_allow_unknown_ca(False)
+        #ctx.load_cert_chain('/tmp/server.pem')
+        #ctx.load_cert('/tmp/server.pem')
+        #ctx.load_verify_info('/tmp/server.pem')
+        #ctx.load_client_ca('/etc/nwu/cacert.pem')
+        ctx.load_verify_info(cafile='/etc/nwu/cacert.pem')
+        # FIXME: verify_peer nao funfa. veja m2.ssl_get_verify_result(self.ssl)
+        # e linha 147 do arquivo:
+        # /usr/lib/python2.4/site-packages/M2Crypto/SSL/Connection.py
+        ctx.set_verify(SSL.verify_none, 2)
+        return ctx
 
     def XClient(self, server_uri):
-        ctx = SSL.Context('sslv3')
-        #ctx.load_cert_chain('/tmp/server.pem')
-        ctx.set_allow_unknown_ca(1)
-    #    ctx.load_cert('/tmp/server.pem')
-    #    ctx.load_verify_info('/tmp/cacert.pem')
-    #    ctx.load_client_ca('/tmp/cacert.pem')
-        #print "ve1"
-        #ctx.set_verify(SSL.verify_peer, 10)
-        #print "ve2"
+        ctx = self.my_ctx()
         xs = Server(server_uri, SSL_Transport(ctx))
         return xs
 
-
     def get_auth(self):
         auth_path = "/var/spool/nwu/auth"
-
         try:
             st = os.stat(auth_path)
         except:
@@ -111,84 +94,54 @@ class agent_talk:
             if mode != 33216 and mode != 33152: # 600 and 700
                 raise Exception, "Wrong permission for the auth file (" +\
                   auth_path + "). See the README file."
-
         r = os.umask(0177)
-
         auth_file = ConfigParser.ConfigParser()
         # FIXME: create new file if needed
         r = auth_file.read(auth_path)
-
         changed = False
-
         if not auth_file.has_section('auth'):
             auth_file.add_section('auth')
-
             changed = True
-
         if not auth_file.has_option('auth', 'uniq') or \
             len(auth_file.get("auth", "uniq")) != 32:
             # No or bad uniq string found in the auth file. Creating a new one.
-
             letters = string.ascii_uppercase + string.digits
             uniq = ''
             for i in range(32):
                 uniq += random.choice(letters)
-
             auth_file.set("auth", "uniq", uniq)
             changed = True
-    #
         else:
             uniq = auth_file.get("auth", "uniq")
-
         # Checking for password. If it doesn't find one, generate
         # a new random string.
-
-        # FIXME: Security issue: is variable length password creation a good idea? 
+        # FIXME: Security issue: is variable length password creation
+        # a good idea? 
         # FIXME: Security issue: should the server create a password instead?
-
         if not auth_file.has_option('auth', 'password') or \
             len(auth_file.get("auth", "password")) != 255:
-     
            # Creating a new password string of 255 bytes.
             password = ''
             letters = string.ascii_letters + string.digits
             for i in range(255):
                 password += random.choice(letters)
-            
             auth_file.set("auth", "password", password)
             changed = True
-
         else:
             password = auth_file.get("auth", "password")
-
         # dump changes
         if changed:
-            log.info("Storing auth settings to " + auth_path)
+            log.info("Storing auth settings to %s" % auth_path)
             auth_fd = open(auth_path, 'w')
             auth_file.write(auth_fd)
             auth_fd.close()
-
         session = uniq, password
-
         return session
-
      
-#    def get_current(self, info):
-#        #get_packages()
-#        if info == 'pkgs':
-#            packages = self.pkgs.installed_ver
-#            return packages
-#        elif info == 'update_candidates':
-#            update_candidates = self.pkgs.update_candidates
-#            return update_candidates    
-            
-      
     def list_sources_list(self):
         filenames = ['/etc/apt/sources.list']
         directories = ['/etc/apt/sources.d']
-
         for dir in directories:
-
             try:
                 for file in os.listdir(dir):
                     if file.endswith('.list'):
@@ -200,14 +153,11 @@ class agent_talk:
     # FIXME: move this to sysinfo
     def read_sources_list(self, filenames):
         full_string = ''
-
         repositories = []
-
         for source in filenames:
             # any use to handle exceptions here?
             f = open(source, 'r')
             thisrep = [source]
-
             for line in f:
                 full_string += line
                 line = line.strip()
@@ -217,9 +167,7 @@ class agent_talk:
                 if not ignore :
                     thisrep.append(l)
         #pik = pickle.dumps(repositories)
-
             repositories.append(thisrep)
-
         return repositories, md5(full_string).hexdigest()
 
     def diff_dicts(self, old_dict, new_dict):
@@ -228,17 +176,13 @@ class agent_talk:
         """
         updated_keys = [ k for k in new_dict if k not in old_dict 
             or new_dict[k] != old_dict[k] ]
-
         up_k = {}
         for k in updated_keys:
             up_k[k] = new_dict[k]
-
         deleted_keys = [ k for k in old_dict if k not in new_dict ]
-
         del_k = {}
         for k in deleted_keys:
             del_k[k] = old_dict[k]
-
         return (up_k, del_k)
 
     def read_spool(self, category, stream=None):
@@ -246,31 +190,21 @@ class agent_talk:
         if category not in ['packages', 'update_candidates', 'tbl_ver', 
             'repositories']:
             raise Exception, "Wrong cache category specified: " + category
-
         if not stream:
-            cache_path = "/var/spool/nwu/nw." + category
+            cache_path = "/var/spool/nwu/nw.%s" % category
             try:
                 stream = open(cache_path, 'r')
             except IOError:
                 log.debug("update candidates spool file not found.")
                 return {category:'new'}
-
         cache = ConfigParser.ConfigParser()
         result = cache.readfp(stream)
-
-        #if len(result) < 1:
-        #    log.error("Could not read " + category + " cache")
-        #    return {category:'empty'} 
-        
         objects = {}
-
         if len(cache.sections()) < 1:
              return {category:'new'}
-             
         for s in cache.sections():
             for option, value in cache.items(s):
                 objects[option] = value
-
         return objects
 
     def diff_new_spool(self, info):
@@ -281,8 +215,6 @@ class agent_talk:
         """
         cached = self.read_spool(info)
         current = eval('self.' + info)
-        print "cache:", cached
-        print "current:", current
         diff = self.diff_dicts(cached, current)
         return [cached, current, diff]
 
@@ -305,9 +237,7 @@ class agent_talk:
 
         Security is a must here."""
         # FIXME: check for right permissions in the spool dir and files
-
-        spool_path = "/var/spool/nwu/nw." + spool 
-
+        spool_path = "/var/spool/nwu/nw.%" % spool 
         if wipe_old == True:
             try:
                 os.unlink(spool_path)
@@ -315,11 +245,8 @@ class agent_talk:
                 pass
             else:
                 log.info("Deleted old spool file.")
-
         store = ConfigParser.ConfigParser()
-
         r = store.read(spool_path)
-        print "item list", item_list, spool
     	for it in item_list:
             section = it[0]
             option = it[1]
@@ -327,18 +254,13 @@ class agent_talk:
                 value = it[2]
             else:
                 value = 'placeholder'
-
             if option == '':
                 option = 'placeholder'
-
             log.debug("Found "+ str(section) + ": "+ str(option))
-            
             if not store.has_section(section):
                 # create section in the task file
                 store.add_section(section)
-       
             store.set(section, option, value)
-        
         try:
             updt_spool = open(spool_path, 'w')
         except:
