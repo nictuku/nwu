@@ -237,7 +237,7 @@ class agent_talk:
 
         Security is a must here."""
         # FIXME: check for right permissions in the spool dir and files
-        spool_path = "/var/spool/nwu/nw.%" % spool 
+        spool_path = "/var/spool/nwu/nw.%s" % spool 
         if wipe_old == True:
             try:
                 os.unlink(spool_path)

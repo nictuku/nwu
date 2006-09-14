@@ -156,7 +156,10 @@ class AutoConnectHub(ConnectionHub):
         """Ends the transaction and closes the connection."""
         self.end()
         log.debug("Closing database connection opened by the current thread.")
-        self.threadingLocal.connection.close()
+        try:
+	        self.threadingLocal.connection.close()
+        except AttributeError:
+            pass
 
 
 #This dictionary stores the AutoConnectHubs used for each
