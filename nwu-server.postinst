@@ -39,4 +39,3 @@ chmod 770 /var/lib/nwu -R
 chmod 660 /etc/nwu/server.conf
 
 #DEBHELPER#
-
