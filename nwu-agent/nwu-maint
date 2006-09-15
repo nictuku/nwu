@@ -54,72 +54,51 @@ See the detailed log below:
 
 def main():
     mailserver = smtplib.SMTP('localhost')
-
     accepted_actions = ['update', 'install', 'upgrade', 'addrep']
     status = {}
     task_spool_path = "/var/spool/nwu/nw.tasks"
-
-
     if not os.access(task_spool_path, os.F_OK):
         log.info("Task file not found. Exiting.")
         exit(1)
-
     action_file = ConfigParser.ConfigParser()
     r = action_file.read(task_spool_path)
     if r and len(r) == 0:
         log.warn("Could not read the task file in" + task_spool_path)
         exit(1)
-        
     actions = action_file.sections()
     for act in actions:
-
         # Sample structure 
         # act = update, details = [None]
         # act = upgrade, details = [None]
         # act = install, details = ['package1', 'package2', 'package3']
-
         if act not in accepted_actions:
             log.warn("Bogus task section found. Deleting" + act + ".")
             action_file.remove_section(act)
             continue
-
         log.debug("Checking for pending " + act + " task...")
-
         details = action_file.options(act)
-
         status = {}
-
         # Iterate over the list of task details (package names for example)
         iterate_list = details[:]
-        
         for detail in iterate_list:
             log.debug("current action: " + str(detail))
-
             # not always required
             extra = action_file.get(act, detail)
-
             task_id = str(act) + str(detail)
-
             if detail > 0:
                 detail_s = detail
             else:
                 detail_s = ''
-
             log.info("Found a pending task: " + act + detail_s)
-
             if act == 'addrep' and is_safe(detail) and is_safe(extra, http=True):
                     rep_add(extra)
                     action_file.remove_option(act, detail)  
-
             elif act == 'update':
-
                 # Check if we had not already tried to run this before
                 if not status.has_key(task_id):
-
                     status[task_id] = commands.getstatusoutput(
                         "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get update"
                         )
-
                     if status[task_id][0] != 0:
                         log.error("Failed to update apt repositores. Output:")
                         # FIXME: This should probably be breaken in many lines
@@ -132,33 +111,25 @@ def main():
                         log.debug(status[task_id][1])
                     # Sucessful or not, remove that detail from the task list
                     action_file.remove_option(act, detail)
- 
                 else:
                     action_file.remove_option(act, detail)
-
             elif act == 'upgrade':
-
                 # Check if we had not already tried to run this before
                 if not status.has_key(task_id):
-
                     status[task_id] = commands.getstatusoutput(
                         "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"
                         )
-
                     if status[task_id][0] != 0:
                         log.error("Failed to upgrade the system. Output:")
                         log.error(status[task_id][1])
                         err = mesg % ('root', act, act) + status[task_id][1]            
                         mailserver.sendmail('root', 'root', err)
                     else:
-                        # If sucessful, remove that detail from the task list
-                        action_file.remove_option(act, detail)
                         log.info("Apt upgrade finished.")
                         log.debug(status[task_id][1])
-
+                    # Sucessful or not, remove that detail from the task list
+                    action_file.remove_option(act, detail)
                 else:
-
-                     
                     action_file.remove_option(act, detail)
 
             elif act == 'install':
@@ -167,13 +138,10 @@ def main():
 
                 if len(detail) > 1 and is_safe(detail):
                     log.info("Running task: " + task_id)
-
                     if not status.has_key(task_id): 
-
                         status[task_id] = commands.getstatusoutput(
                          "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get install " + detail
                         )
-
                         if status[task_id][0] != 0:
                             log.error("Failed to install package. Output:")
                             log.error(status[task_id][1])
@@ -182,22 +150,16 @@ def main():
                         else:
                             log.debug(status[task_id][1])
                             log.info("Clearing task " + act + " " + detail)
-
                         action_file.remove_option(act, detail)
-
                     else:
                         action_file.remove_option(act, detail)
-
-
                 else:
                     # Buggy install instruction. Delete it.
                     action_file.remove_option(act, detail)
-
             else:
                 log.warn("Unrecognized task: " + act)
 
             log.debug("current action: " + str(detail))
-
     try:
         updt_spool = open(task_spool_path, 'w')
     except:
@@ -206,7 +168,6 @@ def main():
     else:
         log.info("Updating task spool file.")
         action_file.write(updt_spool)
-
     #    if len(action_file.sections()) == 0:
     #        print "Deleting", task_spool_path, "task spool."
     #        os.unlink(task_spool_path)
