@@ -110,16 +110,13 @@ for operation in diff_pkgs:
         sync_tbl_ver('apt_current_packages', 'please-update')
         agent.store_spool('packages', pkgs_list, True)
         run_this['apt_current_packages'] = True
-        print "apt_current_packages changed. Must update"
+        log.debug("apt_current_packages changed. Must update")
 
 # UPDATE CANDIDATES
     
 [cached_candidates, current_candidates, diff_candidates] \
     = agent.diff_new_spool('update_candidates')
 
-print "cached", cached_candidates
-print "cur", current_candidates
-print "diff", diff_candidates
 # Format the update candidates list ready to store in spool
 candidates_list = []
 for key, val in current_candidates.iteritems():
@@ -132,15 +129,12 @@ if diff_candidates[1].get('update_candidates','') == 'new':
     agent.store_spool('update_candidates', [['update_candidates',
      'empty','empty']], True)
     run_this['apt_update_candidates'] = True
-    print "apt_update_candidates changed. Must update"
+    log.debug("apt_update_candidates changed. Must update")
 
 elif diff_candidates[1].get('empty','') == 'empty':
     # This list is empty and WAS empty already. So, move on!
     run_this['apt_update_candidates'] = False
-    print "Empty and old list. Nevermind"
-    
 else:
-
     for operation in diff_candidates:
         if len(operation) > 0:
             sync_tbl_ver('apt_update_candidates', 'please-update')
@@ -150,13 +144,12 @@ else:
 
 # APT REPOSITORIES 
 #[cached_reps, current_reps, diff_reps] = agent.diff_new_spool('repositories')
-print agent.rep_md5
 if agent.check_diff_rep():
     sync_tbl_ver('apt_repositories', 'please-update')
     log.info("Storing md5 spool for repositories list.")
     agent.store_spool('repositories', [  ['rep_md5','md5',agent.rep_md5 ] ], True)
     run_this['apt_repositories'] = True
-    print "apt_repositories changed. Must update"
+    log.debug("apt_repositories changed. Must update")
 
 (uniq, password) = agent.get_auth()
 token = hmac.new(password, uniq).hexdigest()
@@ -190,23 +183,19 @@ local_versions = {'apt_repositories':'',
   }
 
 spool_versions = agent.read_spool('tbl_ver')
-print "weee", spool_versions
+log.debug("Spool versions: %s" % spool_versions)
 local_versions.update(spool_versions)
 
 #remote_versions = {}
 for tbl in local_versions.keys():
     r = agent.rpc.get_tbl_version(my_session, tbl)
 #    remote_versions[tbl] =
-    print "remote", tbl, r
-    print "local", tbl, local_versions[tbl]
     if str(local_versions[tbl]) != str(r):
         run_this[tbl] = True
-        print "versoes diferentes"
+        log.debug("table serial changed")
 
 for run in run_this.keys():
     eval("sync_" + run)()
 
 # FIXME: Should only sync tasks if remote version differs from locals
 sync_task()
-
-
