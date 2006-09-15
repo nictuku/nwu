@@ -6,7 +6,7 @@ NWU
 Network wide updates for systems which use APT.
 - Yves Junqueira <yves@cetico.org>
 
-https://dev.ubuntubrasil.org/trac/nwu
+http://cetico.org/nwu
 
 NWU features
 -------------
@@ -24,73 +24,70 @@ NWU features
 NWU agent is the software installed in the computers one wants to
 manage.
 
-Nwu-server first!
+nwu-server first!
 -----------------
 First you have to setup nwu-server in a server for your network. See the README
 for nwu-server if you skipped that step, then come back reading this file.
 
+
 Special package requirement: python-sysinfo
 -------------------------------------------
 
-Besides packages available in both debian/etch and ubuntu/breezy, 
+Besides packages available in both debian/etch and ubuntu/edgy, 
 nwu-agent also requires python-sysinfo, which I wrote as part of my other
 project, PyCACIC. python-sysinfo is a library for system information
-collection. 
+collection. It is now integrated into the NWU trunk.
 
-Currently, nwu doesn't not get many data from the computer the agent is 
-installed in, but extensive info for hardware, network and services
-is planned. That would be an interesting side-effect feature of nwu.
+Currently, NWU doesn't not get many data from the computer the agent is 
+installed in, but extensive collection of hardware, network and services
+info is planned. That would be an interesting side-effect feature of NWU.
 
-It is not available in Debian or Ubuntu repositories yet. Download it
-from:
-
-http://archives.ubuntubrasil.org/pool/main/p/python-sysinfo/
-
-Or use this line in your sources.list and install it using aptitude:
-
-deb http://archives.ubuntubrasil.org/ breezy main
+For more information, see http://cetico.org/nwu
 
 Installation
 ------------
 
-The only supported installation method ATM is to use the provided
-deb packages.
+You should use the provided deb packages.
 
-Download the deb package from the opensvn repository in:
-
-https://dev.ubuntubrasil.org/trac/nwu/browser/tags/
-
-dpkg -i nwu-agent_0.1.3-1_all.deb
-
-It may complain about missing packages. Just install them using aptitude.
+#FIXME: download them from..
 
 Usage info
 -----------
 
-When you install the package, a debconf dialog will ask the server host and
-port addresses. That's all you have to configure.
+When you install the package, a debconf dialog will ask the nwu server host and
+port address. That's all you have to configure. Notice that this name must 
+match the common name of the certificate used by the NWU server, or it will
+fail.
 
 The package will install a cron script in /etc/cron.d/nwu-agent, which
-will run the nwu-agent and nwu-maint scripts.
+will run the nwu-agent and nwu-maint scripts from time to time. It is planned
+to make a clever daemon that will wake up and run these scripts in a more
+clever way. See bug #20 in the trac system of the project for updates.
 
-The first is run by an unprivileged user and will connect to the server to
-send updated data and get pending tasks, like "updates" or "installs".
+nwu-agent must run by an unprivileged user, usually nwu-agent, and will 
+connect to the server to send updated data and get pending tasks, like 
+"updates" or "installs". You can force the execution of this script
+by using sudo:
+
+# sudo -u nwuagent nwu-agent
 
 If any pending task is found, nwu-agent stores them in 
 /var/spool/nwu/nw.tasks.
 
-The second script called regularly by cron will read this file and resolve
+nwu-maint is called regularly by cron and will read this file and resolve
 the pending tasks.
 
-Both scripts logs the actions to syslog.
+Both scripts logs actions to syslog. If a nwu-maint task (eg. install) 
+fails, a mail will be sent to the local root account with details.
 
 Feedback
 --------
 
-Please send all feedback to nictuku@ubuntubrasil.org.
+Please send all feedback to the nwu-users mailing list at:
+http://cetico.org/cgi-bin/mailman/listinfo
 
-The project bugs are managed in a trac, placed in
-https://dev.ubuntubrasil.org/trac/nwu
+The project bugs are managed in a trac, placed in:
+http://cetico.org/nwu
 
 Please file any bugs there.
 
@@ -98,4 +95,3 @@ Thank you,
 
 Yves Junqueira
 <yves@cetico.org>
-
