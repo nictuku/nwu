@@ -1,10 +1,1 @@
-debian/tmp/usr/lib/python*/site-packages/sysinfo/common.py usr/lib/python2.3/site-packages/sysinfo
-debian/tmp/usr/lib/python*/site-packages/sysinfo/__init__.py usr/lib/python2.3/site-packages/sysinfo
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/network.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/misc.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/hardware.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/__init__.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/services.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/my_rpm.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/apt.py usr/lib/python2.3/site-packages/sysinfo/linux
-debian/tmp/usr/lib/python*/site-packages/sysinfo/linux/my_rpm.py usr/lib/python2.3/site-packages/sysinfo/linux
+debian/tmp/usr/lib/python*/site-packages/sysinfo usr/lib/site-python

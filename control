@@ -2,13 +2,12 @@ Source: nwu
 Section: admin
 Priority: optional
 Maintainer: Yves Junqueira (nictuku) <yves@cetico.org>
-Build-Depends: cdbs (>= 0.4.28-1), debhelper (>= 4.2.32), python2.3-dev (>= 2.3.5-3sarge1)
+Build-Depends: debhelper (>= 4.2.32), cdbs (>= 0.4.28-1), python-dev (>= 2.3.5-2)
 Standards-Version: 3.6.2
 
 Package: nwu-agent
 Architecture: all
-XB-Python-Version: ${python:Versions}
-Depends: adduser, ${python:Depends}, m2crypto, python-sysinfo
+Depends: adduser, m2crypto, python-sysinfo, python (>= 2.3), python (<< 2.5)
 Suggests: nwu-server
 Description: Network-wide updates for systems which use APT - agent
  Nwu lets administrators manage APT of remote machines from one central point.
@@ -22,8 +21,7 @@ Description: Network-wide updates for systems which use APT - agent
 
 Package: nwu-server
 Architecture: all
-XB-Python-Version: ${python:Versions}
-Depends: adduser, rcconf, lsb-base, python (>= 2.3), python (<< 2.5), m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
+Depends: adduser, rcconf, lsb-base, python (>= 2.3), python (<< 2.5), m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg
 Recommends: openssl
 Description: Network-wide updates for systems which use APT - server
  Nwu lets administrators manage APT of remote machines from one central point.
@@ -36,8 +34,7 @@ Description: Network-wide updates for systems which use APT - server
 
 Package: python-sysinfo
 Architecture: all
-XB-Python-Version: ${python:Versions}
-Depends: lshw, aptitude (>= 0.2.15.9-2), python-apt (>= 0.5.10) 
+Depends: lshw, aptitude (>= 0.2.15.9-2), python-apt (>= 0.5.10), python (>= 2.3), python (<< 2.5)
 Description: Multi-platform system information library
  Python-sysinfo provides an abstraction layer to system information for
  hardware, software and services in the local computer.

@@ -1,13 +1,6 @@
-debian/tmp/usr/lib/python*/site-packages/nwu_server/db/backport_thread.py usr/lib/python2.3/site-packages/nwu_server/db
-debian/tmp/usr/lib/python*/site-packages/nwu_server/db/__init__.py usr/lib/python2.3/site-packages/nwu_server/db 
-debian/tmp/usr/lib/python*/site-packages/nwu_server/db/setup.py usr/lib/python2.3/site-packages/nwu_server/db
-debian/tmp/usr/lib/python*/site-packages/nwu_server/db/operation.py usr/lib/python2.3/site-packages/nwu_server/db
-debian/tmp/usr/lib/python*/site-packages/nwu_server/db/backport.py usr/lib/python2.3/site-packages/nwu_server/db
-debian/tmp/usr/lib/python*/site-packages/nwu_server/rpc_admin.py usr/lib/python2.3/site-packages/nwu_server
-debian/tmp/usr/lib/python*/site-packages/nwu_server/rpc_agents.py usr/lib/python2.3/site-packages/nwu_server
-debian/tmp/usr/lib/python*/site-packages/nwu_server/__init__.py usr/lib/python2.3/site-packages/nwu_server
-debian/tmp/usr/lib/python*/site-packages/nwu_server/sslxmlrpc.py usr/lib/python2.3/site-packages/nwu_server
 debian/tmp/usr/bin/nwu usr/bin
 debian/tmp/usr/bin/nwu-server usr/sbin
+debian/tmp/usr/lib/*/site-packages/nwu_server usr/lib/site-python
+debian/tmp/usr/lib/*/site-packages/nwu_server/db/* usr/lib/site-python/nwu_server/db
 nwu-server/sample_conf/server.conf etc/nwu
 nwu-server/README usr/share/doc/nwu-server
