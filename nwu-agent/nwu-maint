@@ -21,6 +21,7 @@
 
 This is called by cron and runs as root.
 """
+import smtplib
 import ConfigParser 
 import commands
 import os 
@@ -41,8 +42,19 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
+mesg = """To: %s
+Subject: NWU %s task failed
+
+The requested task "%s" failed.
+See the detailed log below:
+
+"""
+
+# FIXME: alright, I *am* rewriting this, but later :-)
 
 def main():
+    mailserver = smtplib.SMTP('localhost')
+
     accepted_actions = ['update', 'install', 'upgrade', 'addrep']
     status = {}
     task_spool_path = "/var/spool/nwu/nw.tasks"
@@ -112,6 +124,8 @@ def main():
                         log.error("Failed to update apt repositores. Output:")
                         # FIXME: This should probably be breaken in many lines
                         log.error(status[task_id][1])
+                        err = mesg % ('root', act, act)+ status[task_id][1]            
+                        mailserver.sendmail('root', 'root', err)
                     else:
                         log.info("Apt update finished.")
                         # FIXME: break in many lines?
@@ -134,6 +148,8 @@ def main():
                     if status[task_id][0] != 0:
                         log.error("Failed to upgrade the system. Output:")
                         log.error(status[task_id][1])
+                        err = mesg % ('root', act, act) + status[task_id][1]            
+                        mailserver.sendmail('root', 'root', err)
                     else:
                         # If sucessful, remove that detail from the task list
                         action_file.remove_option(act, detail)
@@ -161,6 +177,8 @@ def main():
                         if status[task_id][0] != 0:
                             log.error("Failed to install package. Output:")
                             log.error(status[task_id][1])
+                            err = mesg % ('root', act, act) + status[task_id][1]            
+                            mailserver.sendmail('root', 'root', err)
                         else:
                             log.debug(status[task_id][1])
                             log.info("Clearing task " + act + " " + detail)
