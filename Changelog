@@ -1,8 +1,9 @@
 Version 0.1.5
-2006-09-02
+2006-09-15
 
-- Many bug fixed, including the growing memory usage issue
-- Deb packaging improvements
+- ***Many*** bugs fixed, including memory leak and db connections leak
+- Deb packaging now following new python policy
+- Local root is notified by email if a task operation fails
 
 Version 0.1.4
 2006-04-04
