@@ -54,7 +54,7 @@ See the detailed log below:
 
 def main():
     mailserver = smtplib.SMTP('localhost')
-    accepted_actions = ['update', 'install', 'upgrade', 'addrep']
+    accepted_actions = ['update', 'install', 'forceinstall', 'upgrade', 'addrep']
     status = {}
     task_spool_path = "/var/spool/nwu/nw.tasks"
     if not os.access(task_spool_path, os.F_OK):
@@ -132,18 +132,22 @@ def main():
                 else:
                     action_file.remove_option(act, detail)
 
-            elif act == 'install':
+            elif act == 'install' or act == 'forceinstall':
 
                 # Checks if the packages to be installed names are safe and valid
-
+                if act == 'forceinstall':
+                    force = '--allow-unauthenticated'
+                else:
+                    force = ''
                 if len(detail) > 1 and is_safe(detail):
                     log.info("Running task: " + task_id)
                     if not status.has_key(task_id): 
                         status[task_id] = commands.getstatusoutput(
-                         "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get install " + detail
+                         "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get %s install %s" 
+                         % (force, detail)
                         )
                         if status[task_id][0] != 0:
-                            log.error("Failed to install package. Output:")
+                            log.error("Failed to %s package. Output:" % act)
                             log.error(status[task_id][1])
                             err = mesg % ('root', act, act) + status[task_id][1]            
                             mailserver.sendmail('root', 'root', err)

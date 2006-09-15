@@ -36,6 +36,7 @@ For more information, see https://dev.ubuntubrasil.org/trac/nwu/
 """
 
 sub_commands = {
+"forceinstall" : "<computer> <packages>  : Install defined packages in the computer (force)",
 "install" : "<computer> <packages>  : Install defined packages in the computer",
 "help" : "                          : This help message",
 "upgrade" : "<computer>             : Upgrade all packages in the computer",
@@ -211,7 +212,7 @@ def main():
         else:
             usage()
         
-    elif sub_command == 'install' or sub_command == 'addrep':
+    elif sub_command == 'install' or sub_command == 'addrep' or sub_command == 'forceinstall':
         if len(args) > 1:
             id = args[0]
             details = " ".join(args[1:])
@@ -221,7 +222,6 @@ def main():
                print "Found computer id=" + id + " in the database. Requesting\
  " + sub_command + " " + details + "."
                t = task(computer=mach, action=sub_command,details=details)
-
         else:
             usage()
     hub.commit()

@@ -46,14 +46,12 @@ For more information, see http://cetico.org/nwu
 
 Installation
 ------------
-
 You should use the provided deb packages.
 
 #FIXME: download them from..
 
 Usage info
 -----------
-
 When you install the package, a debconf dialog will ask the nwu server host and
 port address. That's all you have to configure. Notice that this name must 
 match the common name of the certificate used by the NWU server, or it will
@@ -80,9 +78,19 @@ the pending tasks.
 Both scripts logs actions to syslog. If a nwu-maint task (eg. install) 
 fails, a mail will be sent to the local root account with details.
 
+Known issues
+------------
+If you have a non-official repository configured and try to install a package
+from it, newer versions of apt-get (~0.6.0) will fail. You can use the
+forceinstall command from the CLI admin interface to force installation.
+Notice that forceinstall, besides not needed, will not work in old versions
+of apt-get (eg. in Sarge).
+
+See http://cetico.org/nwu in "Tickets" for other issues.
+
+
 Feedback
 --------
-
 Please send all feedback to the nwu-users mailing list at:
 http://cetico.org/cgi-bin/mailman/listinfo
 
