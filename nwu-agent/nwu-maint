@@ -53,7 +53,6 @@ See the detailed log below:
 # FIXME: alright, I *am* rewriting this, but later :-)
 
 def main():
-    mailserver = smtplib.SMTP('localhost')
     accepted_actions = ['update', 'install', 'forceinstall', 'upgrade', 'addrep']
     status = {}
     task_spool_path = "/var/spool/nwu/nw.tasks"
@@ -104,6 +103,8 @@ def main():
                         # FIXME: This should probably be breaken in many lines
                         log.error(status[task_id][1])
                         err = mesg % ('root', act, act)+ status[task_id][1]            
+                        if not mailserver:
+                            mailserver = smtplib.SMTP('localhost')
                         mailserver.sendmail('root', 'root', err)
                     else:
                         log.info("Apt update finished.")
@@ -123,6 +124,8 @@ def main():
                         log.error("Failed to upgrade the system. Output:")
                         log.error(status[task_id][1])
                         err = mesg % ('root', act, act) + status[task_id][1]            
+                        if not mailserver:
+                            mailserver = smtplib.SMTP('localhost')
                         mailserver.sendmail('root', 'root', err)
                     else:
                         log.info("Apt upgrade finished.")
@@ -150,6 +153,8 @@ def main():
                             log.error("Failed to %s package. Output:" % act)
                             log.error(status[task_id][1])
                             err = mesg % ('root', act, act) + status[task_id][1]            
+                            if not mailserver:
+                                mailserver = smtplib.SMTP('localhost')
                             mailserver.sendmail('root', 'root', err)
                         else:
                             log.debug(status[task_id][1])
