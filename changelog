@@ -1,3 +1,9 @@
+nwu (0.1.5-4) unstable; urgency=low
+
+  * Merged changes from upstream
+
+ -- Yves Junqueira (nictuku) <yves@cetico.org>  Fri, 15 Sep 2006 00:04:14 -0300
+
 nwu (0.1.5-3) unstable; urgency=low
 
   * New Python Policy in Debian 
