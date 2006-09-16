@@ -31,11 +31,13 @@ from M2Crypto.m2xmlrpclib import Server, SSL_Transport
 import logging
 import sys
 from md5 import md5 
+import socket
 
 log = logging.getLogger('nwu_agent.misc')
 
 class agent_talk:
     def __init__(self, load_config=True):
+        socket.setdefaulttimeout(5)
         if load_config:
             self.conffile = '/etc/nwu/agent.conf'
             config = ConfigParser.ConfigParser()
