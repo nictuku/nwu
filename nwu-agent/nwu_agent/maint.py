@@ -24,21 +24,45 @@ import logging
 
 log = logging.getLogger('nwu-maint.agent.maint')
 
-def is_safe(str, http=False):
+def apt_get(operation, **opts):
+    """Build a command string to call apt-get.
+    """
+    if operation not in ['update', 'upgrade', 'install']:
+        raise Exception, "Unknown operation: %s" % operation
+    args = ''
+    if operation == 'install' and (not opts.get('packages', False) 
+        or opts['packages'] < 1):
+        raise Exception, "Install needs at least an argument"
+    if opts.get('assume_yes', False):
+        args += ' --assume-yes'
+    if opts.get('allow_unauthenticated', False):
+        args += ' --allow_unauthenticated'
+    args += ' %s' % operation
+    if operation == 'install' and opts.get('packages', False):
+        for p in opts.get('packages', False):
+            args += ' %s' % p
+    command = 'apt-get'
+    return (command, args)
+
+def is_safe(check_str, http=False):
+    """Checks if check_str is safe enough.
+
+    If http is True, accept some extra chars.
+    """
     # From Byron Ellacot's message in the mod_python list
     # http://www.modpython.org/pipermail/mod_python/2004-December/016987.html
 
-    OK_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.-_"
+    OK_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.-_~"
 
     # We can also selectively accept other chars
 
     if http:
         OK_CHARS += "/: "
 
-    return [x for x in str if x.lower() not in OK_CHARS] == []
+    return [x for x in check_str if x.lower() not in OK_CHARS] == []
 
 def rep_valid(repository):
-    """Validate repository string
+    """Validate repository string.
     """
 
     # FIXME: use a validational regexp
@@ -69,14 +93,16 @@ def rep_add(newrep):
     """Add a new repository to the sources.list file.
     newrep is a dictionary with "type", "uri", "distribution" and "components" keys.
     """
-
     if rep_valid(newrep):
-                
         # Write to sources.list
-        # FIXME: if apt version support, we could use /etc/apt/sources.list.ld
+        # FIXME: if apt version supports, we could use /etc/apt/sources.list.ld
         log.info("Writing new repository to sources.list")
         src = open('/etc/apt/sources.list', 'a')
-        src.write("\n" + newrep + "\n")
+        try:
+            src.write("\n" + newrep + "\n")
+        except:
+            log.error("Error adding new rep to sources.list")
+            return False
         return True
 
     else:

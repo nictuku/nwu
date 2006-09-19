@@ -20,11 +20,14 @@
 from StringIO import StringIO
 import sys
 sys.path.append('.')
+import py.test
 
 import nwu_agent
 import nwu_agent.misc
+import nwu_agent.maint
 
 agent = nwu_agent.misc.agent_talk(load_config=False)
+m = nwu_agent.maint
 
 class TestAgent:
  
@@ -66,4 +69,30 @@ xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
         assert agent.diff_dicts(dict2, dict1) == (dict1, {})
         assert agent.diff_dicts({}, {}) == ({}, {})    
 
+    def test_apt_get(self):
+        py.test.raises(Exception, "m.apt_get('BLA')") 
+        py.test.raises(Exception, "m.apt_get('install', packages='')")
+        py.test.raises(Exception, "m.apt_get('install', packages=[])")
+        py.test.raises(Exception, "m.apt_get('install')")
+        assert m.apt_get('install', packages=['foo'] ) == ('apt-get', ' install foo')
+        assert m.apt_get('update' ) == ('apt-get', ' update')
+        assert m.apt_get('upgrade', packages=['foo'] ) == ('apt-get', ' upgrade')
+        assert m.apt_get('install', packages=['foo'], assume_yes=True ) == ('apt-get', ' --assume-yes install foo')
+        assert m.apt_get('upgrade', packages=['foo', 'bar'], allow_unauthenticated=True, assume_yes=True ) == \
+            ('apt-get', ' --assume-yes --allow_unauthenticated upgrade')
+
+    def test_is_safe(self):
+        assert m.is_safe('xx:') == False
+        assert m.is_safe('`') == False
+        assert m.is_safe("'") == False
+        assert m.is_safe('"') == False
+        assert m.is_safe('12._') == True
+        assert m.is_safe('xx:', True) == True
+
+    def test_rep_valid(self):
+        assert m.rep_valid('deb') == False
+        assert m.rep_valid('deb incomplete') == False
+        assert m.rep_valid('deb-invalid url component') == False
+        assert m.rep_valid('deb http://bla.com ./') == True
+        assert m.rep_valid('deb-src http://bla.com distro component1 component2') == True
 
