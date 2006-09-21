@@ -74,12 +74,12 @@ xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
         py.test.raises(Exception, "m.apt_get('install', packages='')")
         py.test.raises(Exception, "m.apt_get('install', packages=[])")
         py.test.raises(Exception, "m.apt_get('install')")
-        assert m.apt_get('install', packages=['foo'] ) == ('apt-get', ' install foo')
-        assert m.apt_get('update' ) == ('apt-get', ' update')
-        assert m.apt_get('upgrade', packages=['foo'] ) == ('apt-get', ' upgrade')
-        assert m.apt_get('install', packages=['foo'], assume_yes=True ) == ('apt-get', ' --assume-yes install foo')
+        assert m.apt_get('install', packages=['foo'] ) == ('apt-get', ['install', 'foo'])
+        assert m.apt_get('update' ) == ('apt-get', ['update'])
+        assert m.apt_get('upgrade', packages=['foo'] ) == ('apt-get', ['upgrade'])
+        assert m.apt_get('install', packages=['foo'], assume_yes=True ) == ('apt-get', [ '--assume-yes', 'install', 'foo'])
         assert m.apt_get('upgrade', packages=['foo', 'bar'], allow_unauthenticated=True, assume_yes=True ) == \
-            ('apt-get', ' --assume-yes --allow_unauthenticated upgrade')
+            ('apt-get', ['--assume-yes', '--allow_unauthenticated', 'upgrade'])
 
     def test_is_safe(self):
         assert m.is_safe('xx:') == False

@@ -21,7 +21,6 @@
 
 This is called by cron and runs as root.
 """
-import smtplib
 import ConfigParser 
 import os 
 from sys import exit
@@ -30,10 +29,8 @@ import logging.handlers
 from nwu_agent.maint import *
 
 log = logging.getLogger('nwu-maint')
-
 hdlr = logging.handlers.SysLogHandler(
   "/dev/log",facility=logging.handlers.SysLogHandler.LOG_USER)
-
 formatter = logging.Formatter(
 "nwu_maint[%(process)d] %(levelname)s %(message)s"
     )
@@ -41,65 +38,8 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
-mesg = """To: %s
-Subject: NWU %s task failed
-
-The requested task "%s" failed.
-See the detailed log below:
-
-"""
-
-def run_apt_get(command, args=''):
-    status[task_id] = subprocess.Popen(
-        [command, args], 
-        stdout=subprocess.PIPE,
-        env={   "LANGUAGE" : 'C',
-                "DEBIAN_FRONTEND" : "noninteractive" }
-        )
-    ret = status[task_id].returncode
-    out = status[task_id].communicate()[0]
-    syslog_err = out.split('\n')
-    if ret != 0:
-        log.error("Failed to exec '%s'. Output:" % operation)
-        # FIXME: This should probably be breaken in many lines
-        for mm in syslog_err:
-            log.error(mm)
-        err_mail = mesg % ('root', act, act)+ out            
-        if not mailserver:
-            mailserver = smtplib.SMTP('localhost')
-        mailserver.sendmail('root', 'root', err_mail)
-        return ret
-    else:
-        log.info("Operation '%s' finished." % operation)
-        log.debug(status[task_id][1])
-        return ret
-
-#                if act == 'forceinstall':
-#                    force = '--allow-unauthenticated'
-#                else:
-#                    force = ''
-#                if len(detail) > 1 and is_safe(detail):
-#                    log.info("Running task: " + task_id)
-#                    if not status.has_key(task_id): 
-#                        status[task_id] = commands.getstatusoutput(
-#                         "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get %s install %s" 
-#                         % (force, detail)
-#                        )
-#                        if status[task_id][0] != 0:
-#                            log.error("Failed to %s package. Output:" % act)
-#                            log.error(status[task_id][1])
-#                            err = mesg % ('root', act, act) + status[task_id][1]            
-#                            if not mailserver:
-#                                mailserver = smtplib.SMTP('localhost')
-#                            mailserver.sendmail('root', 'root', err)
-#                        else:
-#                            log.debug(status[task_id][1])
-#                            log.info("Clearing task " + act + " " + detail)
- 
-
-# FIXME: alright, I *am* rewriting this, but later :-)
-
 def main():
+    # unit test: N/A
     accepted_actions = ['update', 'install', 'forceinstall', 'upgrade', 'addrep']
     task_spool_path = "/var/spool/nwu/nw.tasks"
     if not os.access(task_spool_path, os.F_OK):
@@ -111,82 +51,48 @@ def main():
         log.warn("Could not read the task file in" + task_spool_path)
         exit(1)
     actions = action_file.sections()
+    # FIXME: currently, if a task is set many times, it will run many times
     for act in actions:
         # Sample structure 
-        # act = update, details = [None]
-        # act = upgrade, details = [None]
-        # act = install, details = ['package1', 'package2', 'package3']
+        # act = 'update', details = [None]
+        # act = 'upgrade', details = [None]
+        # act = 'install', details = ['package1', 'package2', 'package3']
         if act not in accepted_actions:
-            log.warn("Bogus task section found. Deleting" + act + ".")
+            log.warn("Bogus task section found. Deleting %s" % act)
             action_file.remove_section(act)
             continue
-        log.debug("Checking for pending " + act + " task...")
+        log.debug("Running pending '%s' task" % act)
         details = action_file.options(act)
         status = {}
         # Iterate over the list of task details (package names for example)
         iterate_list = details[:]
-        for detail in iterate_list:
-            log.debug("current action: " + str(detail))
-            # not always required
-            extra = action_file.get(act, detail)
-            task_id = str(act) + str(detail)
-            if detail > 0:
-                detail_s = detail
-            else:
-                detail_s = ''
-            log.info("Found a pending task: " + act + detail_s)
-            if act == 'addrep' and is_safe(detail) and is_safe(extra, http=True):
+        if len(iterate_list) == 0:
+            continue
+        if act == 'addrep':
+            for my_rep in iterate_list:
+                if is_safe(my_rep) and is_safe(extra, http=True):
+                    extra = action_file.get(act, my_rep)
                     rep_add(extra)
-                    action_file.remove_option(act, detail)  
-            elif act == 'update':
-                # Check if we had not already tried to run this before
-                if not status.has_key(task_id):
-                    run_string = apt_get('update')
-                    ret = run_apt_get(run_string)
-                    # Sucessful or not, remove that detail from the task list
-                    action_file.remove_option(act, detail)
-                else:
-                    action_file.remove_option(act, detail)
-            elif act == 'upgrade':
-                # Check if we had not already tried to run this before
-                if not status.has_key(task_id):
-                    ret = apt_get('upgrade', assume-yes=True)
-                action_file.remove_option(act, detail)
-            elif act == 'install' or act == 'forceinstall':
-
-                # Checks if the packages to be installed names are safe and valid
-                if act == 'forceinstall':
-                    force = '--allow-unauthenticated'
-                else:
-                    force = ''
-                if len(detail) > 1 and is_safe(detail):
-                    log.info("Running task: " + task_id)
-                    if not status.has_key(task_id): 
-                        status[task_id] = 
-                        status[task_id] = commands.getstatusoutput(
-                         "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get %s install %s" 
-                         % (force, detail)
-                        )
-                        if status[task_id][0] != 0:
-                            log.error("Failed to %s package. Output:" % act)
-                            log.error(status[task_id][1])
-                            err = mesg % ('root', act, act) + status[task_id][1]            
-                            if not mailserver:
-                                mailserver = smtplib.SMTP('localhost')
-                            mailserver.sendmail('root', 'root', err)
-                        else:
-                            log.debug(status[task_id][1])
-                            log.info("Clearing task " + act + " " + detail)
-                        action_file.remove_option(act, detail)
-                    else:
-                        action_file.remove_option(act, detail)
-                else:
-                    # Buggy install instruction. Delete it.
-                    action_file.remove_option(act, detail)
-            else:
-                log.warn("Unrecognized task: " + act)
-
-            log.debug("current action: " + str(detail))
+        elif act == 'update':
+            run = apt_get('update')
+            ret = run_apt_get(run[0], run[1])
+        elif act == 'upgrade':
+            run = apt_get('upgrade', assume_yes=True)
+            ret = run_apt_get(run[0], run[1])
+        elif act == 'forceinstall':
+            run = apt_get('install', packages=details,
+                allow_unauthenticated=True, assume_yes=True)
+            ret = run_apt_get(run[0], run[1])
+        elif act == 'install':
+            run = apt_get('install', packages=details,
+                assume_yes=True)
+            ret = run_apt_get(run[0], run[1])
+        else:
+            log.warn("Unrecognized task: " + act)
+        log.info("Clearing task %s" % act)
+        # always clear task, even if it failed
+        for detail in details:
+            action_file.remove_option(act, detail)
     try:
         updt_spool = open(task_spool_path, 'w')
     except:
