@@ -28,6 +28,7 @@ import stat
 import ConfigParser
 from M2Crypto import SSL
 from M2Crypto.m2xmlrpclib import Server, SSL_Transport
+
 import logging
 import sys
 from md5 import md5 
@@ -66,17 +67,19 @@ class agent_talk:
             self.rpc = self.XClient(self.server_uri)
 
     def my_ctx(self):
-        ctx = SSL.Context('sslv3')
-        # FIXME: currently ignored
-        ctx.set_allow_unknown_ca(False)
-        #ctx.load_cert_chain('/tmp/server.pem')
-        #ctx.load_cert('/tmp/server.pem')
-        #ctx.load_verify_info('/tmp/server.pem')
-        #ctx.load_client_ca('/etc/nwu/cacert.pem')
-        ctx.load_verify_info(cafile='/etc/nwu/cacert.pem')
-        # FIXME: verify_peer nao funfa. veja m2.ssl_get_verify_result(self.ssl)
-        # e linha 147 do arquivo:
-        # /usr/lib/python2.4/site-packages/M2Crypto/SSL/Connection.py
+        ctx = SSL.Context()
+        ## what are the diff between these two??
+        #ctx.load_verify_info(cafile="/tmp/ca.crt")
+        #ctx.load_verify_locations("/var/tmp/c/cacert.pem")
+        #ctx.load_client_ca("/var/tmp/c/cacert.pem")
+
+        # load client certificate (used to authenticate the client)
+        #ctx.load_cert_chain("/var/tmp/c/elvis.pem")
+
+        # stop if peer's certificate can't be verified
+        ctx.set_allow_unknown_ca(True)
+
+        # verify peer's certificate
         ctx.set_verify(SSL.verify_none, 2)
         return ctx
 
