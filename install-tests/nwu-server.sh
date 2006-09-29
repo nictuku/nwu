@@ -10,7 +10,7 @@ MIRROR=ftp.us.debian.org
 ROOTCOMMAND=sudo
 
 # kill routine
-( while sleep 1h; do killall linux; done ) & 
+#( while sleep 1h; do killall linux; done ) & 
 
 SUCCESS=nwu-success
 FAIL=nwu-fail
@@ -19,7 +19,7 @@ mkdir $SUCCESS || true
 mkdir $FAIL || true
 mkdir $WORKING || true
 
-if [ ! -f release-old.sh ]; then
+if [ ! -f release.sh ]; then
     echo "You must be in the NWU svn repository root dir"
     exit 1
 fi
@@ -30,8 +30,8 @@ function call() {
     local LOGFILE=${WORKING}/"$PROGNAME.log"
 
     echo "Testing $1 process"
-    if pbuilder execute --bindmounts "$temp" --logfile "$LOGFILE" 
-trunk/install-tests/pbuilder-$1.sh "$temp"; then
+    #if pbuilder execute --bindmounts "$temp" --logfile "$LOGFILE" trunk/install-tests/pbuilder-$1.sh "$temp"; then
+    if pbuilder execute --bindmounts "$temp" trunk/install-tests/pbuilder-$1.sh "$temp"; then
     mv "$LOGFILE" "$SUCCESS"
     echo "  $1 successful"
     else
@@ -40,12 +40,13 @@ trunk/install-tests/pbuilder-$1.sh "$temp"; then
     fi
 }
 
-$ROOTCOMMAND  apt-get update
+#$ROOTCOMMAND  apt-get update
 
 tempfile=/tmp/nwu$$
 sh release.sh nwu ${tempfile}
 cd ${tempfile}/nwu
 pdebuild --buildresult ./ 
+cp /etc/nwu/server.pem ./
 dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
 dpkg-scansources . /dev/null | gzip -9c > Sources.gz
 cd -
