@@ -131,7 +131,7 @@ password =</programlisting>
       <para><command>nwu-server -i</command></para>
     </section>
 
-    <section>
+    <section id="setup_cert">
       <title>SSL certificates creation</title>
 
       <para>In this current alpha version of NWU, it is pretty stupid about
@@ -211,6 +211,18 @@ password =</programlisting>
     <title>Agents Installation</title>
 
     <para>First, configure the APT repositories as explained <link
-    linkend="setup_rep">before</link>. </para>
+    linkend="setup_rep">before</link>. Then install the agent package:</para>
+
+    <para><command>apt-get install nwu-agent</command></para>
+
+    <para>This will also install <emphasis>python-sysinfo</emphasis>, which is
+    a abstraction layer to collect system information. Next, a debconf
+    question will ask the URL used for connecting to the server. Specify it in
+    the format <emphasis>https://domain.tld:8088</emphasis>, using the
+    hostname of exactly as specified when creating the <link
+    linkend="setup_cert">server certificate</link>.</para>
+
+    <para>In later versions of NWU, each agent will require a certificate
+    issued/signed by the server, so expect manual interv</para>
   </section>
 </article>
