@@ -32,7 +32,6 @@ class NWURequestHandler(SimpleXMLRPCRequestHandler):
         log.debug("Request finished.")
         hub.end_close()
 
-
 class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
        SSL.SSLServer, SimpleXMLRPCServer):
     def __init__(self, ssl_context, server_uri):
@@ -49,7 +48,8 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
             request, client_address = self.get_request()
         except socket.error:
             return
-        except SSL.SSLError:
+        except SSL.SSLError, e:
+            log.warn("SSL exception: %s" % e)
             return
         if self.verify_request(request, client_address):
             try:
@@ -63,9 +63,7 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
         port = config['port']
         log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
         ".")
- 
         nadmin = nwu_admin()
-
         ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
         server = ssl.start_server(host, port)
         server.register_function(apt_repositories.apt_set_repositories)
@@ -87,13 +85,16 @@ class SSLServer:
         self.ssl_context = self.ctx()
 
     def ctx(self):
-        ctx = SSL.Context('sslv3')
-        ctx.load_cert(self.pemfile)
-#        ctx.load_verify_info(pemfile)
-        ctx.load_client_ca('/etc/nwu/cacert.pem')
-        ctx.load_verify_info('/etc/nwu/cacert.pem')
-#        ctx.set_verify(self.verify, self.verify_depth)
-#        ctx.set_session_id_ctx('xmlrpcssl')
+        v = 'sslv23'
+        ctx = SSL.Context(v)
+        ctx.set_allow_unknown_ca(True)
+        ctx.load_cert_chain(self.pemfile)
+        ctx.load_verify_info(self.pemfile)
+        ctx.load_client_ca(self.pemfile)
+        #ctx.load_verify_locations('/var/tmp/c/cacert.pem')
+#        ctx.load_verify_info('/etc/nwu/cacert.pem')
+        ctx.set_verify(SSL.verify_none, 10)
+        ctx.set_session_id_ctx('xmlrpcssl')
         #ctx.set_info_callback(verify)
         return ctx
 
@@ -102,5 +103,3 @@ class SSLServer:
         address = (host, port)
         server = SSLXMLRPCServer(ssl_context, address)
         return server     
-
-
