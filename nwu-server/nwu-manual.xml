@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD Simplified DocBook XML V1.0//EN"
+"http://www.oasis-open.org/docbook/xml/simple/1.0/sdocbook.dtd">
+<article>
+  <title>Network Wide Updates - NWU - User Manual</title>
+
+  <articleinfo>
+    <date>2006/09/26</date>
+
+    <abstract>
+      <para>This document is a step-by-step howto for installing NWU,
+      automatic updates manager for systems that use APT</para>
+    </abstract>
+
+    <author>
+      <firstname>Yves</firstname>
+
+      <surname>Junqueira <ulink
+      url="http://cetico.org/nwu">http://cetico.org</ulink></surname>
+    </author>
+
+    <copyright>
+      <year>2006</year>
+
+      <holder>Yves Junqueira</holder>
+    </copyright>
+  </articleinfo>
+
+  <section>
+    <title>About NWU</title>
+
+    <para>NWU helps managing a network of Debian-like computers by making
+    package management as automatic as possible. You would install the server
+    component in a central location and nwu-agent in every computer, then
+    enjoin an up to date environment. You will be able to list, install,
+    upgrade or remove any package in your systems.</para>
+  </section>
+
+  <section id="setup_rep">
+    <title>APT repositories setup</title>
+
+    <para>NWU can be installed by using APT repositories. Depending on which
+    distribution of Debian you're using, add one of the following lines to
+    your /etc/apt/sources.list:</para>
+
+    <para>Debian 3.1 (Sarge), Ubuntu 6.06 (Dapper) or 6.10 (Edgy):</para>
+
+    <para><userinput>deb http://cetico.org/debian_old</userinput></para>
+
+    <para>Debian 4.0 (Etch):</para>
+
+    <para><userinput>deb http://cetico.org/debian</userinput></para>
+
+    <para><command>aptitude update</command></para>
+  </section>
+
+  <section>
+    <title>Server Installation</title>
+
+    <para><command>aptitude install nwu-server</command></para>
+
+    <para><command>vi
+    /etc/default/nwu-server</command><userinput></userinput></para>
+
+    <para><userinput>NO_START=0</userinput></para>
+
+    <para>Now change /etc/nwu/server.conf to suit your needs. The default
+    values work, but please start reading the next section too.</para>
+
+    <para>Sample config:</para>
+
+    <programlisting>[webservice]
+host = 0.0.0.0 
+port = 8088
+
+[database]
+type = sqlite
+host =
+database = /var/lib/nwu/nwu.db
+user = 
+password =</programlisting>
+
+    <section>
+      <title>Database config</title>
+
+      <para><citetitle>If you are in a hurry, skip this section and just run
+      "nwu-server -i" as root and you'll be using SQLite as your
+      backend.</citetitle></para>
+
+      <para>In order to use nwu-server you need a database backend compatible
+      with python sqlobject (MySQL, PostgreSQL, SQLite). SQLite is nice and
+      simple, but it may not perform well. It's a very good option for testing
+      and for networks with just a few nodes. If your network is big and many
+      clients would connect at the same time, PostgreSQL and MySQL are better
+      options. NWU tries very hard to be efficient using the database, so your
+      mileage may vary.</para>
+
+      <para>If you want to use MySQL or PostgreSQL, choose one of the
+      following options:</para>
+
+      <para>A) MySQL</para>
+
+      <para>Create database (type your root mysql password):</para>
+
+      <para><command>mysql -uroot -p -e</command> <userinput>'CREATE DATABASE
+      nwu;'</userinput></para>
+
+      <para>Create user:</para>
+
+      <para><command>mysql -uroot -p -e</command> <userinput>'GRANT ALL
+      PRIVILEGES ON nwu.* TO 'nwu'@'%' IDENTIFIED BY 'YOURPASSWORD' WITH GRANT
+      OPTION;'</userinput></para>
+
+      <para>Create tables:</para>
+
+      <para><command>nwu-server -i</command></para>
+
+      <para>B) PostgreSQL</para>
+
+      <para><command>sudo -u postgres createuser nwu</command></para>
+
+      <para><command>sudo -u postgres createdb nwu</command></para>
+
+      <para><command>sudo -u postgres psql nwu &lt;&lt; EOF</command></para>
+
+      <para><userinput>ALTER DATABASE nwu OWNER TO nwu \q
+      EOF</userinput></para>
+
+      <para>Create tables:</para>
+
+      <para><command>nwu-server -i</command></para>
+    </section>
+
+    <section>
+      <title>SSL certificates creation</title>
+
+      <para>In this current alpha version of NWU, it is pretty stupid about
+      certificates. Neither the agent is checking the server certificate, nor
+      the opposite. This is obviously a major issue, which I am working on.
+      See ticket <ulink url="http://cetico.org/nwu/ticket/35">#35</ulink> in
+      the trac system. If you don't mind, continue reading. If you don't have
+      the openssl package installed, please do install it before
+      proceeding.</para>
+
+      <para>- Create a private key (type a temporary password):</para>
+
+      <para><command>openssl genrsa -des3 -out server.key
+      1024</command></para>
+
+      <para>- Generate a Certificate Signing Request. Fill in valid
+      information. pay strict attention to the commonName field - it must be
+      the hostname your clients will use to connect to this server (e.g:
+      <emphasis>myserver.mycorp.somewhere</emphasis>).</para>
+
+      <para><command>openssl req -new -key server.key -out
+      server.csr</command></para>
+
+      <para>- Remove the passphrase from the key:</para>
+
+      <para><command>cp server.key server.key.org</command></para>
+
+      <para><command>openssl rsa -in server.key.org -out
+      server.key</command></para>
+
+      <para>- Create a self-signed certificate:</para>
+
+      <para><command>openssl x509 -req -days 365 -in server.csr -signkey
+      server.key -out server.crt</command></para>
+
+      <para>- Install the certificate and key files:</para>
+
+      <para><command>cp server.key /etc/nwu/server.pem</command></para>
+
+      <para><command>cat server.crt &gt;&gt;
+      /etc/nwu/server.pem</command></para>
+
+      <para><command>chown nwuserver.nwuserver
+      /etc/nwu/server.pem</command></para>
+
+      <para><command>chmod 660 /etc/nwu/server.pem</command></para>
+    </section>
+
+    <section>
+      <title>Run it!</title>
+
+      <para>Cross your fingers and start the server:</para>
+
+      <para><command>/etc/init.d/nwu-server start</command></para>
+
+      <para>See in the syslog if everything is running fine. Now let's install
+      the <link linkend="setup_agents">agent</link> somewhere - or even in the
+      same machine you installed the server, no problem with that.</para>
+    </section>
+
+    <section>
+      <title>Troubleshooting the server</title>
+
+      <para>It's easy to troubleshoot the server in case you run into
+      troubles. You can play with the paramaters for nwu-server. First, stop
+      the server if it's running, then call:</para>
+
+      <para>sudo -u nwuserver nwu-server -f -l DEBUG</para>
+
+      <para>The server will remain in the foreground, dumping diagnostic
+      messages. If you need, ask for help in the <ulink
+      url="http://cetico.org/nwu">mailing list</ulink>.</para>
+    </section>
+  </section>
+
+  <section id="setup_agents">
+    <title>Agents Installation</title>
+
+    <para>First, configure the APT repositories as explained <link
+    linkend="setup_rep">before</link>. </para>
+  </section>
+</article>
