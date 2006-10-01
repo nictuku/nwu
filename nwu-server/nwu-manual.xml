@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE article PUBLIC "-//OASIS//DTD Simplified DocBook XML V1.0//EN"
-"http://www.oasis-open.org/docbook/xml/simple/1.0/sdocbook.dtd">
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
 <article>
   <title>Network Wide Updates - NWU - User Manual</title>
 
   <articleinfo>
-    <date>2006/09/26</date>
-
     <abstract>
       <para>This document is a step-by-step howto for installing NWU,
       automatic updates manager for systems that use APT</para>
     </abstract>
+
+    <releaseinfo>0.1</releaseinfo>
 
     <author>
       <firstname>Yves</firstname>
@@ -33,7 +33,8 @@
     package management as automatic as possible. You would install the server
     component in a central location and nwu-agent in every computer, then
     enjoin an up to date environment. You will be able to list, install,
-    upgrade or remove any package in your systems.</para>
+    upgrade or remove any package in your systems. For more information, see
+    <ulink url="http://cetico.org/nwu">http://cetico.org/nwu</ulink>.</para>
   </section>
 
   <section id="setup_rep">
@@ -222,7 +223,85 @@ password =</programlisting>
     hostname of exactly as specified when creating the <link
     linkend="setup_cert">server certificate</link>.</para>
 
+    <para><inlinemediaobject>
+        <imageobject>
+          <imagedata fileref="nwuagent_debconf.png" />
+        </imageobject>
+      </inlinemediaobject></para>
+
     <para>In later versions of NWU, each agent will require a certificate
     issued/signed by the server, so expect manual interv</para>
+  </section>
+
+  <section>
+    <title>Operation</title>
+
+    <para>First of all, how does nwu-agent work? The first time the nwu-agent
+    is run, it will generate its auth information and save it on
+    /var/spool/nwu/, then load system information - including current APT
+    state and send that to the server. The agents will push and pull data to
+    the servers every 10 minutes. They notify the server of the changes (eg:
+    "package 'foo' installed") then get the list of pending tasks.</para>
+
+    <para>You can then manage NWU using the nwu CLI tool from the server you
+    installed nwu-server. Type 'nwu help' to get list of options. You can
+    either run it as <emphasis>root</emphasis> or someone in the
+    <emphasis>nwuserver</emphasis> group, which has privilege to read
+    <filename>/etc/nwu/server.conf</filename>.</para>
+
+    <para><command>$ nwu help</command> <programlisting>Usage: nwu &lt;sub-command&gt; &lt;options&gt; [arguments]
+Command line manager for NWU, version 0.1.5.
+
+Available sub-commands:
+
+  addrep  &lt;computer&gt; &lt;repository uri&gt;  : Add new repository
+  adduser &lt;name&gt; &lt;level:0|1&gt;     : Add a new user, admin or not
+  forceinstall &lt;computer&gt; &lt;packages&gt;  : Install defined packages in the computer (force)
+  help                           : This help message
+  install &lt;computer&gt; &lt;packages&gt;  : Install defined packages in the computer
+  list    [group]                : Lists all computers or specified group
+  update &lt;computer&gt;             : Update packages list
+  upgrade &lt;computer&gt;             : Upgrade all packages in the computer
+  view    &lt;computer&gt; &lt;info&gt;      : View computer informations
+
+Available groups for list command:
+
+    outdated
+</programlisting></para>
+
+    <para>The first command you should try is 'list':</para>
+
+    <para><command>$ nwu list</command></para>
+
+    <para> <computeroutput>1 elvis Linux "QY4PRLHPY39WUQXQRZLR22O2W4ML4W43"
+    </computeroutput></para>
+
+    <para>In this case we have only one agent installed. The line is showing
+    its id, its hostname, OS and the unique used internally to identify each
+    machine, and works as the 'username' of each computer. You can ignore
+    it.</para>
+
+    <para>You can ask a list of outdated machines:</para>
+
+    <para><command>$ nwu list outdated</command> </para>
+
+    <para><computeroutput>elvis[1] </computeroutput></para>
+
+    <para>Hmm we better give elvis an upgrade:</para>
+
+    <para><command>$ nwu upgrade 1</command></para>
+
+    <para> <computeroutput>Found computer id=1 in the database. Requesting
+    upgrade.</computeroutput></para>
+
+    <para>Then there is 'view', which</para>
+
+    <para><command>$ nwu view 1 packages</command><programlisting>Reading current packages in computer elvis[1]
+alacarte                                     0.10.0-0ubuntu1
+app-install-data                             0.2.11
+apport                                       0.19
+apport-gtk                                   0.19</programlisting></para>
+
+    <para>.. etc etc (todo)</para>
   </section>
 </article>
