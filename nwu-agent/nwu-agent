@@ -94,7 +94,7 @@ def sync_info(what, diff_list):
     # updating 
     # FIXME: this is **WRONG**.
     # we must format the list. see below in blaaa
-4
+
     agent.store_spool(what, diff_list, True)
     store_tbl_ver(what, updver)
 
@@ -160,9 +160,9 @@ check_me = ['update_candidates', 'current_packages']
 for check in check_me:
     diff = whats_new(check)
     for operation in diff:
+        sync_data[check] = diff
         if len(operation) > 0:
             sync_this[check] = True
-            sync_data[check] = diff
             break
 
 # APT REPOSITORIES 
@@ -202,7 +202,7 @@ if not my_session:
 
     my_session = agent.rpc.session_setup(uniq, token)
     
-local_versions = {'repositories':'',
+tables = {'repositories':'',
  'task':'', 
  'update_candidates':'',
  'current_packages':'',
@@ -210,6 +210,7 @@ local_versions = {'repositories':'',
 
 spool_versions = agent.read_spool('tbl_ver')
 log.debug("Spool versions: %s" % spool_versions)
+local_versions = tables.copy()
 local_versions.update(spool_versions)
 
 #remote_versions = {}
@@ -220,8 +221,12 @@ for tbl in local_versions.keys():
         sync_this[tbl] = True
         log.debug("table serial changed")
 
-for run in sync_this.keys():
-    if sync_this[run] is True:
+# getting tables.keys instead of sync_this.keys, because I need to ignore old tables
+for run in tables.keys():
+    if run == 'repositories':
+        # FIXME, should not ignore repo update
+        continue
+    if sync_this.get(run, False) is True:
         sync_info(run, sync_data[run])
 
 # FIXME: Should only sync tasks if remote version differs from locals
