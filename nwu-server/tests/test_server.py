@@ -20,15 +20,15 @@
 import sys
 sys.path.append('.')
 print sys.path
-import nwu_server.apt
+import nwu_server.db.operation
 
 class TestServer:
  
     def setup_method(self, method):
-        nwu_server.apt.check_token = self.istrue
+        nwu_server.db.operation.check_token = self.istrue
 
     def test_fake_check_token(self):
-        assert nwu_server.apt.check_token('a', 'b') == True
+        assert nwu_server.db.operation.check_token('a', 'b') == True
 
     def istrue(self, a, b):
         return True
