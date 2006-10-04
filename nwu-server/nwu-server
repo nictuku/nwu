@@ -1,0 +1,199 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+import os
+import sys
+import pwd
+from optparse import OptionParser
+import ConfigParser
+import logging
+import logging.handlers
+
+def read_config():
+    """Reads configuration data from the config file.
+    """
+    config_p = ConfigParser.ConfigParser()
+    config_p.read("/etc/nwu/server.conf")
+
+    host = config_p.get("webservice", "host")
+    port = int(config_p.get("webservice", "port"))
+    config = { 'host' : host, 'port' : port }
+    return config
+
+def drop_privileges(user):
+    log.info("Running as user '" + str(user) + "'.")
+    (pw_name,pw_passwd,pw_uid, pw_gid,pw_gecos,pw_dir,pw_shell) =\
+        pwd.getpwnam(user)
+    try:
+        os.setegid(pw_gid)
+        os.seteuid(pw_uid)
+    except OSError, e:
+        print >>sys.stderr, "Could not drop privileges: "+ str(e.errno) + \
+            " " + str(e.strerror)
+        sys.exit(1)
+
+def daemonize(PIDFILE, ERRORLOG):
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Credits:
+    # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012
+    
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit first parent
+            sys.exit(0)
+    except OSError, e:
+        print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, \
+            e.strerror)
+        sys.exit(1)
+
+    # decouple from parent environment
+    os.chdir("/")   #don't prevent unmounting....
+    os.setsid()
+    os.umask(0)
+
+    errorlog = file(ERRORLOG, 'a+')
+    
+    # Save stderr because we can need it later
+    stderr_old = file(ERRORLOG, 'a+')
+
+    os.dup2(sys.stderr.fileno(), stderr_old.fileno())
+    os.dup2(errorlog.fileno(), sys.stdout.fileno())
+    os.dup2(errorlog.fileno(), sys.stderr.fileno())
+    os.dup2(errorlog.fileno(), sys.stdin.fileno())
+
+    # do second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit from second parent, print eventual PID before
+            #print "Daemon PID %d" % pid
+            try:
+                open(PIDFILE,'w').write("%d"%pid)
+            except IOError, e:
+                print >>stderr_old, "Open %s failed: %d (%s)" % (PIDFILE, e.errno, e.strerror)
+                sys.exit(1)
+            sys.exit(0)
+    except OSError, e:
+        print >>stderr_old, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
+        sys.exit(1)
+    #stderr_old.close()
+
+def getopts():
+    parser = OptionParser()
+    loglevels=('DEBUG','INFO','WARNING', 'WARN','ERROR','FATAL')
+
+    parser.add_option("-i", "--initialize", dest="init", action="store_true",
+        help="Initialize the server environment (database) and exit")
+    parser.add_option("-f", "--foreground", dest="daemonize", 
+        action="store_false",
+        help="Run NWU in the foreground and print logs to stderr")
+    parser.add_option("-l", "--loglevel", dest="loglevel", metavar="LOGLEVEL",
+        help="Set verbosity to LOGLEVEL", type="choice",
+        choices=loglevels)
+    parser.add_option("-u", "--user", dest="user", metavar="USER",
+        help="Run as user USER", type="string")
+    parser.add_option("-p", "--pidfile", dest="pidfile", metavar="PIDFILE",
+        help="Use PIDFILE to store pid.")
+    parser.add_option("-e", "--errorlog", dest="errorlog", 
+        metavar="ERRORLOG", 
+        help="Send untreated python errors to ERRORLOG.")
+
+
+    parser.set_defaults(init=False, daemonize=True, loglevel="INFO",
+        user="nwuserver",pidfile="/var/run/nwu-server/nwu-server.pid",
+        errorlog="/dev/null")
+    
+    (options, args) = parser.parse_args()
+    return options
+
+def nwu_main():
+
+#    if options.init:
+#        options.daemonize = False
+
+    # optparse will take care of only accepting the specified loglevels
+    config = read_config()
+    host = config['host']
+    port = config['port']
+    log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
+        ".")
+    nadmin = nwu_admin()
+
+    ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
+    server = ssl.start_server(host, port)
+    server.register_function(apt_repositories.apt_set_repositories)
+    server.register_function(apt_current_packages.apt_set_current_packages_full)
+    server.register_function(computer.session_setup)
+    server.register_function(apt_current_packages.set_list_diff)
+    server.register_function(get_tasks)
+    server.register_function(wipe_this)
+    server.register_function(get_tbl_version)
+    server.register_function(computer.add_computer)
+    server.register_function(nadmin.get_info)
+    server.register_function(nadmin.computer_del)
+
+    if options.daemonize:
+        log.info("Daemonizing.")
+        daemonize(options.pidfile, options.errorlog)
+        drop_privileges(options.user)
+
+    server.serve_forever()
+
+if __name__ == '__main__':
+    options = getopts()
+    log = logging.getLogger()
+    
+    if options.init:
+        drop_privileges(options.user)
+        log.info("Creating required database structure.")
+        from nwu_server.db.operation import create_tables, hub
+        create_tables()
+        hub.commit()
+        sys.exit(0)
+
+    if options.daemonize:
+        # Log to syslog by default
+        try:
+            hdlr = logging.handlers.SysLogHandler(
+          "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+        except:
+            print "Error while connecting log instance to the syslog. Is \
+the syslog daemon running?"
+            sys.exit(1)
+
+        formatter = logging.Formatter(
+        "nwu_server[%(process)d] %(levelname)s %(message)s"
+            )
+    else:
+        # Log to stderr if staying in the foreground
+        hdlr = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s (%(levelname)s): %(message)s')
+
+    hdlr.setFormatter(formatter)
+    log.addHandler(hdlr)
+    log.setLevel(eval('logging.' + options.loglevel)) 
+
+    from nwu_server.db.operation import *
+    from nwu_server.rpc_admin import nwu_admin
+    from nwu_server import sslxmlrpc
+    from nwu_server.rpc_agents import *
+
+    nwu_main()

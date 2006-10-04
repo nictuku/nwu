@@ -1,0 +1,41 @@
+SQLite:
+
+root@elvis:~/nwu-svn/nwu# time python nwu-agent
+Reading package lists... Done
+Building dependency tree... Done
+uniq string identified: 3WTEAQV55AAWKDEM0DY23H0P3Y2LJ0VT
+Hey, this is me: 3WTEAQV55AAWKDEM0DY23H0P3Y2LJ0VT elvis Linux-hardcoded 2.6.x-hardcoded
+Setting up initial session.
+Sending repositories data
+No pending updates - informing the server.
+Getting assigned tasks.
+Tasks: []
+Kindly asking server to wipe tasks.
+Sending current packages list.
+
+real    0m14.659s
+user    0m1.099s
+sys     0m0.083s
+
+
+
+MySQL:
+
+root@elvis:~/nwu-svn/nwu# time python nwu-agent
+Reading package lists... Done
+Building dependency tree... Done
+uniq string identified: 3WTEAQV55AAWKDEM0DY23H0P3Y2LJ0VT
+Hey, this is me: 3WTEAQV55AAWKDEM0DY23H0P3Y2LJ0VT elvis Linux-hardcoded 2.6.x-hardcoded
+Setting up initial session.
+Sending repositories data
+No pending updates - informing the server.
+Getting assigned tasks.
+Tasks: []
+Kindly asking server to wipe tasks.
+Sending current packages list.
+
+real    0m4.086s
+user    0m1.092s
+sys     0m0.084s
+
+
