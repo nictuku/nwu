@@ -37,8 +37,11 @@ import socket
 log = logging.getLogger('nwu_agent.misc')
 
 class agent_talk:
+    pemfile='/etc/nwu/client.pem'
+    debug=False
+
     def __init__(self, load_config=True):
-        socket.setdefaulttimeout(5)
+        #socket.setdefaulttimeout(6)
         if load_config:
             self.conffile = '/etc/nwu/agent.conf'
             config = ConfigParser.ConfigParser()
@@ -62,30 +65,23 @@ class agent_talk:
             self.repositories, self.rep_md5 = self.read_sources_list(
                     sourcefiles)
             self.pkgs = sysinfo.software.packages()
-            self.packages = self.pkgs.installed_ver
+            self.current_packages = self.pkgs.installed_ver
             self.update_candidates = self.pkgs.update_candidates
             self.rpc = self.XClient(self.server_uri)
 
     def my_ctx(self):
-        ctx = SSL.Context()
-        ## what are the diff between these two??
-        #ctx.load_verify_info(cafile="/tmp/ca.crt")
-        #ctx.load_verify_locations("/var/tmp/c/cacert.pem")
-        #ctx.load_client_ca("/var/tmp/c/cacert.pem")
-
-        # load client certificate (used to authenticate the client)
-        #ctx.load_cert_chain("/var/tmp/c/elvis.pem")
-
-        # stop if peer's certificate can't be verified
-        ctx.set_allow_unknown_ca(True)
-
-        # verify peer's certificate
-        ctx.set_verify(SSL.verify_none, 2)
+        protocol = 'sslv23'
+        ctx = SSL.Context(protocol)
+#        ctx.load_cert(self.pemfile)
+        ctx.load_client_ca(self.pemfile)
+        ctx.load_verify_info(self.pemfile)
+        ctx.set_verify(SSL.verify_peer|SSL.verify_fail_if_no_peer_cert,10)
+        #ctx.set_session_id_ctx('nwu')
         return ctx
 
     def XClient(self, server_uri):
         ctx = self.my_ctx()
-        xs = Server(server_uri, SSL_Transport(ctx))
+        xs = Server(server_uri, SSL_Transport(ctx), verbose=self.debug)
         return xs
 
     def get_auth(self):
@@ -192,15 +188,16 @@ class agent_talk:
 
     def read_spool(self, category, stream=None):
 
-        if category not in ['packages', 'update_candidates', 'tbl_ver', 
-            'repositories']:
+        # FIXME: remove 'packages' from this list
+        if category not in ['current_packages', 'update_candidates', 'tbl_ver', 
+            'repositories', 'packages']:
             raise Exception, "Wrong cache category specified: " + category
         if not stream:
             cache_path = "/var/spool/nwu/nw.%s" % category
             try:
                 stream = open(cache_path, 'r')
             except IOError:
-                log.debug("update candidates spool file not found.")
+                log.debug("%s spool file not found." % category)
                 return {category:'new'}
         cache = ConfigParser.ConfigParser()
         result = cache.readfp(stream)
@@ -241,6 +238,7 @@ class agent_talk:
         "section", "option" and "value".
 
         Security is a must here."""
+        log.debug("Writing spool of type '%s" % spool)
         # FIXME: check for right permissions in the spool dir and files
         spool_path = "/var/spool/nwu/nw.%s" % spool 
         if wipe_old == True:
