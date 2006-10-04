@@ -1,0 +1,105 @@
+NWU
+
+== NWU development version ==
+=============================
+
+Network wide updates for systems which use APT.
+- Yves Junqueira <yves@cetico.org>
+
+http://cetico.org/nwu
+
+NWU features
+-------------
+
+# Manage Debian-like systems in the network using a CLI tool 
+  (PyGTK interface under development)
+# Install packages in the remote computers
+# List pending updates
+# Roll security upgrades to computers
+# Update the remote nodes packages cache
+
+= NWU Agent =
+=============
+
+NWU agent is the software installed in the computers one wants to
+manage.
+
+nwu-server first!
+-----------------
+First you have to setup nwu-server in a server for your network. See the README
+for nwu-server if you skipped that step, then come back reading this file.
+
+
+Special package requirement: python-sysinfo
+-------------------------------------------
+
+Besides packages available in both debian/etch and ubuntu/edgy, 
+nwu-agent also requires python-sysinfo, which I wrote as part of my other
+project, PyCACIC. python-sysinfo is a library for system information
+collection. It is now integrated into the NWU trunk.
+
+Currently, NWU doesn't not get many data from the computer the agent is 
+installed in, but extensive collection of hardware, network and services
+info is planned. That would be an interesting side-effect feature of NWU.
+
+For more information, see http://cetico.org/nwu
+
+Installation
+------------
+You should use the provided deb packages.
+
+#FIXME: download them from..
+
+Usage info
+-----------
+When you install the package, a debconf dialog will ask the nwu server host and
+port address. That's all you have to configure. Notice that this name must 
+match the common name of the certificate used by the NWU server, or it will
+fail.
+
+The package will install a cron script in /etc/cron.d/nwu-agent, which
+will run the nwu-agent and nwu-maint scripts from time to time. It is planned
+to make a clever daemon that will wake up and run these scripts in a more
+clever way. See bug #20 in the trac system of the project for updates.
+
+nwu-agent must run by an unprivileged user, usually nwu-agent, and will 
+connect to the server to send updated data and get pending tasks, like 
+"updates" or "installs". You can force the execution of this script
+by using sudo:
+
+# sudo -u nwuagent nwu-agent
+
+If any pending task is found, nwu-agent stores them in 
+/var/spool/nwu/nw.tasks.
+
+nwu-maint is called regularly by cron and will read this file and resolve
+the pending tasks.
+
+Both scripts logs actions to syslog. If a nwu-maint task (eg. install) 
+fails, a mail will be sent to the local root account with details.
+
+Known issues
+------------
+If you have a non-official repository configured and try to install a package
+from it, newer versions of apt-get (~0.6.0) will fail. You can use the
+forceinstall command from the CLI admin interface to force installation.
+Notice that forceinstall, besides not needed, will not work in old versions
+of apt-get (eg. in Sarge).
+
+See http://cetico.org/nwu in "Tickets" for other issues.
+
+
+Feedback
+--------
+Please send all feedback to the nwu-users mailing list at:
+http://cetico.org/cgi-bin/mailman/listinfo
+
+The project bugs are managed in a trac, placed in:
+http://cetico.org/nwu
+
+Please file any bugs there.
+
+Thank you,
+
+Yves Junqueira
+<yves@cetico.org>
