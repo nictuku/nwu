@@ -18,10 +18,6 @@
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import logging
-#from xml.sax.saxutils import escape as xmlescape
-import re
-import sysinfo
 import string
 import random
 import stat
@@ -31,7 +27,6 @@ from M2Crypto.m2xmlrpclib import Server, SSL_Transport
 
 import logging
 import sys
-from md5 import md5 
 import socket
 
 log = logging.getLogger('nwu_agent.misc')
@@ -51,22 +46,6 @@ class agent_talk:
                 sys.exit(1)
             r = config.read("/etc/nwu/agent.conf")
             self.server_uri = config.get("connection", "server_uri")
-            # grr I don't want to have to do this. Fix sysinfo
-            format = "%(asctime)s cacic[%(process)d] %(levelname)s %(name)s:%(lineno)d: %(message)s"
-            sysinfo_logger = logging.getLogger("sysinfo")
-            sysinfo_logger.setLevel(logging.DEBUG)
-            ch = logging.StreamHandler()
-            ch.setLevel(logging.DEBUG)
-            formatter = logging.Formatter(format)
-            ch.setFormatter(formatter)
-            sysinfo_logger.addHandler(ch)
-            #Config.simplify_objects = 1 
-            sourcefiles = self.list_sources_list()
-            self.repositories, self.rep_md5 = self.read_sources_list(
-                    sourcefiles)
-            self.pkgs = sysinfo.software.packages()
-            self.current_packages = self.pkgs.installed_ver
-            self.update_candidates = self.pkgs.update_candidates
             self.rpc = self.XClient(self.server_uri)
 
     def my_ctx(self):
@@ -141,136 +120,4 @@ class agent_talk:
         session = uniq, password
         return session
      
-    def list_sources_list(self):
-        filenames = ['/etc/apt/sources.list']
-        directories = ['/etc/apt/sources.d']
-        for dir in directories:
-            try:
-                for file in os.listdir(dir):
-                    if file.endswith('.list'):
-                        filenames.append(dir + '/' + file)
-            except:
-                pass
-        return filenames
-
-    # FIXME: move this to sysinfo
-    def read_sources_list(self, filenames):
-        full_string = ''
-        repositories = []
-        for source in filenames:
-            # any use to handle exceptions here?
-            f = open(source, 'r')
-            thisrep = [source]
-            for line in f:
-                full_string += line
-                line = line.strip()
-                #ignore comments and blank lines
-                l = line.split('#',1)[0]
-                ignore = re.search(r'^$|#|^\s+$', l)
-                if not ignore :
-                    thisrep.append(l)
-        #pik = pickle.dumps(repositories)
-            repositories.append(thisrep)
-        return repositories, md5(full_string).hexdigest()
-
-    def diff_dicts(self, old_dict, new_dict):
-        """This function detects the differences between two dicts,
-        returning two dicts: new or changed keys; and deleted keys
-        """
-        updated_keys = [ k for k in new_dict if k not in old_dict 
-            or new_dict[k] != old_dict[k] ]
-        up_k = {}
-        for k in updated_keys:
-            up_k[k] = new_dict[k]
-        deleted_keys = [ k for k in old_dict if k not in new_dict ]
-        del_k = {}
-        for k in deleted_keys:
-            del_k[k] = old_dict[k]
-        return (up_k, del_k)
-
-    def read_spool(self, category, stream=None):
-
-        if category not in ['current_packages', 'update_candidates', 'tbl_ver', 
-            'repositories']:
-            raise Exception, "Wrong cache category specified: " + category
-        if not stream:
-            cache_path = "/var/spool/nwu/nw.%s" % category
-            try:
-                stream = open(cache_path, 'r')
-            except IOError:
-                log.debug("%s spool file not found." % category)
-                return {category:'new'}
-        cache = ConfigParser.ConfigParser()
-        result = cache.readfp(stream)
-        objects = {}
-        if len(cache.sections()) < 1:
-             return {category:'new'}
-        for s in cache.sections():
-            for option, value in cache.items(s):
-                objects[option] = value
-        return objects
-
-    def diff_new_spool(self, info):
-        """Returns a list of:
-        - cached info
-        - current info
-        - diff of previous both [updated, deleted]
-        """
-        cached = self.read_spool(info)
-        current = eval('self.' + info)
-        diff = self.diff_dicts(cached, current)
-        return [cached, current, diff]
-
-    def check_diff_rep(self):
-        """Checks if the new repositories list
-        is new or not.
-        """
-        cached = self.read_spool('repositories').get('md5','')
-        current = self.rep_md5
-        if cached != current:
-            return True
-        else:
-            return False
-
-    def store_spool(self, spool, item_list, wipe_old=False):
-        """Stores data in the services pool directory.
-        
-        It takes a list of itens, each of which contains a list of
-        "section", "option" and "value".
-
-        Security is a must here."""
-        log.debug("Writing spool of type '%s" % spool)
-        # FIXME: check for right permissions in the spool dir and files
-        spool_path = "/var/spool/nwu/nw.%s" % spool 
-        if wipe_old == True:
-            try:
-                os.unlink(spool_path)
-            except:
-                pass
-            else:
-                log.info("Deleted old spool file.")
-        store = ConfigParser.ConfigParser()
-        r = store.read(spool_path)
-    	for it in item_list:
-            section = it[0]
-            option = it[1]
-            if len(it) > 2:
-                value = it[2]
-            else:
-                value = 'placeholder'
-            if option == '':
-                option = 'placeholder'
-            log.debug("Found "+ str(section) + ": "+ str(option))
-            if not store.has_section(section):
-                # create section in the task file
-                store.add_section(section)
-            store.set(section, option, value)
-        try:
-            updt_spool = open(spool_path, 'w')
-        except:
-            log.error("!!! Problem writing to spool directory in " + spool_path + ".")
-            pass
-        else:
-            log.info("Updating spool file for " + spool + ".")
-            store.write(updt_spool)
 
