@@ -51,7 +51,7 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
             return False
         except SSL.SSLError, e:
             log.warn("SSL exception: %s" % e)
-            return False
+            return 
         if self.verify_request(request, client_address):
             try:
                 self.process_request(request, client_address)
@@ -86,12 +86,14 @@ class SSLServer:
         self.ssl_context = self.ctx()
 
     def ctx(self):
-        protocol = 'sslv23'
+        protocol = 'sslv3'
         ctx = SSL.Context(protocol)
-        ctx.load_cert(self.pemfile)
-        ctx.load_client_ca(self.pemfile)
-        ctx.load_verify_info(self.pemfile)
-        ctx.set_verify(SSL.verify_peer,10)
+        ctx.set_allow_unknown_ca(1)
+        ctx.load_cert(certfile='/etc/nwu/server.pem',
+            keyfile='/etc/nwu/server.pem')
+#        ctx.load_client_ca('/etc/nwu/cacert.pem')
+ #       ctx.load_verify_info('/etc/nwu/cacert.pem')
+        ctx.set_verify(SSL.verify_none,10)
     #    ctx.set_session_id_ctx('nwu')
         return ctx
 

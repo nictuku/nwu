@@ -70,12 +70,14 @@ class agent_talk:
             self.rpc = self.XClient(self.server_uri)
 
     def my_ctx(self):
-        protocol = 'sslv23'
+        protocol = 'sslv3'
         ctx = SSL.Context(protocol)
+        ctx.set_allow_unknown_ca(False)
 #        ctx.load_cert(self.pemfile)
-        ctx.load_client_ca(self.pemfile)
-        ctx.load_verify_info(self.pemfile)
+        ctx.load_client_ca('/etc/nwu/cacert.pem')
+        ctx.load_verify_info('/etc/nwu/cacert.pem')
         ctx.set_verify(SSL.verify_peer|SSL.verify_fail_if_no_peer_cert,10)
+        #ctx.set_verify(SSL.verify_none,10)
         #ctx.set_session_id_ctx('nwu')
         return ctx
 
