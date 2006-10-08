@@ -119,5 +119,4 @@ class agent_talk:
             auth_fd.close()
         session = uniq, password
         return session
-     
 

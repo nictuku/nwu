@@ -33,6 +33,7 @@ class NodeInfo(object):
     def __init__(self):
         self.sync_this = {}
         self.sync_data = {}
+        self.store_data = {}
         sourcefiles = self.list_sources_list()
         self.repositories, self.rep_md5 = self.read_sources_list(
                 sourcefiles)
@@ -41,6 +42,7 @@ class NodeInfo(object):
             'update_candidates' : self.pkgs.update_candidates 
             }
         self.get_all_news()
+        self.spool_versions = self.read_spool('tbl_ver')
 
     def get_all_news(self):
         """See what info has changed in the system
@@ -74,8 +76,9 @@ class NodeInfo(object):
         # Format the list ready to store in spool
         my_list = []
         for key, val in current_pkgs.iteritems():
-            my_list.append(['cur_pkgs', key, val])
-        log.debug(where)
+            my_list.append([where, key, val])
+        self.store_data[where] = my_list
+        log.debug("Formatting changes for %s." % where)
         log.debug("cur: %s " % repr(current_pkgs))
         log.debug("cac: %s " % repr(cached_pkgs))
         log.debug("dif: %s " % repr(diff_pkgs))
@@ -188,12 +191,10 @@ class NodeInfo(object):
 
         # ARGH this is ugly, but I'll figure out a way to organize this
         if diff_candidates[1].get('update_candidates','') == 'new':
-            print "pau1"
             store_tbl_ver('update_candidates', 'please-update')
             log.info("Storing spool for update_candidates.")
             self.store_spool('update_candidates', [['update_candidates',
              'empty','empty']], True)
-            print "pau12"
             self.sync_this['update_candidates'] = True
             log.debug("update_candidates changed. Must update")
 
