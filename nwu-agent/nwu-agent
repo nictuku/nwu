@@ -22,8 +22,8 @@ import sys
 import logging
 import logging.handlers
 import hmac
-
-# TODO: make a "System" class and store stuff as objects
+from nwu_agent.node_info import NodeInfo
+from nwu_agent.node_sync import NodeSync
 
 log = logging.getLogger()
 hdlr = logging.handlers.SysLogHandler(
@@ -40,194 +40,16 @@ if os.geteuid() == 0:
     log.error("nwu-agent cannot be run as root.")
     sys.exit(1)
 
-def sync_task():
-    """This operation will *get* new tasks from the server.
-    """
-    log.info("Getting assigned tasks.")
-    get_tasks = agent.rpc.get_tasks(my_session)
-    log.info("Assigned tasks found: " + str(get_tasks) + ".")
-    log.debug("Kindly asking server to wipe old tasks.")
-    taskver = agent.rpc.wipe_this(my_session,'task')
-    store_tbl_ver('task', taskver)
-    store_task = []
-    for tas in get_tasks:
-       store_task.append(tas)
-    if len(store_task) > 0:
-        log.debug("Storing tasks in spool.")
-        agent.store_spool('tasks', store_task)
+def main():
 
-def store_tbl_ver(tablename, version):
-    log.debug("Updating table version: %s - %s" % (tablename, version))
-    change_ver = [['tbl_ver', tablename, version]]
-    agent.store_spool('tbl_ver', change_ver, False)
+    log.info("Starting nwu-agent")
+    # FIXME: sysinfo should not generate output here
 
-log.info("Starting nwu-agent")
-# FIXME: sysinfo should not generate output here
+    info = NodeInfo()
+    sync = NodeSync()
 
-from nwu_agent import misc
-
-agent = misc.agent_talk()
-sync_this = {}
-sync_data = {}
-
-def sync_info(what, diff_list):
-    """Synchronizes information to both the cache spool
-    and the server.
-
-    See agent.diff_new_spool(), but diff_list must be a list of two dicts:
-        - updated['package'] = version 
-        - deleted['package'] = empty
-    """
-    log.info("Sync %s." % what)
-    (updated, deleted) = diff_list
-    # if the list is *still* empty, ignore it
-    if deleted.get('empty','') == 'empty':
-        return
-    # If the list in the cache is new, we must send a full update
-    if deleted.get(what,'') == 'new':
-            # We must wipe the remote info
-            log.info("Local cache for '%s' is empty" % what)
-            # also, updated will have all data
-            ign = agent.rpc.wipe_this(my_session,what)
-    updver = agent.rpc.set_list_diff(my_session, what, 
-            updated, deleted)
-    # updating 
-    # FIXME: this is **WRONG**.
-    # we must format the list. see below in blaaa
-
-    agent.store_spool(what, diff_list, True)
-    store_tbl_ver(what, updver)
-
-def whats_new(where='current_packages'):
-    """
-    Process the diff between current system information and
-    the data cached in /var/spool/nwu and returns the
-    diff data if any, or None.
-
-    'where' can be:
-    - current_packages
-    - update_candidates
-    """
-    [cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool(where)
-
-    # Format the list ready to store in spool
-    my_list = []
-    for key, val in current_pkgs.iteritems():
-        my_list.append(['cur_pkgs', key, val])
-    log.debug(where)
-    log.debug("cur: %s " % repr(current_pkgs))
-    log.debug("cac: %s " % repr(cached_pkgs))
-    log.debug("dif: %s " % repr(diff_pkgs))
-    return diff_pkgs
-
-def blaaaa():
-    # UPDATE CANDIDATES
-        
-    [cached_candidates, current_candidates, diff_candidates] \
-        = agent.diff_new_spool('update_candidates')
-
-    # Format the update candidates list ready to store in spool
-    candidates_list = []
-    for key, val in current_candidates.iteritems():
-        candidates_list.append(['cur_candidates', key, val])
-
-    # ARGH this is ugly, but I'll figure out a way to organize this
-    if diff_candidates[1].get('update_candidates','') == 'new':
-        print "pau1"
-        store_tbl_ver('update_candidates', 'please-update')
-        log.info("Storing spool for update_candidates.")
-        agent.store_spool('update_candidates', [['update_candidates',
-         'empty','empty']], True)
-        print "pau12"
-        sync_this['update_candidates'] = True
-        log.debug("update_candidates changed. Must update")
-
-    elif diff_candidates[1].get('empty','') == 'empty':
-        # This list is empty and WAS empty already. So, move on!
-        sync_this['update_candidates'] = False
-        agent.store_spool('update_candidates', candidates_list, True)
-    else:
-        for operation in diff_candidates:
-            if len(operation) > 0:
-                store_tbl_ver('update_candidates', 'please-update')
-                log.info("Storing spool for update_candidates.")
-                agent.store_spool('update_candidates', candidates_list, True)
-                sync_this['update_candidates'] = True
-                break
-
-check_me = ['update_candidates', 'current_packages']
-
-for check in check_me:
-    diff = whats_new(check)
-    for operation in diff:
-        sync_data[check] = diff
-        if len(operation) > 0:
-            sync_this[check] = True
-            break
-
-# APT REPOSITORIES 
-#[cached_reps, current_reps, diff_reps] = agent.diff_new_spool('repositories')
-if agent.check_diff_rep():
-    store_tbl_ver('repositories', 'please-update')
-    log.info("Storing md5 spool for repositories list.")
-    agent.store_spool('repositories', [  ['rep_md5','md5',agent.rep_md5 ] ], True)
-    sync_this['repositories'] = True
-    log.debug("repositories changed. Must update")
-
-# HERE BEGINS REMOTE OPERATION
-# EACH PART OF THIS FILE SHOULD BE IN ITS OWN MODULE
-
-(uniq, password) = agent.get_auth()
-token = hmac.new(password, uniq).hexdigest()
-uname = os.uname()
-os_name = uname[0]
-myhost = uname[1] # Alternative: socket.gethostname()
-os_version = uname[2]
-
-log.info("Machine identification: %s %s." % (uniq, myhost))
-log.info("Setting up initial session.")
-
-# Starting server talk
-my_session = agent.rpc.session_setup(uniq, token)
-log.info("Done.")
-if not my_session:
-    log.info("Oops. The server does not know me.")
-    add_me = agent.rpc.add_computer(password, uniq, myhost, os_name, os_version)
-
-    if add_me:
-        log.info("Machine account created on the server.")
-    else:
-        log.error("Server did not create the account.")
-        raise Exception, "Failed to create computer account in the server."
-
-    my_session = agent.rpc.session_setup(uniq, token)
-    
-tables = {'repositories':'',
- 'task':'', 
- 'update_candidates':'',
- 'current_packages':'',
-  }
-
-spool_versions = agent.read_spool('tbl_ver')
-log.debug("Spool versions: %s" % spool_versions)
-local_versions = tables.copy()
-local_versions.update(spool_versions)
-
-#remote_versions = {}
-for tbl in local_versions.keys():
-    r = agent.rpc.get_tbl_version(my_session, tbl)
-#    remote_versions[tbl] =
-    if str(local_versions[tbl]) != str(r):
-        sync_this[tbl] = True
-        log.debug("table serial changed")
-
-# getting tables.keys instead of sync_this.keys, because I need to ignore old tables
-for run in tables.keys():
-    if run == 'repositories':
-        # FIXME, should not ignore repo update
-        continue
-    if sync_this.get(run, False) is True:
-        sync_info(run, sync_data[run])
-
-# FIXME: Should only sync tasks if remote version differs from locals
-sync_task()
+if __name__ == '__main__':
+    #main()
+    a = NodeInfo()
+    s = NodeSync(a)
+    s.sync_all()
