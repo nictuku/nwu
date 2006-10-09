@@ -35,21 +35,16 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
-if os.geteuid() == 0:
-    print >>sys.stderr, "You may not run nwu-agent as root"
-    log.error("nwu-agent cannot be run as root.")
-    sys.exit(1)
-
 def main():
-
+    if os.geteuid() == 0:
+        print >>sys.stderr, "You may not run nwu-agent as root"
+        log.error("nwu-agent cannot be run as root.")
+        sys.exit(1)
     log.info("Starting nwu-agent")
     # FIXME: sysinfo should not generate output here
-
     info = NodeInfo()
-    sync = NodeSync()
+    sync = NodeSync(info)
+    sync.sync_all()
 
 if __name__ == '__main__':
-    #main()
-    a = NodeInfo()
-    s = NodeSync(a)
-    s.sync_all()
+    main()
