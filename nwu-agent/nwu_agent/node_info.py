@@ -56,11 +56,6 @@ class NodeInfo(object):
                 if len(operation) > 0:
                     self.sync_this[check] = True
                     break
-# I'm not synching
-# remote
-#        self.agent.store_spool(what, diff_list, True)
-# local
-#         store_tbl_ver(what, updver)
 
     def get_changes(self,where='current_packages'):
         """
@@ -73,7 +68,6 @@ class NodeInfo(object):
         - update_candidates
         """
         [cached_pkgs, current_pkgs, diff_pkgs] = self.diff_new_spool(where)
-        # Format the list ready to store in spool
         my_list = []
         for key, val in current_pkgs.iteritems():
             my_list.append([where, key, val])
@@ -95,7 +89,6 @@ class NodeInfo(object):
             except:
                 pass
         return filenames
-
 
     # FIXME: move this to sysinfo
     def read_sources_list(self, filenames):
@@ -175,39 +168,3 @@ class NodeInfo(object):
             return True
         else:
             return False
-
-
-    def DELETETHIS_blaaaa():
-        return
-        # UPDATE CANDIDATES
-            
-        [cached_candidates, current_candidates, diff_candidates] \
-            = self.diff_new_spool('update_candidates')
-
-        # Format the update candidates list ready to store in spool
-        candidates_list = []
-        for key, val in current_candidates.iteritems():
-            candidates_list.append(['cur_candidates', key, val])
-
-        # ARGH this is ugly, but I'll figure out a way to organize this
-        if diff_candidates[1].get('update_candidates','') == 'new':
-            store_tbl_ver('update_candidates', 'please-update')
-            log.info("Storing spool for update_candidates.")
-            self.store_spool('update_candidates', [['update_candidates',
-             'empty','empty']], True)
-            self.sync_this['update_candidates'] = True
-            log.debug("update_candidates changed. Must update")
-
-        elif diff_candidates[1].get('empty','') == 'empty':
-            # This list is empty and WAS empty already. So, move on!
-            self.sync_this['update_candidates'] = False
-            self.store_spool('update_candidates', candidates_list, True)
-        else:
-            for operation in diff_candidates:
-                if len(operation) > 0:
-                    store_tbl_ver('update_candidates', 'please-update')
-                    log.info("Storing spool for update_candidates.")
-                    self.store_spool('update_candidates', candidates_list, True)
-                    self.sync_this['update_candidates'] = True
-                    break
-
