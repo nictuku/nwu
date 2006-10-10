@@ -339,8 +339,11 @@ Signed certificate is in newcert.pem
         </imageobject>
       </inlinemediaobject></para>
 
-    <para>In later versions of NWU, each agent will require a certificate
-    issued/signed by the server, so expect manual interv</para>
+    <para>Finally, you must copy the <filename>cacert.pem</filename> from the
+    server to each machine at <filename>/etc/nwu/cacert.pem</filename>:</para>
+
+    <para><command># sudo scp boogie@cetico.org:/etc/nwu/cacert.pem
+    /etc/nwu/cacert.pem</command></para>
   </section>
 
   <section>
