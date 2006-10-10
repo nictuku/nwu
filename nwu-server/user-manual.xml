@@ -136,10 +136,10 @@ password =</programlisting>
       <title>SSL certificates creation</title>
 
       <para>In the current version of NWU, the agent must have a copy of a
-      shared CA certificate, which will be one that issues the server
-      certificate. This maybe change in the future. If you don't have the
-      openssl package installed, please do install it before proceeding. It's
-      a boring task, but you only have to do it once.</para>
+      shared CA certificate, that will issue the server certificate. This
+      maybe change in the future. If you don't have the openssl package
+      installed, please do install it before proceeding. It's a boring task,
+      but you only have to do it once.</para>
 
       <para>- Create a Certificate Authority (CA):<command></command></para>
 
