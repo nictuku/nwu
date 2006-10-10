@@ -60,8 +60,14 @@ def wipe_this(session, wipe_table):
     if not computer.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    if wipe_table not in ['apt_current_packages', 'apt_update_candidates',
-            'apt_repositories', 'task']:
+    new_map = { 'apt_update_candidates' : 'update_candidates',
+        'apt_current_packages' : 'current_packages' }
+    # compatibility hack
+    # FIXME: future versions of the database know what to do with apt or else
+    if wipe_table in new_map.keys():
+        wipe_table = new_map[wipe_table]
+    if wipe_table not in ['current_packages', 'update_candidates',
+            'repositories', 'task']:
 	    raise Exception, "Illegal table."
 	    
     hub.begin()

@@ -22,180 +22,29 @@ import sys
 import logging
 import logging.handlers
 import hmac
-
-
-def sync_task():
-    """This operation will *get* new tasks from the server.
-    """
-    log.info("Getting assigned tasks.")
-    get_tasks = agent.rpc.get_tasks(my_session)
-
-    log.info("Assigned tasks found: " + str(get_tasks) + ".")
-
-    log.debug("Kindly asking server to wipe old tasks.")
-    taskver = agent.rpc.wipe_this(my_session,'task')
-    sync_tbl_ver('task', taskver)
-
-    store_task = []
-
-    for tas in get_tasks:
-       store_task.append(tas)
-
-    if len(store_task) > 0:
-        log.debug("Storing tasks in spool.")
-        agent.store_spool('tasks', store_task)
-
-def sync_apt_repositories():
-    log.info("Sending repositories data.")
-    repver = agent.rpc.apt_set_repositories(my_session,agent.repositories)
-    sync_tbl_ver('apt_repositories', repver)
-
-def sync_apt_update_candidates():
-    log.info("Sending update candidates list.")
-    if diff_candidates[1].get('update_candidates','') == 'new':
-            updver = agent.rpc.wipe_this(my_session,'apt_update_candidates')
-    updver = agent.rpc.apt_set_list_diff(my_session, 
-	        'apt_update_candidates', 
-            diff_candidates[0], diff_candidates[1])
-    sync_tbl_ver('apt_update_candidates', updver)
-
-def sync_apt_current_packages():       
-    log.info("Sending current packages list.")
-    pkgver = agent.rpc.apt_set_list_diff(my_session, 'apt_current_packages', 
-        diff_pkgs[0], diff_pkgs[1])
-    sync_tbl_ver('apt_current_packages', pkgver)
-
-def sync_tbl_ver(tablename, version):
-
-    change_ver = [['tbl_ver', tablename, version]]
-    agent.store_spool('tbl_ver', change_ver, False)
+from nwu_agent.node_info import NodeInfo
+from nwu_agent.node_sync import NodeSync
 
 log = logging.getLogger()
-
 hdlr = logging.handlers.SysLogHandler(
   "/dev/log",facility=logging.handlers.SysLogHandler.LOG_USER)
-
 formatter = logging.Formatter(
-"nwu_agent[%(process)d] %(levelname)s %(message)s"
+    "nwu_agent[%(process)d] %(levelname)s %(message)s"
     )
 hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
+def main():
+    if os.geteuid() == 0:
+        print >>sys.stderr, "You may not run nwu-agent as root"
+        log.error("nwu-agent cannot be run as root.")
+        sys.exit(1)
+    log.info("Starting nwu-agent")
+    # FIXME: sysinfo should not generate output here
+    info = NodeInfo()
+    sync = NodeSync(info)
+    sync.sync_all()
 
-if os.geteuid() == 0:
-    log.error("nwu-agent cannot be run as root.")
-    sys.exit(1)
-
-log.info("Starting nwu-agent")
-# FIXME: sysinfo should not generate output here
-
-from nwu_agent import misc
-
-agent = misc.agent_talk()
-run_this = {}
-
-# CURRENT PACKAGES
-
-[cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('packages')
-
-# Format the current packages list ready to store in spool
-pkgs_list = []
-for key, val in current_pkgs.iteritems():
-    pkgs_list.append(['cur_pkgs', key, val])
-
-for operation in diff_pkgs:
-    if len(operation) > 0:
-        log.info("Storing spool for current package list.")
-        sync_tbl_ver('apt_current_packages', 'please-update')
-        agent.store_spool('packages', pkgs_list, True)
-        run_this['apt_current_packages'] = True
-        log.debug("apt_current_packages changed. Must update")
-
-# UPDATE CANDIDATES
-    
-[cached_candidates, current_candidates, diff_candidates] \
-    = agent.diff_new_spool('update_candidates')
-
-# Format the update candidates list ready to store in spool
-candidates_list = []
-for key, val in current_candidates.iteritems():
-    candidates_list.append(['cur_candidates', key, val])
-
-# ARGH this is ugly, but I'll figure out a way to organize this
-if diff_candidates[1].get('update_candidates','') == 'new':
-    sync_tbl_ver('apt_update_candidates', 'please-update')
-    log.info("Storing spool for update_candidates.")
-    agent.store_spool('update_candidates', [['update_candidates',
-     'empty','empty']], True)
-    run_this['apt_update_candidates'] = True
-    log.debug("apt_update_candidates changed. Must update")
-
-elif diff_candidates[1].get('empty','') == 'empty':
-    # This list is empty and WAS empty already. So, move on!
-    run_this['apt_update_candidates'] = False
-else:
-    for operation in diff_candidates:
-        if len(operation) > 0:
-            sync_tbl_ver('apt_update_candidates', 'please-update')
-            log.info("Storing spool for update_candidates.")
-            agent.store_spool('update_candidates', candidates_list, True)
-            run_this['apt_update_candidates'] = True
-
-# APT REPOSITORIES 
-#[cached_reps, current_reps, diff_reps] = agent.diff_new_spool('repositories')
-if agent.check_diff_rep():
-    sync_tbl_ver('apt_repositories', 'please-update')
-    log.info("Storing md5 spool for repositories list.")
-    agent.store_spool('repositories', [  ['rep_md5','md5',agent.rep_md5 ] ], True)
-    run_this['apt_repositories'] = True
-    log.debug("apt_repositories changed. Must update")
-
-(uniq, password) = agent.get_auth()
-token = hmac.new(password, uniq).hexdigest()
-uname = os.uname()
-os_name = uname[0]
-myhost = uname[1] # Alternative: socket.gethostname()
-os_version = uname[2]
-
-log.info("Machine identification: " + uniq + " " + myhost + ".")
-log.info("Setting up initial session.")
-
-# Starting server talk
-my_session = agent.rpc.session_setup(uniq, token)
-
-if not my_session:
-    log.info("Oops. The server does not know me.")
-    add_me = agent.rpc.add_computer(password, uniq, myhost, os_name, os_version)
-
-    if add_me:
-        log.info("Machine account created on the server.")
-    else:
-        log.error("Server did not create the account.")
-        raise Exception, "Failed to create computer account in the server."
-
-    my_session = agent.rpc.session_setup(uniq, token)
-    
-local_versions = {'apt_repositories':'',
- 'task':'', 
- 'apt_update_candidates':'',
- 'apt_current_packages':'',
-  }
-
-spool_versions = agent.read_spool('tbl_ver')
-log.debug("Spool versions: %s" % spool_versions)
-local_versions.update(spool_versions)
-
-#remote_versions = {}
-for tbl in local_versions.keys():
-    r = agent.rpc.get_tbl_version(my_session, tbl)
-#    remote_versions[tbl] =
-    if str(local_versions[tbl]) != str(r):
-        run_this[tbl] = True
-        log.debug("table serial changed")
-
-for run in run_this.keys():
-    eval("sync_" + run)()
-
-# FIXME: Should only sync tasks if remote version differs from locals
-sync_task()
+if __name__ == '__main__':
+    main()

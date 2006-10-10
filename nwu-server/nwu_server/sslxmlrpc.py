@@ -23,7 +23,8 @@ import SocketServer
 from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from nwu_server.rpc_admin import nwu_admin
-from nwu_server.db.operation import hub
+from nwu_server.db.operation import *
+from nwu_server.rpc_agents import *
 
 log = logging.getLogger("nwu_server.db.sslxmlrpc")
 
@@ -39,37 +40,59 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
         #    self.handle_error = self._quietErrorHandler
         SSL.SSLServer.__init__(self, server_uri, handler, ssl_context) 
         self.funcs = {}
-        self.logRequests = 0
+        self.logRequests = False 
         self.instance = None
 
     def handle_request(self):
         """Handle one request, possibly blocking."""
         try:
             request, client_address = self.get_request()
-        except socket.error:
-            return
+        except socket.error, e:
+            log.warn("Socket exception: %s" % e)
+            return False
         except SSL.SSLError, e:
             log.warn("SSL exception: %s" % e)
-            return
+            return 
         if self.verify_request(request, client_address):
             try:
                 self.process_request(request, client_address)
             except:
-                self.handle_error(request, client_address)
+                log.error("ERROR: %s, %s" % (request, client_address))
                 self.close_request(request)
 
+ 
+class SSLServer:
+    
+    def __init__(self,config):
+        self.config = config
+        self.pemfile = config['pemfile']
+        self.ssl_context = self.ctx()
+
+    def ctx(self):
+        protocol = 'sslv3'
+        ctx = SSL.Context(protocol)
+        ctx.set_allow_unknown_ca(1)
+        ctx.load_cert(certfile=self.pemfile,
+            keyfile=self.pemfile)
+#        ctx.load_client_ca('/etc/nwu/cacert.pem')
+ #       ctx.load_verify_info('/etc/nwu/cacert.pem')
+        ctx.set_verify(SSL.verify_none,10)
+    #    ctx.set_session_id_ctx('nwu')
+        return ctx
+
     def start(self):
-        host = config['host']
-        port = config['port']
+        host = self.config['host']
+        port = self.config['port']
         log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
         ".")
         nadmin = nwu_admin()
-        ssl = sslxmlrpc.SSLServer('/etc/nwu/server.pem')
-        server = ssl.start_server(host, port)
-        server.register_function(apt_repositories.apt_set_repositories)
-        server.register_function(apt_current_packages.apt_set_current_packages_full)
+        ssl_context = self.ctx()
+        address = (host, port)
+        server = SSLXMLRPCServer(ssl_context, address)
+        server.register_function(repositories.set_repositories)
+        server.register_function(current_packages.set_current_packages_full)
         server.register_function(computer.session_setup)
-        server.register_function(apt_current_packages.apt_set_list_diff)
+        server.register_function(current_packages.set_list_diff)
         server.register_function(get_tasks)
         server.register_function(wipe_this)
         server.register_function(get_tbl_version)
@@ -77,29 +100,3 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
         server.register_function(nadmin.get_info)
         server.register_function(nadmin.computer_del)
         return server
- 
-class SSLServer:
-    
-    def __init__(self,pemfile):
-        self.pemfile = pemfile
-        self.ssl_context = self.ctx()
-
-    def ctx(self):
-        v = 'sslv23'
-        ctx = SSL.Context(v)
-        ctx.set_allow_unknown_ca(True)
-        ctx.load_cert_chain(self.pemfile)
-        ctx.load_verify_info(self.pemfile)
-        ctx.load_client_ca(self.pemfile)
-        #ctx.load_verify_locations('/var/tmp/c/cacert.pem')
-#        ctx.load_verify_info('/etc/nwu/cacert.pem')
-        ctx.set_verify(SSL.verify_none, 10)
-        ctx.set_session_id_ctx('xmlrpcssl')
-        #ctx.set_info_callback(verify)
-        return ctx
-
-    def start_server(self, host, port):
-        ssl_context = self.ctx() 
-        address = (host, port)
-        server = SSLXMLRPCServer(ssl_context, address)
-        return server     

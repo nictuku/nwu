@@ -27,7 +27,6 @@ import logging
 from setup import PackageHub
 
 log = logging.getLogger('nwu_server.db.operation')
-
 hub = PackageHub() 
 __connection__ = hub
 
@@ -82,9 +81,9 @@ class computer(SQLObject):
     os_name = StringCol(length=255)
     os_version = StringCol(length=255)
 
-    current_packages = MultipleJoin('apt_current_packages')
-    update_candidates = MultipleJoin('apt_update_candidates')
-    repositories = MultipleJoin('apt_repositories')
+    current_packages = MultipleJoin('current_packages')
+    update_candidates = MultipleJoin('update_candidates')
+    repositories = MultipleJoin('repositories')
     authcomputer = MultipleJoin('authcomputer')
     task = MultipleJoin('task')
 
@@ -105,7 +104,6 @@ class computer(SQLObject):
         #runthis = {'tablename':'computer','version':6}
         #tables_version(**runthis)
 #        newversion = conn.sqlrepr(Replace('tables_version', {'tablename':'computer','version':'3'} ))
-#        print newversion
 #        conn.query(newversion)
         hub.commit()
         hub.end()
@@ -117,25 +115,27 @@ class computer(SQLObject):
         The token string comes from the authentication process.
 
         Returns session object to be used by the agent in later
-        communcation steps.
+        communication steps.
         """
         hub.begin()
         log.info("Setting session for computer " + uniq + ".")
         # FIXME: test if token is valid here.
         query_check_m = computer.select(computer.q.uniq==uniq)
         check_m = list(query_check_m)
-        log.debug("check")
         hub.end()
         password = ''
 
         if len(check_m) == 0:
+            log.error("Problem in session auth for: %s" % uniq)
             return False
 
         if computer.check_token(uniq, token):
-            return uniq, token
+            log.error("Computer authenticated: %s, %s" % (uniq, token))
+            return [ uniq, token ]
 
         # FIXME: return False or raise an exception?
-        raise Exception, "Wrong token for " + uniq
+        log.warn("Wrong token for: %s" % uniq)
+        return False
 
     def check_token(uniq, token):
         """Checks if the specified token was generated using the stored
@@ -171,7 +171,7 @@ class authcomputer(SQLObject):
 
     computer = ForeignKey('computer')
 
-class apt_current_packages(SQLObject):
+class current_packages(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
@@ -179,20 +179,26 @@ class apt_current_packages(SQLObject):
     class sqlmeta:
         defaultOrder = 'name'
 
-    def apt_set_list_diff(session, change_table, add_pkgs, rm_pkgs):
+    def set_list_diff(session, change_table, add_pkgs, rm_pkgs):
         """Takes two lists of packages, one for removal and one for
         addition, and update the specified table.
         """
-        # Affects either apt_current_packages or apt_update_candidates
+        # Affects either current_packages or update_candidates
 
         (uniq, token) = session
 
         if not computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
-        if change_table not in ['apt_update_candidates', 'apt_current_packages']:
-            raise Exception, 'Unknown table'
+        new_map = { 'update_candidates' : 'update_candidates',
+            'current_packages' : 'current_packages' } 
+        # compatibility hack
+        # FIXME: future versions of the database know what to do with apt or else
+        if change_table in new_map.keys():
+            change_table = new_map[change_table]
 
+        if change_table not in ['update_candidates', 'current_packages']:
+            raise Exception, 'Unknown table'
         table = eval(change_table)
         pkgs = {}
         if type(rm_pkgs) is dict:
@@ -254,7 +260,7 @@ class apt_current_packages(SQLObject):
         hub.end()
         return up
 
-    def apt_set_current_packages_full(session, pkgs):
+    def set_current_packages_full(session, pkgs):
         (uniq, token) = session
 
         if not computer.check_token(uniq, token):
@@ -276,26 +282,26 @@ class apt_current_packages(SQLObject):
         # Deleting old packages
         log.debug("Wiping old packages list.")
 
-        delquery = conn.sqlrepr(Delete(apt_current_packages.q, where=\
-            (apt_current_packages.q.computerID ==  client_computer.id)))
+        delquery = conn.sqlrepr(Delete(current_packages.q, where=\
+            (current_packages.q.computerID ==  client_computer.id)))
 
         conn.query(delquery)
         log.debug("Adding new packages.")
 
         for pk_name, pk_version in pkgs.iteritems():
-            apt_current_packages(computer=client_computer, name=pk_name,
+            current_packages(computer=client_computer, name=pk_name,
                 version=pk_version)
         log.debug("End.")
-        up = update_tbl_version('apt_current_packages', uniq)
+        up = update_tbl_version('current_packages', uniq)
         log.debug(repr(up))
  
         hub.commit()
         hub.end()
         return up
 
-    apt_set_list_diff=staticmethod(apt_set_list_diff)
+    set_list_diff=staticmethod(set_list_diff)
 
-class apt_update_candidates(SQLObject):
+class update_candidates(SQLObject):
 
     name = StringCol(length=255)
     version = StringCol(length=30)
@@ -303,7 +309,7 @@ class apt_update_candidates(SQLObject):
     class sqlmeta:
         defaultOrder = 'name'
 
-    def apt_set_update_candidates_full(session, pkgs):
+    def set_update_candidates_full(session, pkgs):
         (uniq, token) = session
 
         if type(pkgs) is str:
@@ -327,22 +333,22 @@ class apt_update_candidates(SQLObject):
             + client_computer.hostname + '(' + str(client_computer.id) + ')')
 
         # Deleting old packages
-        delquery = conn.sqlrepr(Delete(apt_update_candidates.q, where=\
-            (apt_update_candidates.q.computerID ==  client_computer.id)))
+        delquery = conn.sqlrepr(Delete(update_candidates.q, where=\
+            (update_candidates.q.computerID ==  client_computer.id)))
         conn.query(delquery)
 
         for pk_name, pk_version in pkgs.iteritems():
-            apt_update_candidates(computer=client_computer, name=pk_name,
+            update_candidates(computer=client_computer, name=pk_name,
                 version=pk_version)
 
-        up = update_tbl_version('apt_update_candidates', uniq)
+        up = update_tbl_version('update_candidates', uniq)
         log.debug(repr(up))
 
         hub.commit()
         hub.end()
         return up
 
-class apt_repositories(SQLObject):
+class repositories(SQLObject):
     """APT repositories table.
     Example:
 
@@ -359,7 +365,7 @@ class apt_repositories(SQLObject):
     components = StringCol() # space separated list of components
     computer = ForeignKey('computer')
 
-    def apt_set_repositories(session,reps):
+    def set_repositories(session,reps):
         """Stores the full repositories list in the database, after
         wiping that computer's repositories table.
         """
@@ -384,8 +390,8 @@ class apt_repositories(SQLObject):
 
         # Deleting old reps
         conn = hub.getConnection()
-        delquery = conn.sqlrepr(Delete(apt_repositories.q, where=\
-            (apt_repositories.q.computerID ==  client_computer.id)))
+        delquery = conn.sqlrepr(Delete(repositories.q, where=\
+            (repositories.q.computerID ==  client_computer.id)))
 
         conn.query(delquery)
 
@@ -400,25 +406,25 @@ class apt_repositories(SQLObject):
                 rep_components = " ".join(rep_elements[3:])
 
                 # If repeated distro, just update components
-                distro_check = apt_repositories.select(AND(
-                apt_repositories.q.type==rep_type,apt_repositories.q.uri==rep_uri,
-                apt_repositories.q.distribution==rep_distribution))
+                distro_check = repositories.select(AND(
+                repositories.q.type==rep_type,repositories.q.uri==rep_uri,
+                repositories.q.distribution==rep_distribution))
 
                 for k in distro_check:
                     log.debug("repeated distro: " +  str(k))
 
                 # update repositories
-                setrep = apt_repositories(computer=client_computer, filename=filename,
+                setrep = repositories(computer=client_computer, filename=filename,
                     type=rep_type, uri=rep_uri, distribution=rep_distribution,
                     components=rep_components)
 
-        up = update_tbl_version('apt_repositories', uniq)
+        up = update_tbl_version('repositories', uniq)
         log.debug(repr(up))
         hub.commit()
         hub.end()
         return up 
  
-    apt_set_repositories=staticmethod(apt_set_repositories)
+    set_repositories=staticmethod(set_repositories)
 
 class task(SQLObject):
     
@@ -437,8 +443,8 @@ def create_tables():
     """
     log.debug("Creating necessary tables in the database.")
 #    os.unlink('/var/lib/nwu/nwu.db')
-    for table in ['computer', 'apt_current_packages', 'apt_update_candidates',
-        'apt_repositories', 'task', 'authcomputer', 'users', 'tables_version']:
+    for table in ['computer', 'current_packages', 'update_candidates',
+        'repositories', 'task', 'authcomputer', 'users', 'tables_version']:
         try:
             t = eval(table)
             t.createTable()
@@ -456,18 +462,18 @@ if __name__ == '__main__':
     # FIXME: os name and version from sysinfo
     m = computer(hostname='localhost', uniq='32109832109832109831209832190321weee', os_name='Linux', os_version='2.6.x')
 
-    installed = apt_current_packages(computer=m, name='gcc', version='1.1')
-    installed = apt_current_packages(computer=m, name='znes', version='4.1')
-    reps = apt_repositories(computer=m, filename='/etc/apt/sources.list',type='deb',
+    installed = current_packages(computer=m, name='gcc', version='1.1')
+    installed = current_packages(computer=m, name='znes', version='4.1')
+    reps = repositories(computer=m, filename='/etc/apt/sources.list',type='deb',
         uri='http://blabla', distribution='stable',
         components = 'breezy-updates main restricted')
     all = computer.select(computer.q.hostname=='localhost')
     for ma in all:
         print ma.hostname
-        for package in ma.apt_current_packages:
+        for package in ma.current_packages:
             print package.name, package.version
 
-        for rep in ma.apt_repositorieses:
+        for rep in ma.repositorieses:
             print "REP:",rep.filename + ':' + rep.type, rep.uri, str(rep.components)
     #    help(ma)
         #print ma.aptCurrentPackageses.name, ma.aptCurrentPackageses.version
