@@ -129,10 +129,13 @@ class NodeSync(object):
                 log.info("Local cache for '%s' is empty" % what)
                 # also, updated will have all data
                 ign = self.talk.rpc.wipe_this(self.my_session,what)
-        # updating 
+        # updating
+        ver = self.talk.rpc.set_list_diff(self.my_session, what,
+            updated, deleted) 
         # FIXME: this is **WRONG**.
         # we must format the list. see below in blaaa
         self.store_spool(what, self.store_data[what], True)
+        self.store_tbl_ver(what, ver)
 
     def sync_task(self):
         """This operation will *get* new tasks from the server.
