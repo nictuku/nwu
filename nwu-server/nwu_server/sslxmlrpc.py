@@ -39,24 +39,23 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
         #    self.handle_error = self._quietErrorHandler
         SSL.SSLServer.__init__(self, server_uri, handler, ssl_context) 
         self.funcs = {}
-        self.logRequests = False 
+        self.logRequests = 0
         self.instance = None
 
     def handle_request(self):
         """Handle one request, possibly blocking."""
         try:
             request, client_address = self.get_request()
-        except socket.error, e:
-            log.warn("Socket exception: %s" % e)
-            return False
+        except socket.error:
+            return
         except SSL.SSLError, e:
             log.warn("SSL exception: %s" % e)
-            return False
+            return
         if self.verify_request(request, client_address):
             try:
                 self.process_request(request, client_address)
             except:
-                log.error("ERROR: %s, %s" % (request, client_address))
+                self.handle_error(request, client_address)
                 self.close_request(request)
 
     def start(self):
@@ -86,13 +85,17 @@ class SSLServer:
         self.ssl_context = self.ctx()
 
     def ctx(self):
-        protocol = 'sslv23'
-        ctx = SSL.Context(protocol)
-        ctx.load_cert(self.pemfile)
-        ctx.load_client_ca(self.pemfile)
+        v = 'sslv23'
+        ctx = SSL.Context(v)
+        ctx.set_allow_unknown_ca(True)
+        ctx.load_cert_chain(self.pemfile)
         ctx.load_verify_info(self.pemfile)
-        ctx.set_verify(SSL.verify_peer,10)
-    #    ctx.set_session_id_ctx('nwu')
+        ctx.load_client_ca(self.pemfile)
+        #ctx.load_verify_locations('/var/tmp/c/cacert.pem')
+#        ctx.load_verify_info('/etc/nwu/cacert.pem')
+        ctx.set_verify(SSL.verify_none, 10)
+        ctx.set_session_id_ctx('xmlrpcssl')
+        #ctx.set_info_callback(verify)
         return ctx
 
     def start_server(self, host, port):

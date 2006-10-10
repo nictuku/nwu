@@ -59,7 +59,7 @@ def sync_apt_update_candidates():
             diff_candidates[0], diff_candidates[1])
     sync_tbl_ver('apt_update_candidates', updver)
 
-def sync_current_packages():       
+def sync_apt_current_packages():       
     log.info("Sending current packages list.")
     pkgver = agent.rpc.apt_set_list_diff(my_session, 'apt_current_packages', 
         diff_pkgs[0], diff_pkgs[1])
@@ -97,7 +97,7 @@ run_this = {}
 
 # CURRENT PACKAGES
 
-[cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('current_packages')
+[cached_pkgs, current_pkgs, diff_pkgs] = agent.diff_new_spool('packages')
 
 # Format the current packages list ready to store in spool
 pkgs_list = []
@@ -108,7 +108,7 @@ for operation in diff_pkgs:
     if len(operation) > 0:
         log.info("Storing spool for current package list.")
         sync_tbl_ver('apt_current_packages', 'please-update')
-        agent.store_spool('current_packages', pkgs_list, True)
+        agent.store_spool('packages', pkgs_list, True)
         run_this['apt_current_packages'] = True
         log.debug("apt_current_packages changed. Must update")
 
