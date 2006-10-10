@@ -144,7 +144,7 @@ def main():
 
             if args[0] == 'outdated':
 		olds = {}
-		for candidate in apt_update_candidates.select():
+		for candidate in update_candidates.select():
 		    olds[candidate.computerID] = True
 		for mach in computer.select():
 		    if olds.has_key(mach.id):
