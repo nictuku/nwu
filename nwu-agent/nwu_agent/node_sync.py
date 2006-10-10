@@ -121,10 +121,10 @@ class NodeSync(object):
         log.info("Sync %s." % what)
         (updated, deleted) = self.sync_data[what]
         # if the list is *still* empty, ignore it
-        if deleted.get('empty','') == 'empty':
+        if updated.get('empty','') == 'empty':
             return
         # If the list in the cache is new, we must send a full update
-        if deleted.get(what,'') == 'new':
+        if updated.get(what,'') == 'new':
                 # We must wipe the remote info
                 log.info("Local cache for '%s' is empty" % what)
                 # also, updated will have all data

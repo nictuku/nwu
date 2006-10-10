@@ -73,9 +73,9 @@ class NodeInfo(object):
             my_list.append([where, key, val])
         self.store_data[where] = my_list
         log.debug("Formatting changes for %s." % where)
-        log.debug("cur: %s " % repr(current_pkgs))
-        log.debug("cac: %s " % repr(cached_pkgs))
-        log.debug("dif: %s " % repr(diff_pkgs))
+#        log.debug("cur: %s " % repr(current_pkgs))
+#        log.debug("cac: %s " % repr(cached_pkgs))
+#        log.debug("dif: %s " % repr(diff_pkgs))
         return diff_pkgs
 
     def list_sources_list(self):
