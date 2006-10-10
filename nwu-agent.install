@@ -1,6 +1,8 @@
 debian/tmp/lib/nwu_agent/__init__.py usr/share/python-support/nwu-agent/nwu_agent 
 debian/tmp/lib/nwu_agent/maint.py usr/share/python-support/nwu-agent/nwu_agent
-debian/tmp/lib/nwu_agent/misc.py usr/share/python-support/nwu-agent/nwu_agent
+debian/tmp/lib/nwu_agent/talk.py usr/share/python-support/nwu-agent/nwu_agent
+debian/tmp/lib/nwu_agent/node_info.py usr/share/python-support/nwu-agent/nwu_agent
+debian/tmp/lib/nwu_agent/node_sync.py usr/share/python-support/nwu-agent/nwu_agent
 debian/tmp/bin/nwu-maint usr/sbin
 debian/tmp/bin/nwu-agent usr/bin
 nwu-agent/sample_conf/agent.conf etc/nwu
