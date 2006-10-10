@@ -127,7 +127,6 @@ def getopts():
 def nwu_main():
 
     config = read_config()
-    nadmin = nwu_admin()
 
     ssl = sslxmlrpc.SSLServer(config)
     if options.daemonize:
@@ -135,7 +134,8 @@ def nwu_main():
         daemonize(options.pidfile, options.errorlog)
         drop_privileges(options.user)
 
-    server = ssl.start()
+    # loop
+    ssl.start()
 
 if __name__ == '__main__':
     options = getopts()

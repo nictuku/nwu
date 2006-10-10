@@ -99,4 +99,4 @@ class SSLServer:
         server.register_function(computer.add_computer)
         server.register_function(nadmin.get_info)
         server.register_function(nadmin.computer_del)
-        return server
+        server.serve_forever()
