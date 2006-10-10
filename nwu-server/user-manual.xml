@@ -135,50 +135,160 @@ password =</programlisting>
     <section id="setup_cert">
       <title>SSL certificates creation</title>
 
-      <para>In this current alpha version of NWU, it is pretty stupid about
-      certificates. Neither the agent is checking the server certificate, nor
-      the opposite. This is obviously a major issue, which I am working on.
-      See ticket <ulink url="http://cetico.org/nwu/ticket/35">#35</ulink> in
-      the trac system. If you don't mind, continue reading. If you don't have
-      the openssl package installed, please do install it before
-      proceeding.</para>
+      <para>In the current version of NWU, the agent must have a copy of a
+      shared CA certificate, which will be one that issues the server
+      certificate. This maybe change in the future. If you don't have the
+      openssl package installed, please do install it before proceeding. It's
+      a boring task, but you only have to do it once.</para>
 
-      <para>- Create a private key (type a temporary password):</para>
+      <para>- Create a Certificate Authority (CA):<command></command></para>
 
-      <para><command>openssl genrsa -des3 -out server.key
-      1024</command></para>
+      <para><programlisting><command>cd /var/tmp
+/usr/lib/ssl/misc/CA.pl -newca</command>
+CA certificate filename (or enter to create)
+<userinput>&lt;type enter&gt;</userinput>
+Making CA certificate ...
+Generating a 1024 bit RSA private key
+..................++++++
+......++++++
+writing new private key to './demoCA/private/cakey.pem'
+Enter PEM pass phrase:<userinput>&lt;type a password&gt;</userinput>
+Verifying - Enter PEM pass phrase:<userinput>&lt;repeat&gt;</userinput>
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:<userinput>&lt;enter this and the next questions aproprietly&gt;</userinput>
+State or Province Name (full name) [Some-State]:<userinput>Distrito Federal</userinput>
+Locality Name (eg, city) []:<userinput>Brasilia</userinput>
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:<userinput>cetico.org</userinput>
+Organizational Unit Name (eg, section) []: 
+Common Name (eg, YOUR name) []:<userinput>&lt;fully qualified hostname for this server&gt;</userinput>
+Email Address []:
 
-      <para>- Generate a Certificate Signing Request. Fill in valid
-      information. pay strict attention to the commonName field - it must be
-      the hostname your clients will use to connect to this server (e.g:
-      <emphasis>myserver.mycorp.somewhere</emphasis>).</para>
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:<userinput>&lt;YOU MAY IGNORE THIS&gt;</userinput>
+An optional company name []:<userinput>&lt;THIS TOO&gt;</userinput>
+Using configuration from /usr/lib/ssl/openssl.cnf
+Enter pass phrase for ./demoCA/private/cakey.pem:<userinput>&lt;TYPE HERE THE PASSWORD YOU DEFINED FOR cakey.pem&gt;</userinput>
+Check that the request matches the signature
+Signature ok
+(etc..)
+</programlisting></para>
 
-      <para><command>openssl req -new -key server.key -out
-      server.csr</command></para>
+      <para><command></command>- Generate a Certificate Request. Fill in valid
+      information as before, and <emphasis role="bold">pay strict attention to
+      the commonName field</emphasis> - it must be the FQDN for the server, or
+      the full hostname your clients will use to connect to this server (e.g:
+      <emphasis>myserver.mycorp.somewhere</emphasis>, with the domain
+      part).</para>
+
+      <para><command></command><programlisting><command>/usr/lib/ssl/misc/CA.pl -newreq</command>
+Generating a 1024 bit RSA private key
+.................++++++
+.++++++
+writing new private key to 'newkey.pem'
+Enter PEM pass phrase:<userinput>&lt;enter a temporary password here&gt;</userinput><footnote>
+            <para>If your organization policy says so, you can use this password and make nwu-server ask for it interactively. If that is the case, skip the next step for removing the password from the priv key.</para>
+          </footnote>
+Verifying - Enter PEM pass phrase:
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:<userinput>BR</userinput>
+State or Province Name (full name) [Some-State]:<userinput>Distrito Federal</userinput>
+Locality Name (eg, city) []:<userinput>Brasilia</userinput>
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:<userinput>cetico.org</userinput>
+Organizational Unit Name (eg, section) []:
+Common Name (eg, YOUR name) []:<userinput>server883.cetico.org</userinput>
+Email Address []:<userinput>yves..@..cetico.org</userinput>
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:<userinput>&lt;you can leave this blank&gt;</userinput>
+An optional company name []:<userinput>&lt;again&gt;</userinput>
+Request is in newreq.pem, private key is in newkey.pem
+</programlisting></para>
 
       <para>- Remove the passphrase from the key:</para>
 
-      <para><command>cp server.key server.key.org</command></para>
+      <para><programlisting><command>cp newkey.pem newkey.pem.orig
+openssl rsa -in newkey.pem.orig -out newkey.pem</command>
+Enter pass phrase for newkey.pem.orig:<userinput>&lt;type here the password for newkey.pem you set earlier&gt;</userinput>
+writing RSA key
+</programlisting></para>
 
-      <para><command>openssl rsa -in server.key.org -out
-      server.key</command></para>
+      <para>- Sign the certificate using the CA certificate:</para>
 
-      <para>- Create a self-signed certificate:</para>
+      <para><programlisting><command>yves@elvis:/var/tmp$ /usr/lib/ssl/misc/CA.pl -sign</command>
+Using configuration from /usr/lib/ssl/openssl.cnf
+Enter pass phrase for ./demoCA/private/cakey.pem:<userinput>&lt;type here the password you set earlier for the CA&gt;</userinput>
+Check that the request matches the signature
+Signature ok
+Certificate Details:
+        Serial Number:
+            a7:4a:d7:67:db:a1:23:ef
+        Validity
+            Not Before: Oct 10 03:44:00 2006 GMT
+            Not After : Oct 10 03:44:00 2007 GMT
+        Subject:
+            countryName               = BR
+            stateOrProvinceName       = Distrito Federal
+            localityName              = Brasilia
+            organizationName          = cetico.org
+            commonName                = server883.cetico.org
+            emailAddress              = yves@cetico.org
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            Netscape Comment: 
+                OpenSSL Generated Certificate
+            X509v3 Subject Key Identifier: 
+                4A:AD:26:D5:89:AB:FB:87:A6:36:D8:F8:24:55:37:75:E1:6B:DE:76
+            X509v3 Authority Key Identifier: 
+                keyid:9D:89:E3:C6:EF:D8:49:87:DD:CF:34:32:C6:27:17:84:DC:6E:AA:8E
 
-      <para><command>openssl x509 -req -days 365 -in server.csr -signkey
-      server.key -out server.crt</command></para>
+Certificate is to be certified until Oct 10 03:44:00 2007 GMT (365 days)
+Sign the certificate? [y/n]:<userinput>y</userinput>
 
-      <para>- Install the certificate and key files:</para>
 
-      <para><command>cp server.key /etc/nwu/server.pem</command></para>
+1 out of 1 certificate requests certified, commit? [y/n]<userinput>y</userinput>
+Write out database with 1 new entries
+Data Base Updated
+Signed certificate is in newcert.pem
+</programlisting></para>
 
-      <para><command>cat server.crt &gt;&gt;
+      <para>- Move the certificate and keys to a safe place:</para>
+
+      <para><command>sudo cp demoCA/cacert.pem /etc/nwu/</command></para>
+
+      <para><command>sudo cp newcert.pem /etc/nwu/server.pem</command></para>
+
+      <para><command>sudo cat newkey.pem &gt;&gt;
       /etc/nwu/server.pem</command></para>
 
-      <para><command>chown nwuserver.nwuserver
+      <para><command>sudo chown nwuserver.nwuserver
       /etc/nwu/server.pem</command></para>
 
-      <para><command>chmod 660 /etc/nwu/server.pem</command></para>
+      <para><command>sudo chmod 660 /etc/nwu/server.pem</command></para>
+
+      <para>When you are sure everything was copied:</para>
+
+      <para><command>sudo mv demoCA /etc/nwu/</command></para>
+
+      <para><command>sudo chmod 600 /etc/nwu/demoCA -R</command></para>
+
+      <para><command>rm new*pem</command></para>
     </section>
 
     <section>
@@ -200,7 +310,7 @@ password =</programlisting>
       troubles. You can play with the paramaters for nwu-server. First, stop
       the server if it's running, then call:</para>
 
-      <para>sudo -u nwuserver nwu-server -f -l DEBUG</para>
+      <para><command>sudo -u nwuserver nwu-server -f -l DEBUG</command></para>
 
       <para>The server will remain in the foreground, dumping diagnostic
       messages. If you need, ask for help in the <ulink
@@ -273,7 +383,7 @@ Available groups for list command:
 
     <para><command>$ nwu list</command></para>
 
-    <para> <computeroutput>1 elvis Linux "QY4PRLHPY39WUQXQRZLR22O2W4ML4W43"
+    <para><computeroutput>1 elvis Linux "QY4PRLHPY39WUQXQRZLR22O2W4ML4W43"
     </computeroutput></para>
 
     <para>In this case we have only one agent installed. The line is showing
@@ -283,7 +393,7 @@ Available groups for list command:
 
     <para>You can ask a list of outdated machines:</para>
 
-    <para><command>$ nwu list outdated</command> </para>
+    <para><command>$ nwu list outdated</command></para>
 
     <para><computeroutput>elvis[1] </computeroutput></para>
 
@@ -291,7 +401,7 @@ Available groups for list command:
 
     <para><command>$ nwu upgrade 1</command></para>
 
-    <para> <computeroutput>Found computer id=1 in the database. Requesting
+    <para><computeroutput>Found computer id=1 in the database. Requesting
     upgrade.</computeroutput></para>
 
     <para>Then there is 'view', which</para>
