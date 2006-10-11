@@ -21,7 +21,13 @@
 safe.
 """
 import logging
-import subprocess
+try:
+    import subprocess
+except ImportError:
+    old_py = True
+else:
+    old_py = False
+
 import smtplib
 
 log = logging.getLogger('nwu-maint.agent.maint')
@@ -59,13 +65,19 @@ def run_apt_get(command, args=[]):
     """
     # unit test: DONE
     arg_string = " ".join(args).strip()
-    status = subprocess.Popen(
-        [command, arg_string],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env={   "LANGUAGE" : 'C',
-                "DEBIAN_FRONTEND" : "noninteractive" }
-        )
+    log.debug("Running %s %s" % (command, arg_string))
+    if old_py:
+        (ret, out) = commands.getstatusoutput(
+            "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get update"
+            )
+    else:
+        status = subprocess.Popen(
+            [command, arg_string],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env={   "LANGUAGE" : 'C',
+                    "DEBIAN_FRONTEND" : "noninteractive" }
+            )
     ret = status.wait()
     out = status.communicate()[0]
     syslog_err = []
