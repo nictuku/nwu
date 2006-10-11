@@ -69,7 +69,7 @@ def run_apt_get(command, args=[]):
     log.debug("Running %s %s" % (command, arg_string))
     if old_py:
         (ret, out) = commands.getstatusoutput(
-            "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get update"
+    "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get %s" % arg_string
             )
     else:
         status = subprocess.Popen(
@@ -79,8 +79,8 @@ def run_apt_get(command, args=[]):
             env={   "LANGUAGE" : 'C',
                     "DEBIAN_FRONTEND" : "noninteractive" }
             )
-    ret = status.wait()
-    out = status.communicate()[0]
+        ret = status.wait()
+        out = status.communicate()[0]
     syslog_err = []
     if out:
         syslog_err = out.split('\n')
