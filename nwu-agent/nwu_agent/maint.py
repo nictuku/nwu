@@ -24,6 +24,7 @@ import logging
 try:
     import subprocess
 except ImportError:
+    import commands
     old_py = True
 else:
     old_py = False
