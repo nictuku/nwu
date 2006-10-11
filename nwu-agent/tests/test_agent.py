@@ -23,11 +23,13 @@ sys.path.append('.')
 import py.test
 
 import nwu_agent
-import nwu_agent.misc
+from nwu_agent import node_info
+import nwu_agent.talk
 import nwu_agent.maint
 
-agent = nwu_agent.misc.agent_talk(load_config=False)
+agent = nwu_agent.talk.agent_talk(load_config=False)
 m = nwu_agent.maint
+i = node_info.NodeInfo()
 
 class TestAgent:
  
@@ -47,13 +49,13 @@ ttf-lao = 0.0.20060226-1build1
 xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
 """
    
-        assert agent.read_spool('update_candidates',  StringIO(new)) == \
+        assert i.read_spool('update_candidates',  StringIO(new)) == \
             {'update_candidates': 'new' }
 
-        assert agent.read_spool('update_candidates', StringIO(empty)) == \
+        assert i.read_spool('update_candidates', StringIO(empty)) == \
             {'empty':'empty'}
  
-        assert agent.read_spool('update_candidates', StringIO(valid)) == \
+        assert i.read_spool('update_candidates', StringIO(valid)) == \
             {'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
             'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
             'python-twisted-conch': '1:0.6.0-5ubuntu1', 
@@ -63,11 +65,11 @@ xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
     def test_diff_dicts(self):
         dict1 = {'A' : 123, 'B': '....', 'C': False }
         dict2 = {'A' : 123, 'B': '....', 'C': False }
-        assert agent.diff_dicts(dict1, dict2) == ({},{})
+        assert i.diff_dicts(dict1, dict2) == ({},{})
         dict2 = {}
-        assert agent.diff_dicts(dict1, dict2) == ({}, dict1)
-        assert agent.diff_dicts(dict2, dict1) == (dict1, {})
-        assert agent.diff_dicts({}, {}) == ({}, {})    
+        assert i.diff_dicts(dict1, dict2) == ({}, dict1)
+        assert i.diff_dicts(dict2, dict1) == (dict1, {})
+        assert i.diff_dicts({}, {}) == ({}, {})    
 
     def test_apt_get(self):
         py.test.raises(Exception, "m.apt_get('BLA')") 
