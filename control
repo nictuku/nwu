@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Yves Junqueira (nictuku) <yves@cetico.org>
 Build-Depends: debhelper (>= 5.0.37.2), python-all-dev (>= 2.3.5-11), python-support (>= 0.4.1)
-Standards-Version: 3.6.2
+Standards-Version: 3.7.2
 
 Package: nwu-agent
 Architecture: all
@@ -23,7 +23,7 @@ Description: Network-wide updates for systems which use APT - agent
 Package: nwu-server
 Architecture: all
 XB-Python-Version: ${python:Versions}
-Depends: adduser, lsb-base, python (>= 2.3), python (<< 2.5), m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
+Depends: adduser, lsb-base, m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
 Recommends: openssl
 Description: Network-wide updates for systems which use APT - server
  Nwu lets administrators manage APT of remote machines from one central point.
