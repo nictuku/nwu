@@ -43,35 +43,9 @@ in place.
 SSL Certificate File
 --------------------
 
-You must create a SSL certificate for the server. In the current version,
-a self-signed certificate will do, but in later versions the agents
-will require the admin to define a certificate of a server it should trust. 
-
-- Create a private key:
-
-openssl genrsa -des3 -out server.key 1024
-
-- Generate a Certificate Signing Request:
-
-openssl req -new -key server.key -out server.csr
-
-- Remove the passphrase from the key:
-
-cp server.key server.key.org
-openssl rsa -in server.key.org -out server.key
-
-- Create a self-signed certificate:
-
-openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
-
-- Install the certificate and key files:
-
-cp server.key /etc/nwu/server.pem
-cat server.crt >> /etc/nwu/server.pem
-
-chown nwuserver.nwuserver /etc/nwu/server.pem
-
-chmod 660 /etc/nwu/server.pem
+The SSL certificate is created when the nwu-server package is installed.
+If you want to replace the certificate created, it's located in
+/etc/nwu/server.pem
 
 Database setup
 --------------
@@ -79,12 +53,12 @@ Database setup
 In order to use nwu-server you need a database backend compatible with python
 sqlobject (MySQL, PostgreSQL, SQLite).
 
-SQLite is nice and simple, but I've done tests with nwu and sqlite did not have
-very good speed ratings, as expected from this kind of database. It's a very 
-good option for testing and for networks with just a few nodes. Other than 
-that, either PostgreSQL and MySQL are good options.
+SQLite is used by default. If you want to use MySQL or PostgreSQL instead, 
+this is what you should do:
 
-A) - MySQL -
+1) Update /etc/nwu/server.conf database settings
+
+1.1) - MySQL -
 
 Create database:
 
@@ -101,16 +75,7 @@ Create tables:
 This command will create all required tables and then exit. Check the syslog
 for problems.
 
-B) - SQLite - 
-
-Start nwu-server with the following command:
-
-# nwu-server -i
-
-It will create the database file in
-/var/lib/nwu/nwu.db, with all required tables. Check the syslog for problems.
-
-C) - PostgreSQL -
+1.2) - PostgreSQL -
 
 sudo -u postgres createuser nwu
 sudo -u postgres createdb nwu
