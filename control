@@ -23,7 +23,7 @@ Description: Network-wide updates for systems which use APT - agent
 Package: nwu-server
 Architecture: all
 XB-Python-Version: ${python:Versions}
-Depends: adduser, lsb-base, m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
+Depends: adduser, ssl-cert (>= 1.0-7), lsb-base, m2crypto, python-sqlobject, python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
 Recommends: openssl
 Description: Network-wide updates for systems which use APT - server
  Nwu lets administrators manage APT of remote machines from one central point.

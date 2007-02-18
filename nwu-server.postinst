@@ -17,9 +17,9 @@ fi
 
 if [ "$CREATE_USER" -eq 1 ]; then
 
-  adduser --quiet --system --home /var/lib/nwu --group \
-          --shell /bin/sh --disabled-login \
-          --gecos 'Network Wide Updates' $USER_NAME
+  adduser --system --home /var/lib/nwu --group \
+  --no-create-home --shell /bin/sh --disabled-login \
+  --gecos 'Network Wide Updates' $USER_NAME
   if [ "$?" -eq 0 ]; then CREATE_GROUP=0; fi
 fi
 
@@ -37,5 +37,19 @@ chown -R $USER_NAME.$USER_NAME /etc/nwu/server.conf
 
 chmod 770 /var/lib/nwu -R
 chmod 660 /etc/nwu/server.conf
+
+make_selfsigned_cert() {
+# Make self-signed certificate
+    if [ ! -f /etc/nwu/server.pem ]; then
+        /usr/sbin/make-ssl-cert /usr/share/ssl-cert/ssleay.cnf /etc/nwu/server.pem
+	chown nwuserver /etc/nwu/server.pem
+    fi
+}
+
+make_selfsigned_cert
+
+# this populates the database
+
+nwu-server -i
 
 #DEBHELPER#
