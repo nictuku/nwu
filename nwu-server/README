@@ -70,7 +70,7 @@ GRANT ALL PRIVILEGES ON nwu.* TO 'nwu'@'%' IDENTIFIED BY 'YOURPASSWORD' WITH GRA
 
 Create tables:
 
-# nwu-server -i
+# nwu-server -i --forceinit
 
 This command will create all required tables and then exit. Check the syslog
 for problems.
@@ -86,7 +86,7 @@ EOF
 
 To populate the tables:
 
-# nwu-server -i
+# nwu-server -i --forceinit
 
 It will create all required tables and then exit. Check the syslog for 
 possible problems.
