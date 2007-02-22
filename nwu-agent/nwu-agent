@@ -18,6 +18,7 @@
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
+import fcntl
 import sys
 import logging
 import logging.handlers
@@ -35,12 +36,35 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
+def lock_nwu():
+    log.debug("Acquiring lock")
+    lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
+    filename = '/tmp/.nwu-lock'
+    for retry in (1, 0):
+        try:
+            lock_fd = open(filename, 'a')
+            break
+        except OSError, val:    # No such file or directory?
+            if not retry or os.path.exists(filename):
+                raise
+            # Ensure filename exists.
+            open(filename, 'w').close()
+    try:
+        fcntl.lockf(lock_fd, lock)
+    except IOError:
+        log.fatal("Error obtaining exclusive lock.")
+        sys.exit(1)
+    else:
+        log.debug("Lock acquired successfully")
+
+
 def main():
     if os.geteuid() == 0:
         print >>sys.stderr, "You may not run nwu-agent as root"
         log.error("nwu-agent cannot be run as root.")
         sys.exit(1)
     log.info("Starting nwu-agent")
+    lock_nwu()
     # FIXME: sysinfo should not generate output here
     info = NodeInfo()
     sync = NodeSync(info)
