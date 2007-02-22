@@ -23,6 +23,7 @@ This is called by cron and runs as root.
 """
 import ConfigParser 
 import os 
+import fcntl
 from sys import exit
 import logging
 import logging.handlers
@@ -38,8 +39,35 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
+def lock_nwu():
+    """Enforce single execution
+    This implements a lock to make sure this program
+    will only run one instance at a time.
+    """
+    
+    log.debug("Acquiring lock")
+    lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
+    filename = '/tmp/.nwumaint-lock'
+    for retry in (1, 0):
+        try:
+            lock_fd = open(filename, 'a')
+            break
+        except OSError, val:    # No such file or directory?
+            if not retry or os.path.exists(filename):
+                raise
+            # Ensure filename exists.
+            open(filename, 'w').close()
+    try:
+        fcntl.lockf(lock_fd, lock)
+    except IOError:
+        log.fatal("Error obtaining exclusive lock.")
+        sys.exit(1)
+    else:
+        log.debug("Lock acquired successfully")
+
 def main():
     # unit test: N/A
+    lock_nwu()
     accepted_actions = ['update', 'install', 'forceinstall', 'upgrade', 'addrep']
     task_spool_path = "/var/spool/nwu/nw.tasks"
     if not os.access(task_spool_path, os.F_OK):
