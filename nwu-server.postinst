@@ -47,9 +47,8 @@ make_selfsigned_cert() {
 }
 
 make_selfsigned_cert
+#DEBHELPER#
 
 # this populates the database
-
 nwu-server -i
 
-#DEBHELPER#
