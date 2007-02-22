@@ -24,10 +24,12 @@ This is called by cron and runs as root.
 import ConfigParser 
 import os 
 import fcntl
-from sys import exit
+import sys
 import logging
 import logging.handlers
 from nwu_agent.maint import *
+
+#print >>sys.stderr,"All messages will be sent to syslog"
 
 log = logging.getLogger('nwu-maint')
 hdlr = logging.handlers.SysLogHandler(
@@ -72,12 +74,12 @@ def main():
     task_spool_path = "/var/spool/nwu/nw.tasks"
     if not os.access(task_spool_path, os.F_OK):
         log.info("Task file not found. Exiting.")
-        exit(1)
+        sys.exit(1)
     action_file = ConfigParser.ConfigParser()
     r = action_file.read(task_spool_path)
     if r and len(r) == 0:
         log.warn("Could not read the task file in" + task_spool_path)
-        exit(1)
+        sys.exit(1)
     actions = action_file.sections()
     # FIXME: currently, if a task is set many times, it will run many times
     for act in actions:
