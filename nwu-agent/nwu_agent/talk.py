@@ -32,7 +32,7 @@ import socket
 log = logging.getLogger('nwu_agent.misc')
 
 class agent_talk:
-    pemfile='/etc/nwu/client.pem'
+    #pemfile='/etc/nwu/client.pem'
     debug=False
 
     def __init__(self, load_config=True):
@@ -51,11 +51,16 @@ class agent_talk:
     def my_ctx(self):
         protocol = 'sslv3'
         ctx = SSL.Context(protocol)
-        ctx.set_allow_unknown_ca(False)
+        ctx.set_allow_unknown_ca(True)
+        # Currently, none of this would work.
+        # Leaving it like this, it will still check if the
+        # certificate name matches the host address 
+
 #        ctx.load_cert(self.pemfile)
-        ctx.load_client_ca('/etc/nwu/cacert.pem')
-        ctx.load_verify_info('/etc/nwu/cacert.pem')
-        ctx.set_verify(SSL.verify_peer|SSL.verify_fail_if_no_peer_cert,10)
+#        ctx.load_client_ca('/etc/nwu/cacert.pem')
+#        ctx.load_verify_info('/etc/nwu/cacert.pem')
+        #ctx.set_verify(SSL.verify_peer|SSL.verify_fail_if_no_peer_cert,10)
+        #ctx.set_verify(SSL.verify_,10)
         #ctx.set_verify(SSL.verify_none,10)
         #ctx.set_session_id_ctx('nwu')
         return ctx
