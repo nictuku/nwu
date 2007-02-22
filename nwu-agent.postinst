@@ -4,6 +4,7 @@ USER_NAME=nwuagent
 
 if ! id -u $USER_NAME >/dev/null 2>&1; then
   adduser --quiet --system --home /var/spool/nwu \
+          --no-create-home \
           --shell /bin/sh --disabled-login \
           --gecos 'Network Wide Updates' $USER_NAME
 elif ! test -d /var/spool/nwu; then
