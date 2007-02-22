@@ -21,6 +21,8 @@
 safe.
 """
 import logging
+import traceback
+
 try:
     import subprocess
 except ImportError:
@@ -91,8 +93,11 @@ def run_apt_get(command, args=[]):
             log.error(mm)
         err_mail = mesg % ('root', command, command)
         err_mail += str(out)
-        mailserver = smtplib.SMTP('localhost')
-        mailserver.sendmail('root', 'root', err_mail)
+        try:
+            mailserver = smtplib.SMTP('localhost')
+            mailserver.sendmail('root', 'root', err_mail)
+        except:
+            log.error(" ".join(["error while trying to send mail: ", traceback.format_exc()]))
     else:
         log.info("Operation '%s' finished." % command)
         for mm in syslog_err:
