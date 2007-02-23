@@ -22,6 +22,7 @@ safe.
 """
 import logging
 import traceback
+import sys
 
 try:
     import subprocess
@@ -52,7 +53,6 @@ def apt_get(operation, **opts):
     if operation == 'install' and (not opts.get('packages', False) 
         or opts['packages'] < 1):
         raise Exception, "Install needs at least an argument"
-    args.append('%s' % operation)
     if opts.get('trivial_only', False):
         args.append('--trivial-only')
     if opts.get('force_yes', False):
@@ -64,6 +64,7 @@ def apt_get(operation, **opts):
     if operation == 'install' and opts.get('packages', False):
         for p in opts.get('packages', False):
             args.append('%s' % p)
+    args.append('%s' % operation)
     command = 'apt-get'
     return (command, args)
 
@@ -72,21 +73,33 @@ def run_apt_get(command, args=[]):
     """
     # unit test: DONE
     arg_string = " ".join(args).strip()
-    log.debug("Running %s %s" % (command, arg_string))
+    log.debug("Running '%s %s'" % (command, arg_string))
     if old_py:
         (ret, out) = commands.getstatusoutput(
     "export LANGUAGE=C; DEBIAN_FRONTEND=noninteractive apt-get %s" % arg_string
             )
     else:
-        status = subprocess.Popen(
-            [command, arg_string],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            env={   "LANGUAGE" : 'C',
-                    "DEBIAN_FRONTEND" : "noninteractive" }
-            )
-        ret = status.wait()
-        out = status.communicate()[0]
+        full_args = [ command ] + args
+        try:
+            status = subprocess.Popen(
+                full_args,
+                executable=command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+        #        stdin=open('/dev/null'),
+                env={   "LANGUAGE" : 'C',
+                        "DEBIAN_FRONTEND" : "noninteractive" }
+                )
+            follow = status.stdout
+            while not status.poll():
+                p = follow.readline()
+                if p:
+                    log.info("(running): %s" % p.strip())
+            ret = status.wait()
+            out = status.communicate()[0]
+        except:
+            log.error(" ".join(["error while trying to run apt_get", traceback.format_exc()]))
+            sys.exit(1)
     syslog_err = []
     if out:
         syslog_err = out.split('\n')
