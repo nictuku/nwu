@@ -130,7 +130,7 @@ class computer(SQLObject):
             return False
 
         if computer.check_token(uniq, token):
-            log.error("Computer authenticated: %s, %s" % (uniq, token))
+            log.info("Computer authenticated: %s, %s" % (uniq, token))
             return [ uniq, token ]
 
         # FIXME: return False or raise an exception?
