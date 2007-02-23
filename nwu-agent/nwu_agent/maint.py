@@ -52,6 +52,10 @@ def apt_get(operation, **opts):
     if operation == 'install' and (not opts.get('packages', False) 
         or opts['packages'] < 1):
         raise Exception, "Install needs at least an argument"
+    if opts.get('trivial_only', False):
+        args.append('--trivial-only')
+    if opts.get('force_yes', False):
+        args.append('--force-yes')
     if opts.get('assume_yes', False):
         args.append('--assume-yes')
     if opts.get('allow_unauthenticated', False):
