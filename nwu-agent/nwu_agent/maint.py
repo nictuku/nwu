@@ -52,6 +52,7 @@ def apt_get(operation, **opts):
     if operation == 'install' and (not opts.get('packages', False) 
         or opts['packages'] < 1):
         raise Exception, "Install needs at least an argument"
+    args.append('%s' % operation)
     if opts.get('trivial_only', False):
         args.append('--trivial-only')
     if opts.get('force_yes', False):
@@ -60,7 +61,6 @@ def apt_get(operation, **opts):
         args.append('--assume-yes')
     if opts.get('allow_unauthenticated', False):
         args.append('--allow_unauthenticated')
-    args.append('%s' % operation)
     if operation == 'install' and opts.get('packages', False):
         for p in opts.get('packages', False):
             args.append('%s' % p)
