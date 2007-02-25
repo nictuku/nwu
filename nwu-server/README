@@ -1,159 +1,97 @@
 NWU
 
-== NWU development version ==
-=============================
-
 Network wide updates for systems which use APT.
 - Yves Junqueira <yves@cetico.org>
 
-https://dev.ubuntubrasil.org/trac/nwu
+About:
 
-NWU features
--------------
+Nwu is a network-wide update system for systems which use APT for 
+software installation and upgrades. 
 
-# Manage Debian-like systems in the network using a CLI tool 
-  (PyGTK interface under development)
-# Install packages in the remote computers
-# List pending updates
-# Roll security upgrades to computers
-# Update the remote nodes packages cache
+It allows an administrator to maintain all relevant network nodes 
+from one central point, using a simple CLI tool. He or she can 
+install packages in the remote nodes, list pending updates, 
+roll security upgrades, and update the remote machine's APT package 
+cache.
 
-The nodes talks to the server using SSL+XML-RPC regularly, sending changes
-in APT repositories, list of installed softwares and even pending updates.
+It's pretty simple to install and use.
 
-All those information are stored in the server's database, which can be
-either PostgreSQL, MySQL or SQLite, and the can be viewed using a CLI
-tool or with a GTK tool, still in early development stages.
+For more information, please see the project site at:
 
-If the nwu operator wants so, he or she can trigger tasks to be executed
-in the remote computers, like install packages, update the APT cache or
-upgrade the system.
+http://cetico.org/nwu
 
-= NWU Server =
-==============
+Installation and Usage:
 
-NWU Server is used to control computers that have nwu agent installed. 
+Nwu is made of two major compontents: nwu-server and nwu-client
 
-It must be configured to use a database system and have a SSL certificate
-in place.
+You install Nwu-server in one server, and Nwu-client on all nodes. Then
+you would use the "nwu" command in the server to keep them up to date,
+and to install new software.
 
-= Nwu-server installation =
-===========================
+a) Nwu-server installation:
 
-SSL Certificate File
---------------------
+Install the nwu-server*.deb package:
 
-The SSL certificate is created when the nwu-server package is installed.
-If you want to replace the certificate created, it's located in
-/etc/nwu/server.pem
+# dpkg -i nwu-server_*.deb
 
-Database setup
---------------
+It could complain about missing dependencies, so install them using
+apt-get.
 
-In order to use nwu-server you need a database backend compatible with python
-sqlobject (MySQL, PostgreSQL, SQLite).
+If the installation is sucessful, a few debconf questions will appear
+for creating the SSL certificate. It's really important that you
+specify a valid "commonName" for this server (usually, its FQDN), 
+because a client must use that host to connect to this server.
 
-SQLite is used by default. If you want to use MySQL or PostgreSQL instead, 
-this is what you should do:
+After that, it will create a database automatically, and start.
 
-1) Update /etc/nwu/server.conf database settings
+b) Nwu-client installation:
 
-1.1) - MySQL -
+This is pretty simple. Install both the python-sysinfo package
+that you downloaded, and the nwu-client package, plus any 
+required dependency. A debconf dialog will ask for the server 
+address. The default port is 8088, and
 
-Create database:
+**you must use the commonName is specified above, here**
 
-CREATE DATABASE nwu;
+So, if you created a SSL certificate with a commonName of: "myserver.mydomain.tld",
+you will probably enter "myserver.mydomain.tld:8088" here.
 
-Create user:
 
-GRANT ALL PRIVILEGES ON nwu.* TO 'nwu'@'%' IDENTIFIED BY 'YOURPASSWORD' WITH GRANT OPTION;
+Extra options:
 
-Create tables:
+You can change the port used by the server and other settings (like maybe
+using a PostgreSQL database instead) by updating /etc/nwu/server.conf. It's
+pretty simple, you won't have any problems there, I believe.
 
-# nwu-server -i --forceinit
+Nwu admin CLI tool:
 
-This command will create all required tables and then exit. Check the syslog
-for problems.
+Usually you would use the "nwu" command as root to manage your clients.
 
-1.2) - PostgreSQL -
+Actually, if that doesn't look good to you, the admin could be any member of the
+nwuserver group, so he/she can read /etc/nwu/server.conf and use that 
+information to connect to the database.
 
-sudo -u postgres createuser nwu
-sudo -u postgres createdb nwu
-sudo -u postgres psql nwu << EOF
-ALTER DATABASE nwu OWNER TO nwu
-\q
-EOF
+# adduser johndoe nwuserver
 
-To populate the tables:
+# nwu help
+Usage: nwu <sub-command> <options> [arguments]
+Command line manager for NWU, version 0.1.6.
 
-# nwu-server -i --forceinit
+Available sub-commands:
 
-It will create all required tables and then exit. Check the syslog for 
-possible problems.
+  addrep  <computer> <repository uri>  : Add new repository
+  adduser <name> <level:0|1>     : Add a new user, admin or not
+  forceinstall <computer> <packages>  : Install defined packages in the computer (force)
+  help                           : This help message
+  install <computer> <packages>  : Install defined packages in the computer
+  list    [group]                : Lists all computers or specified group
+  update <computer>             : Update packages list
+  upgrade <computer>             : Upgrade all packages in the computer
+  view    <computer> <info>      : View computer informations
 
-Nwu-server config file
-----------------------
+Available groups for list command:
 
-You have to configure nwu-server parameters in the /etc/nwu/server.conf file.
-This file must only be readable by the nwuserver user, since it has sensitive
-information like database user and password.
-
-The webservice section defines in what address and port nwu-server will listen 
-for connections from the clients.
-
-In the database section you'll define database settings, but that is pretty
-straightforward, as you can see in this sample config file.
-
-Sample config file:
-
------------------------
-[webservice]
-
-host = 0.0.0.0
-port = 8088
-
-[database]
-type = sqlite
-host =
-database = /var/lib/nwu/nwu.db
-user =
-password =
-
-#type = mysql
-#host = localhost
-#database = nwu
-#user = nwu
-#password = PASSHERE
-------------------------
-
-Start the server
-----------------
-
-nwu-server comes with a init script.
-
-The init calls nwu-server which daemonizes itself. It creates a pid file in 
-/var/run/nwu-server/nwu-server.pid and goes to the background. Check the 
-syslog to see if everything went fine.
-
-nwu-server also has some command-line options. For example, to run it
-in the foreground and see the logs in stderr, run it with the '-f'
-parameter.
-
-For more options, type:
-
-# nwu-server -h
-
-Nwu admin CLI tool
-------------------
-
-In order to manage nwu, in the current version, the admin must be a member
-of the nwuserver group, so he/she can read /etc/nwu/server.conf and use
-that information to connect to the database.
-
-adduser johndoe nwuserver
-
-In later versions all management activities will use XML-RPC calls, so you will
-will be able to use nwu admin tools (both CLI and PyGTK) from a remote machine.
+    outdated
 
 
 Troubleshooting
@@ -163,7 +101,7 @@ If nwu-server is behaving strangely, you can use the "-e" parameter to
 redirect python errors what would be sent to /dev/null to a log file,
 and then see what's happening. I hope this ugly feature will not be necessary
 in later versions of NWU, and all logs would be sent either to syslog OR
-to stdout.
+to stdout. (Most are already)
 
 Feedback
 --------
@@ -171,7 +109,7 @@ Feedback
 Please send all feedback to yves@cetico.org 
 
 The project bugs are managed in a trac, placed in
-https://dev.ubuntubrasil.org/trac/nwu
+http://cetico.org/nwu
 
 Please file any bugs there.
 
