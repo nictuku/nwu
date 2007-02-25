@@ -22,7 +22,7 @@ http://cetico.org/nwu
 
 Installation and Usage:
 
-Nwu is made of two major compontents: nwu-server and nwu-client
+Nwu has two compontents: nwu-server and nwu-client
 
 You install Nwu-server in one server, and Nwu-client on all nodes. Then
 you would use the "nwu" command in the server to keep them up to date,
