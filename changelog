@@ -1,5 +1,5 @@
-nwu (0.1.5-5) experimental; urgency=low
+nwu (0.1.6-1) experimental; urgency=low
 
   * Initial release Closes: #390569 
 
- -- Yves Junqueira <yves@cetico.org>  Sun, 15 Oct 2006 16:34:57 -0200
+ -- Yves Junqueira <yves@cetico.org>  Sun, 24 Feb 2007 16:34:57 -0200
