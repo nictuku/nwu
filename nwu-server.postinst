@@ -50,5 +50,7 @@ make_selfsigned_cert
 #DEBHELPER#
 
 # this populates the database
-nwu-server -i
+if [ ! -s "/var/lib/nwu/nwu.db" ]; then
+    nwu-server -i
+fi
 
