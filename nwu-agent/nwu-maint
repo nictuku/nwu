@@ -49,7 +49,7 @@ def lock_nwu():
     
     log.debug("Acquiring lock")
     lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
-    filename = '/tmp/.nwumaint-lock'
+    filename = '/var/run/nwu-server/maintlock'
     for retry in (1, 0):
         try:
             lock_fd = open(filename, 'a')
