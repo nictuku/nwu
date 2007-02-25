@@ -29,7 +29,7 @@ parser = OptionParser()
 #parser.add_option("install", type="string", nargs=2, dest="install",
 #    metavar="
 #    help="Install 
-VERSION = '0.1.5'
+VERSION = '0.1.6'
 
 appendix = """NWU is a remote upgrades manager for systems that use APT.
 For more information, see https://dev.ubuntubrasil.org/trac/nwu/

@@ -1,3 +1,10 @@
+Version 0.1.6
+2007-02-25
+
+- Let's make things simple. SQLite is the way to go.
+- SSL certificate creation using debconf
+- Bugs squashes (See the trac timeline)
+
 Version 0.1.5
 2006-09-15
 

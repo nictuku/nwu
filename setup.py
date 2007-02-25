@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from distutils.core import setup
 setup(name='Nwu',
-      version='0.1.5',
+      version='0.1.6',
       description='Network-wide Updates',
       author='Yves Junqueira',
       author_email='yves@cetico.org',
