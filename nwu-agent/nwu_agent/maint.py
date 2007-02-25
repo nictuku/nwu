@@ -88,10 +88,12 @@ def run_apt_get(command, args=[]):
                 stderr=subprocess.STDOUT,
         #        stdin=open('/dev/null'),
                 env={   "LANGUAGE" : 'C',
-                        "DEBIAN_FRONTEND" : "noninteractive" }
+                        "DEBIAN_FRONTEND" : "noninteractive",
+                        "PATH" : "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                        }
                 )
             follow = status.stdout
-            while not status.poll():
+            while status.poll() == None:
                 p = follow.readline()
                 if p:
                     log.info("(running): %s" % p.strip())
