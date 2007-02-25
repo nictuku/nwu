@@ -138,7 +138,7 @@ def main():
             m = computer.select()
             ma = list(m)
             for mach in ma:
-                print mach.id, mach.hostname, mach.os_name, '"' + mach.uniq + '"'
+                print "%s\t%s\t%s" %( mach.id, mach.hostname, mach.os_name)
 
         elif len(args) == 1:
 
