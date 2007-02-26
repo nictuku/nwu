@@ -48,7 +48,7 @@ def lock_nwu():
         try:
             lock_fd = open(filename, 'a')
             break
-        except OSError, val:    # No such file or directory?
+        except IOError, val:    # No such file or directory?
             if not retry or os.path.exists(filename):
                 raise
             # Ensure filename exists.
