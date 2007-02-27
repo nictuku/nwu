@@ -116,7 +116,9 @@ def main():
         # should I remove the task from the queue, even if it failed?
         # if we do, some operations that should be tried again would not
         # like a locked dpkg
-        if ret != 0:
+
+        # if ret == 0:   
+	if True:  # always update spool
             for detail in details:
                 action_file.remove_option(act, detail)
     try:
