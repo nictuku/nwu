@@ -36,7 +36,7 @@ class agent_talk:
     debug=False
 
     def __init__(self, load_config=True):
-        socket.setdefaulttimeout(10)
+        #socket.setdefaulttimeout(float(100))
         if load_config:
             self.conffile = '/etc/nwu/agent.conf'
             config = ConfigParser.ConfigParser()
