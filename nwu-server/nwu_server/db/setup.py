@@ -36,7 +36,7 @@ cfg = None
 
 class read_conf:
     def __init__(self):
-        log.debug("Reading nwu server config")
+        log.debug("db: Reading nwu server config")
         config = ConfigParser.ConfigParser()
         config.read("/etc/nwu/server.conf")
 
@@ -45,7 +45,7 @@ class read_conf:
         db_database = config.get("database", "database")
         db_user = config.get("database", "user")
         db_password = config.get("database", "password")
-        log.info("Using " + db_type + " as database backend.")
+        log.info("db: Using " + db_type + " as database backend.")
 
         if db_type == 'sqlite':
             self.connection_string = db_type + "://" + db_database + \
@@ -71,6 +71,7 @@ class AutoConnectHub(ConnectionHub):
         ConnectionHub.__init__(self)
 
     def getConnection(self):
+	log.debug("db: getConnection")
         try:
             #print "g1"
             conn = self.threadingLocal.connection
@@ -96,7 +97,9 @@ class AutoConnectHub(ConnectionHub):
 
     def begin(self, conn=None):
         "Starts a transaction."
+	log.debug("db: starting transaction")
         if not self.supports_transactions:
+	    log.debug("db: no transaction support")
             return conn
         if not conn:
             conn = self.getConnection()
@@ -108,7 +111,7 @@ class AutoConnectHub(ConnectionHub):
         try:
             trans = conn.transaction()
         except AttributeError:
-            log.info("Transaction support disabled.")
+            log.info("db: Transaction support failed.")
             self.support_transactions = False
             return conn
         self.threadingLocal.connection = trans
@@ -149,13 +152,15 @@ class AutoConnectHub(ConnectionHub):
         if not conn._obsolete:
             conn.rollback()
         self.threadingLocal.connection = self.threadingLocal.old_conn
+	log.debug("db: deleting connection")
         del self.threadingLocal.old_conn
+	log.debug("db: Clearing conn cache for this thread")
         self.threadingLocal.connection.cache.clear()
 
     def end_close(self):
         """Ends the transaction and closes the connection."""
         self.end()
-        log.debug("Closing database connection opened by the current thread.")
+        log.debug("db: Closing database connection opened by the current thread.")
         try:
 	        self.threadingLocal.connection.close()
         except AttributeError:
@@ -212,7 +217,7 @@ class PackageHub(object):
             trans = True
         hub = _hubs.get(dburi, None)
         if not hub:
-            log.debug("New conn: " + str(threading._get_ident()) + " " + str(dburi))
+            log.debug("db: New conn: " + str(threading._get_ident()) + " " + str(dburi))
             hub = AutoConnectHub(dburi, supports_transactions=trans)
             _hubs[dburi] = hub
         self.hub = hub

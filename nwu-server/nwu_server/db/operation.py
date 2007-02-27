@@ -117,8 +117,8 @@ class computer(SQLObject):
         Returns session object to be used by the agent in later
         communication steps.
         """
-        hub.begin()
         log.info("Setting session for computer " + uniq + ".")
+        hub.begin()
         # FIXME: test if token is valid here.
         query_check_m = computer.select(computer.q.uniq==uniq)
         check_m = list(query_check_m)
