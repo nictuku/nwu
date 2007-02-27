@@ -2,6 +2,8 @@ Version 0.1.7 (not released)
 2007-02-26
 
 - Placing lock files in more restrict directories
+- Fixed a bug that was making locks ineffective
+- Turned on timeout for the client
 
 Version 0.1.6
 2007-02-25
