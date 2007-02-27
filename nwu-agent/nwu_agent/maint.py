@@ -60,11 +60,11 @@ def apt_get(operation, **opts):
     if opts.get('assume_yes', False):
         args.append('--assume-yes')
     if opts.get('allow_unauthenticated', False):
-        args.append('--allow_unauthenticated')
+        args.append('--allow-unauthenticated')
+    args.append('%s' % operation)
     if operation == 'install' and opts.get('packages', False):
         for p in opts.get('packages', False):
             args.append('%s' % p)
-    args.append('%s' % operation)
     command = 'apt-get'
     return (command, args)
 
@@ -93,23 +93,25 @@ def run_apt_get(command, args=[]):
                         }
                 )
             follow = status.stdout
+	    out = ''
             while status.poll() == None:
                 p = follow.readline()
                 if p:
                     log.info("(running): %s" % p.strip())
+		    out = out + p
             ret = status.wait()
-            out = status.communicate()[0]
         except:
             log.error(" ".join(["error while trying to run apt_get", traceback.format_exc()]))
             sys.exit(1)
     syslog_err = []
-    if out:
-        syslog_err = out.split('\n')
+    #if out:
+    #    syslog_err = out.split('\n')
     if ret != 0:
         log.error("Failed to exec '%s'. Return code: %s." % (command, ret))
-        log.error("Output:")
-        for mm in syslog_err:
-            log.error(mm)
+	# redundant
+        # log.error("Output:")
+        # for mm in syslog_err:
+        #     log.error(mm)
         err_mail = mesg % ('root', command, command)
         err_mail += str(out)
         try:
