@@ -41,12 +41,8 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
-def lock_nwu():
-    """Enforce single execution
-    This implements a lock to make sure this program
-    will only run one instance at a time.
-    """
-    
+def main():
+    # unit test: N/A
     log.debug("Acquiring lock")
     lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
     filename = '/var/spool/nwu/maintlock'
@@ -67,9 +63,6 @@ def lock_nwu():
     else:
         log.debug("Lock acquired successfully")
 
-def main():
-    # unit test: N/A
-    lock_nwu()
     accepted_actions = ['update', 'install', 'forceinstall', 'upgrade', 'addrep']
     task_spool_path = "/var/spool/nwu/nw.tasks"
     if not os.access(task_spool_path, os.F_OK):

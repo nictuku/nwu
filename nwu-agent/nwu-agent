@@ -36,11 +36,13 @@ hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
 
-def lock_nwu():
-    """Enforce single execution
-    This implements a lock to make sure this program
-    will only run one instance at a time.
-    """
+
+def main():
+    if os.geteuid() == 0:
+        print >>sys.stderr, "You may not run nwu-agent as root"
+        log.error("nwu-agent cannot be run as root.")
+        sys.exit(1)
+    log.info("Starting nwu-agent")
     log.debug("Acquiring lock")
     lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
     filename = '/var/spool/nwu/agentlock'
@@ -52,7 +54,7 @@ def lock_nwu():
             if not retry or os.path.exists(filename):
                 raise
             # Ensure filename exists.
-            open(filename, 'w').close()
+            lock_fd = open(filename, 'w').close()
     try:
         fcntl.lockf(lock_fd, lock)
     except IOError:
@@ -60,14 +62,6 @@ def lock_nwu():
         sys.exit(1)
     else:
         log.debug("Lock acquired successfully")
-
-def main():
-    if os.geteuid() == 0:
-        print >>sys.stderr, "You may not run nwu-agent as root"
-        log.error("nwu-agent cannot be run as root.")
-        sys.exit(1)
-    log.info("Starting nwu-agent")
-    lock_nwu()
     # FIXME: sysinfo should not generate output here
     info = NodeInfo()
     sync = NodeSync(info)
