@@ -1,9 +1,8 @@
-NWU
+About
+------
 
-Network wide updates for systems which use APT.
+Network wide updates for systems using APT.
 - Yves Junqueira <yves@cetico.org>
-
-About:
 
 Nwu is a network-wide update system for systems which use APT for 
 software installation and upgrades. 
@@ -20,7 +19,8 @@ For more information, please see the project site at:
 
 http://cetico.org/nwu
 
-Installation and Usage:
+Installation and Usage
+-----------------------
 
 Nwu has two compontents: nwu-server and nwu-client
 
