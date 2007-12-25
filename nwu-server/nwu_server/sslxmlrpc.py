@@ -22,6 +22,7 @@ import socket
 import SocketServer
 from M2Crypto import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+from SimpleXMLRPCServer import SimpleXMLRPCDispatcher 
 from nwu_server.rpc_admin import nwu_admin
 from nwu_server.db.operation import *
 from nwu_server.rpc_agents import *
@@ -33,10 +34,59 @@ class NWURequestHandler(SimpleXMLRPCRequestHandler):
         log.debug("Request finished.")
         hub.end_close()
 
+    def do_POST(self):
+        """Handles the HTTPS POST request.
+
+        It was copied out from SimpleXMLRPCServer.py and modified to shutdown the socket cleanly.
+        Else the connection would just hang. 
+
+        (Thanks to that Python recipe, see below)
+        """
+
+        try:
+            # get arguments
+            data = self.rfile.read(int(self.headers["content-length"]))
+            # In previous versions of SimpleXMLRPCServer, _dispatch
+            # could be overridden in this class, instead of in
+            # SimpleXMLRPCDispatcher. To maintain backwards compatibility,
+            # check to see if a subclass implements _dispatch and dispatch
+            # using that method if present.
+            response = self.server._marshaled_dispatch(
+                    data, getattr(self, '_dispatch', None)
+                )
+        except: # This should only happen if the module is buggy
+            # internal error, report as HTTP server error
+            self.send_response(500)
+            self.end_headers()
+        else:
+            # got a valid XML RPC response
+            self.send_response(200)
+            self.send_header("Content-type", "text/xml")
+            self.send_header("Content-length", str(len(response)))
+            self.end_headers()
+            self.wfile.write(response)
+
+            # shut down the connection
+            self.wfile.flush()
+            self.connection.shutdown(0) # Modified here!
+            # Using '0' to force a shutdown, or the connection freezes
+            # http://www.amk.ca/python/howto/sockets/sockets.html
+            
+
 class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
        SSL.SSLServer, SimpleXMLRPCServer):
     def __init__(self, ssl_context, server_uri):
         handler = NWURequestHandler
+
+        # fix suggest in http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/496786
+        try:
+            SimpleXMLRPCDispatcher.__init__(self)
+        except TypeError:
+            # An exception is raised in Python 2.5 as the prototype of the __init__
+            # method has changed and now has 3 arguments (self, allow_none, encoding)
+            #
+            SimpleXMLRPCDispatcher.__init__(self, False, None)
+
         #    self.handle_error = self._quietErrorHandler
         SSL.SSLServer.__init__(self, server_uri, handler, ssl_context) 
         self.funcs = {}
