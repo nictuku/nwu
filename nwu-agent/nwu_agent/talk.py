@@ -48,7 +48,7 @@ class agent_talk:
             self.server_uri = config.get("connection", "server_uri")
             self.rpc = self.XClient(self.server_uri)
 
-    def my_ctx(self):
+    def _my_ctx(self):
         protocol = 'sslv3'
         ctx = SSL.Context(protocol)
         ctx.set_allow_unknown_ca(True)
@@ -66,8 +66,11 @@ class agent_talk:
         return ctx
 
     def XClient(self, server_uri):
-        ctx = self.my_ctx()
-        xs = Server(server_uri, SSL_Transport(ctx), verbose=self.debug)
+        ctx = self._my_ctx()
+        transport = SSL_Transport(ctx) 
+        # Python 2.5 fix
+        transport._use_datetime = False
+        xs = Server(server_uri, transport, verbose=self.debug)
         return xs
 
     def get_auth(self):
