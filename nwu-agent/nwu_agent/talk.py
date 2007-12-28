@@ -22,12 +22,12 @@ import string
 import random
 import stat
 import ConfigParser
-from M2Crypto import SSL
-from M2Crypto.m2xmlrpclib import Server, SSL_Transport
 
 import logging
 import sys
 import socket
+
+import xmlrpclib
 
 log = logging.getLogger('nwu_agent.misc')
 
@@ -36,7 +36,7 @@ class agent_talk:
     debug=False
 
     def __init__(self, load_config=True):
-        #socket.setdefaulttimeout(float(100))
+        socket.setdefaulttimeout(float(60))
         if load_config:
             self.conffile = '/etc/nwu/agent.conf'
             config = ConfigParser.ConfigParser()
@@ -46,32 +46,8 @@ class agent_talk:
                 sys.exit(1)
             r = config.read("/etc/nwu/agent.conf")
             self.server_uri = config.get("connection", "server_uri")
-            self.rpc = self.XClient(self.server_uri)
-
-    def _my_ctx(self):
-        protocol = 'sslv3'
-        ctx = SSL.Context(protocol)
-        ctx.set_allow_unknown_ca(True)
-        # Currently, none of this would work.
-        # Leaving it like this, it will still check if the
-        # certificate name matches the host address 
-
-#        ctx.load_cert(self.pemfile)
-#        ctx.load_client_ca('/etc/nwu/cacert.pem')
-#        ctx.load_verify_info('/etc/nwu/cacert.pem')
-        #ctx.set_verify(SSL.verify_peer|SSL.verify_fail_if_no_peer_cert,10)
-        #ctx.set_verify(SSL.verify_,10)
-        #ctx.set_verify(SSL.verify_none,10)
-        #ctx.set_session_id_ctx('nwu')
-        return ctx
-
-    def XClient(self, server_uri):
-        ctx = self._my_ctx()
-        transport = SSL_Transport(ctx) 
-        # Python 2.5 fix
-        transport._use_datetime = False
-        xs = Server(server_uri, transport, verbose=self.debug)
-        return xs
+            # XXX: check server certificate
+            self.rpc = xmlrpclib.Server(self.server_uri)
 
     def get_auth(self):
         auth_path = "/var/spool/nwu/auth"
