@@ -76,7 +76,7 @@ class NodeSync(object):
     def setup_session(self):
         """Setups server communication
         """
-        (uniq, password) = self.talk.get_auth()
+        (uniq, password) = self.talk.auth
         token = hmac.new(password, uniq).hexdigest()
         uname = os.uname()
         os_name = uname[0]

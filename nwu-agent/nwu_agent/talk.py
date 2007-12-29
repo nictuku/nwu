@@ -48,8 +48,9 @@ class agent_talk:
             self.server_uri = config.get("connection", "server_uri")
             # XXX: check server certificate
             self.rpc = xmlrpclib.Server(self.server_uri)
+            self.auth = self._get_auth()
 
-    def get_auth(self):
+    def _get_auth(self):
         auth_path = "/var/spool/nwu/auth"
         try:
             st = os.stat(auth_path)
