@@ -17,21 +17,25 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+# unittest-compatible tests
+# callable using 'nosetests'
+
 from StringIO import StringIO
 import sys
 sys.path.append('.')
-import py.test
 
 import nwu_agent
 from nwu_agent import node_info
 import nwu_agent.talk
 import nwu_agent.maint
 
+import unittest
+
 agent = nwu_agent.talk.agent_talk(load_config=False)
 m = nwu_agent.maint
 i = node_info.NodeInfo()
 
-class TestAgent:
+class TestAgent(unittest.TestCase):
  
     def setup_method(self, method):
         pass 
@@ -72,10 +76,10 @@ xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
         assert i.diff_dicts({}, {}) == ({}, {})    
 
     def test_apt_get(self):
-        py.test.raises(Exception, "m.apt_get('BLA')") 
-        py.test.raises(Exception, "m.apt_get('install', packages='')")
-        py.test.raises(Exception, "m.apt_get('install', packages=[])")
-        py.test.raises(Exception, "m.apt_get('install')")
+        self.assertRaises(Exception, "m.apt_get('BLA')") 
+        self.assertRaises(Exception, "m.apt_get('install', packages='')")
+        self.assertRaises(Exception, "m.apt_get('install', packages=[])")
+        self.assertRaises(Exception, "m.apt_get('install')")
         assert m.apt_get('install', packages=['foo'] ) == ('apt-get', ['install', 'foo'])
         assert m.apt_get('update' ) == ('apt-get', ['update'])
         assert m.apt_get('upgrade', packages=['foo'] ) == ('apt-get', ['upgrade'])
