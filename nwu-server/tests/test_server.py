@@ -19,16 +19,50 @@
 
 import sys
 sys.path.append('.')
-print sys.path
-import nwu_server.db.operation
+from nwu_server.db.operation import Local
+from nwu_server.rpc_agents import RPC
+from nwu_server.db.model import *
+import random
+import hmac
+import logging
 
+log = logging.getLogger()
+hdlr = logging.StreamHandler()
+log.addHandler(hdlr)
+log.setLevel(logging.DEBUG)
+def setup():
+    metadata.bind="sqlite:///"
+    setup_all()
+    create_all()
+    
 class TestServer:
  
-    def setup_method(self, method):
-        nwu_server.db.operation.check_token = self.istrue
 
-    def test_fake_check_token(self):
-        assert nwu_server.db.operation.Computer.check_token('a', 'b') == True
+    def test_add_computer(self):
+        password='foobar'
+        uniq='dsadsad1921832918312weee'
+        token = hmac.new(password, uniq).hexdigest()
 
-    def istrue(self, a, b):
-        return True
+        assert Local.check_token(uniq, token) == False
+
+        # no servers in the database
+        zero = Computer.query.count()
+        assert zero == 0
+
+        # server doesn't exist yet
+        session = RPC.session_setup(uniq, token)
+        assert session == False
+
+        m = Computer(hostname='moinmoin', uniq=uniq, os_name='Linux', os_version='2.6.x',
+            password=password)
+        objectstore.flush()
+
+        assert Local.check_token(uniq, token) == True
+        assert Local.check_token(uniq, 'foo') == False
+        assert Local.check_token(uniq, token + 'oops') == False
+
+        session = RPC.session_setup(uniq, token)
+        assert session == [ uniq, token ] 
+
+
+

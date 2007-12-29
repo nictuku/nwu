@@ -178,9 +178,9 @@ if __name__ == '__main__':
         if dbtype == 'sqlite' or config.forceinit:
             drop_privileges(options.user)
             log.info("Creating required database structure for type: " + dbtype)
-            from nwu_server.db.operation import create_tables, hub
+            from nwu_server.db.operation import create_tables
             create_tables()
-            hub.commit()
+            # XXX: needs flush?
         sys.exit(0)
 
     if options.daemonize:

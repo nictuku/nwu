@@ -27,7 +27,8 @@ import BaseHTTPServer
 from OpenSSL import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from SimpleXMLRPCServer import SimpleXMLRPCDispatcher 
-from nwu_server.rpc_admin import nwu_admin
+# XXX: admin temporarily deactivated
+#from nwu_server.rpc_admin import nwu_admin
 from nwu_server.db.operation import *
 from nwu_server.rpc_agents import *
 

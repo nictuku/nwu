@@ -24,9 +24,6 @@ import logging
 from db.operation import *
 log = logging.getLogger('nwu_server.rpc_admin')
 
-hub = PackageHub()
-__connection__ = hub
-
 class nwu_admin:
     """RPC methods that control the database using
     local_data.nwu_data
@@ -41,7 +38,6 @@ class nwu_admin:
         else:
             log.debug("AUTH OK")
         export = []
-        hub.begin()
         # This was in __init__, but we must try to avoid caching
         if info == 'computers':
             for mach in computer.select():
@@ -61,17 +57,12 @@ class nwu_admin:
                     'action' : tk.action,
                     'details' : tk.details,
                     })
-        hub.commit()
-        hub.end()
         return export
 
     def computer_del(self, computer_id):
 
         if not self._verify_auth(auth, admin=True):
             raise Exception, "Wrong auth"
-
-        hub.begin()
-        conn = hub.getConnection()
 
         m = computer.select(computer.q.id==computer_id)
         ma = list(m)
@@ -91,8 +82,6 @@ class nwu_admin:
             (computer.q.id ==  client_computer.id)))
 
         conn.query(delquery)
-        hub.commit()
-        hub.end()
         return True 
 
     def task_append(self, new_task_dict):
@@ -107,7 +96,6 @@ class nwu_admin:
         else:
             task_detail = None
 
-        hub.begin()
         m = computer.select(computer.q.id==computer_id)
         ma = list(m)
         for mach in ma:
@@ -116,28 +104,19 @@ class nwu_admin:
             str(task_detail) + ".")
 
             t = task(computer=computer_id, action=task_name,details=task_detail)
-        hub.commit()
-        hub.end()
 
     def _verify_auth(self, auth, admin=True):
         # verify given user against the user database
 	# FIXME: is this really safe?
 
-        hub.begin()
         (username, password) = auth
         u = users.select(users.q.username==username)
         for login in u:
             if not md5(password).hexdigest() == login.password:
-                 hub.commit()
-                 hub.end()
                  return False
             elif admin == True and login.userlevel == 1:
-                 hub.commit()
-                 hub.end()
                  return True
             else:
-                 hub.commit()
-                 hub.end()
                  return True
                         
 if __name__ == '__main__':

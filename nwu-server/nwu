@@ -82,10 +82,6 @@ def is_safe(str, http=False):
     return [x for x in str if x.lower() not in OK_CHARS] == []
 
 def main():
-    hub = PackageHub()
-    __connection__ = hub
-
-    hub.begin()
 
     args = len(sys.argv)
 
@@ -223,6 +219,7 @@ def main():
                t = task(computer=mach, action=sub_command,details=details)
         else:
             usage()
-    hub.commit()
-    hub.end()
-main()
+
+if __name__ == '__main__':
+
+    main()
