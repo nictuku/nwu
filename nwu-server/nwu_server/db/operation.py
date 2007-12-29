@@ -19,25 +19,27 @@
 
 """Defines the nwu database scheme, tables and operations.
 """
-from sqlobject import *
-from sqlobject.sqlbuilder import *
 import sys
 import hmac
 import logging
-from setup import PackageHub
+from elixir import *
+from sqlalchemy import create_engine,sessionmaker
 
 log = logging.getLogger('nwu_server.db.operation')
-hub = PackageHub() 
-__connection__ = hub
+from setup import read_conf
 
-def get_tbl_version(session,tbl):
-    (uniq, token) = session
+cfg = read_conf()
 
-    if not computer.check_token(uniq, token):
+metadata.bind(cfg.connection_string)
+
+def get_tbl_version(rpc_session,tbl):
+    (uniq, token) = rpc_session
+
+    if not Computer.check_token(uniq, token):
         raise Exception, "Invalid authentication token"
 
-    query = tables_version.select(AND(tables_version.q.tablename==tbl, 
-        tables_version.q.uniq==uniq))
+    query = session.query(TablesVersion).filter_by(tablename=tbl, 
+        uniq=uniq)
     a = list(query)
     if len(a) > 0:
         return a[0].version
@@ -46,91 +48,79 @@ def get_tbl_version(session,tbl):
      
 
 def update_tbl_version(tbl, comp_uniq): 
-    """Maintains clients info versioning info to enforce data
+    """Remember version of clients metadata to enforce data
     syncronization."""
-#    import pdb;pdb.set_trace()
 
-    query = tables_version.select(AND(tables_version.q.tablename==tbl, 
-        tables_version.q.uniq==comp_uniq))
+    query = session.query(TablesVersion).filter_by(tablename=tbl, 
+        uniq=comp_uniq))
     a = list(query)
     if len(a) == 0:
-        wee = tables_version(tablename=tbl,version=1,uniq=comp_uniq)
-        return wee.version
+        updated = session.save('TablesVersion',tablename=tbl,version=1,uniq=comp_uniq)
+        return updated.version
     
     try:
         o = a[0]
         ver = o.version
     except AttributeError:
-        wee = tables_version(tablename=tbl,version=1,uniq=comp_uniq)
-        return wee.version
+        updated = session.save('TablesVersion',tablename=tbl,version=1,uniq=comp_uniq)
+        return updated.version
 
     o.version = ver + 1
     return o.version
-
-class tables_version(SQLObject):
-
-    tablename = StringCol(length=255)
-    version = IntCol()
-    uniq = StringCol(length=32)
-
-class computer(SQLObject):
-
-    uniq = StringCol(length=32,alternateID=True)
-    hostname = StringCol(length=255)
-    password = StringCol(length=255)
-    os_name = StringCol(length=255)
-    os_version = StringCol(length=255)
-
-    current_packages = MultipleJoin('current_packages')
-    update_candidates = MultipleJoin('update_candidates')
-    repositories = MultipleJoin('repositories')
-    authcomputer = MultipleJoin('authcomputer')
-    task = MultipleJoin('task')
-
+# SA
+class TablesVersion(Entity):
+    using_options(tablename='tables_version')
     
+    tablename = Field(String(255))
+    version = Field(Integer)
+    uniq = Field(String(32))
+
+class Computer(Entity):
+    using_options(tablename='computer')
+
+    uniq = Field(String(32),unique=True)
+    hostname = Field(String(255))
+    password = Field(String(255))
+    os_name = Field(String(255))
+    os_version = Field(String(255))
+    
+    current_packages = ManyToMany('CurrentPackages')
+    update_candidates = ManyToMany('update_candidates')
+    repositories = ManyToMany('repositories')
+    task = ManyToMany('task')
+
+    def __repr__(self):
+        return '<Computer %s(%s)>' % (self.hostname, self.id)
+
     def add_computer(password, iuniq, hostname, os_name, os_version):
         """Adds the given computer to the computers database.
         """
-        conn = hub.getConnection()
-        hub.begin()
         log.info("Creating computer " + iuniq + " " + hostname + " " +\
              os_name + " " + os_version)
-        m = computer(uniq=iuniq,hostname=hostname, os_name=os_name,
+        m = session.save('Computer',uniq=iuniq,hostname=hostname, os_name=os_name,
             os_version=os_version,password=password)
         
-        versioncol = tables_version.q.version.fieldName
-        tablecol = tables_version.q.tablename.fieldName
-        conn.debug = True
-        #runthis = {'tablename':'computer','version':6}
-        #tables_version(**runthis)
-#        newversion = conn.sqlrepr(Replace('tables_version', {'tablename':'computer','version':'3'} ))
-#        conn.query(newversion)
-        hub.commit()
-        hub.end()
         return True 
 
-    def session_setup(uniq, token):
-        """Sets up the session for agent-aggregator or agent-manager communication.
+    def rpc_session_setup(uniq, token):
+        """Sets up the rpc_session for agent-aggregator or agent-manager communication.
 
         The token string comes from the authentication process.
 
-        Returns session object to be used by the agent in later
+        Returns rpc_session object to be used by the agent in later
         communication steps.
         """
-        log.info("Setting session for computer " + uniq + ".")
-        hub.begin()
+        log.info("Setting rpc_session for computer " + uniq + ".")
         # FIXME: test if token is valid here.
-        query_check_m = computer.select(computer.q.uniq==uniq)
-        check_m = list(query_check_m)
-        hub.end()
+        check_m = Computer.get_by(uniq=uniq)
         password = ''
 
         if len(check_m) == 0:
-            log.error("Problem in session auth for: %s" % uniq)
+            log.error("Problem in rpc_session auth for: %s" % uniq)
             return False
 
-        if computer.check_token(uniq, token):
-            log.info("Computer authenticated: %s, %s" % (uniq, token))
+        if Computer.check_token(uniq, token):
+            log.info("Computer authenticated: %s" % repr(check_m))
             return [ uniq, token ]
 
         # FIXME: return False or raise an exception?
@@ -141,7 +131,7 @@ class computer(SQLObject):
         """Checks if the specified token was generated using the stored
         computer password.
         """
-        query_check_t = computer.select(computer.q.uniq==uniq)
+        query_check_t = Computer.get_by(uniq=uniq)
         check_t = list(query_check_t)
 
         password = ''
@@ -161,43 +151,38 @@ class computer(SQLObject):
         else:
             return False
 
-    session_setup=staticmethod(session_setup)
+    rpc_session_setup=staticmethod(rpc_session_setup)
     check_token=staticmethod(check_token)
     add_computer=staticmethod(add_computer)
 
-class authcomputer(SQLObject):
+class CurrentPackages(Entity):
+    using_options(tablename='current_packages')
+    
+    name = Field(String(255))
+    version = Field(String(30))
+    computer = ManyToOne('Computer')
+#    class sqlmeta:
+#        defaultOrder = 'name'
 
-    password = StringCol(length=255)
-
-    computer = ForeignKey('computer')
-
-class current_packages(SQLObject):
-
-    name = StringCol(length=255)
-    version = StringCol(length=30)
-    computer = ForeignKey('computer')
-    class sqlmeta:
-        defaultOrder = 'name'
-
-    def set_list_diff(session, change_table, add_pkgs, rm_pkgs):
+    def set_list_diff(rpc_session, change_table, add_pkgs, rm_pkgs):
         """Takes two lists of packages, one for removal and one for
         addition, and update the specified table.
         """
-        # Affects either current_packages or update_candidates
+        # Affects either CurrentPackages or UpdateCandidates
 
-        (uniq, token) = session
+        (uniq, token) = rpc_session
 
-        if not computer.check_token(uniq, token):
+        if not Computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
-        new_map = { 'update_candidates' : 'update_candidates',
-            'current_packages' : 'current_packages' } 
+        new_map = { 'update_candidates' : 'UpdateCandidates',
+            'current_packages' : 'CurrentPackages' } 
         # compatibility hack
         # FIXME: future versions of the database know what to do with apt or else
-        if change_table in new_map.keys():
+        if change_table in new_map:
             change_table = new_map[change_table]
 
-        if change_table not in ['update_candidates', 'current_packages']:
+        if change_table not in ['UpdateCandidates', 'CurrentPackages']:
             raise Exception, 'Unknown table'
         table = eval(change_table)
         pkgs = {}
@@ -211,87 +196,57 @@ class current_packages(SQLObject):
         else:
             pkgs['add_pkgs'] = {}
 
-        conn = hub.getConnection()
-        hub.begin()
+        client_computer = Computer.get_by(uniq=uniq)
 
-        mach = computer.select(computer.q.uniq==uniq)
-        l = list(mach)
-        q = len(l)
-        if q != 1:
-            raise Exception, "Strange. There are " +  q +  " computer(s) with'" +\
-                uniq + "'uniq string and it should have exactly one."
+        log.info("Updating " + change_table + " for %s" % repr(client_computer))
 
-        client_computer = l[0]
-
-        log.info("Updating " + change_table + " for " + \
-           client_computer.hostname + '(' + str(client_computer.id) + ')' )
-
-        log.debug("will delete: " + str(rm_pkgs))
-        log.debug("will update: " + str(add_pkgs))
+        log.debug("going to delete: " + str(rm_pkgs))
+        log.debug("going to update: " + str(add_pkgs))
 
         # Deleting old packages
         for del_pk_name, del_pk_version in pkgs['rm_pkgs'].iteritems():
             # FIXME: update history table here
 
-
-            log.debug("Deleting old entries " + del_pk_name + " " + del_pk_version)
-            delquery = conn.sqlrepr(Delete(table.q, where=\
-                (table.q.name==del_pk_name)))
-
-            conn.query(delquery)
+            delitems= session.query(table).filter_by(name=del_pk_name,
+                computer=client_computer)
+            log.debug("Deleting %s entries" % len(delitems))
+            session.delete(delitems)
 
         # Updating new packages
         # Deleting possible old entries for those packages
         for add_pk_name, add_pk_version in pkgs['add_pkgs'].iteritems():
             # FIXME: update history table here
-            log.debug("Updating new entries for " + add_pk_name + " " + \
-                add_pk_version)
-            delquery = conn.sqlrepr(Delete(table.q, where=\
-                (table.q.name==add_pk_name)))
-
-            conn.query(delquery)
-
-            table(computer=client_computer, name=add_pk_name,
+            delitems = session.query(table).filter_by(name=add_pk_name,
+                computer=client_computer)
+            log.debug("Updating %s entries" % len(delitems))
+            session.delete(delitems)
+            new = table(computer=client_computer,name=add_pk_name,
                 version=add_pk_version)
-
+        
         up = update_tbl_version(change_table, uniq)
         log.debug(repr(up))
-        hub.commit()
-        hub.end()
         return up
 
-    def set_current_packages_full(session, pkgs):
-        (uniq, token) = session
+    def set_current_packages_full(rpc_session, pkgs):
+        (uniq, token) = rpc_session
 
-        if not computer.check_token(uniq, token):
+        if not Computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
-        conn = hub.getConnection()
-        hub.begin()
-        mach = computer.select(computer.q.uniq==uniq)
-        l = list(mach)
-        q = len(l)
-        if q != 1:
-            raise Exception, "Strange. There are " +  q +  " computer(s) with'" + \
-                uniq + "'uniq string and it should have exactly one."
+        client_computer = Computer.get_by(uniq=uniq)
 
-        client_computer = l[0]
-
-        log.debug("Updating current packages list for: " \
-            + client_computer.hostname + '(' + str(client_computer.id) + ')' )
+        log.debug("Updating current packages list for: %s" % repr(client_computer) )
 
         # Deleting old packages
         log.debug("Wiping old packages list.")
 
-        delquery = conn.sqlrepr(Delete(current_packages.q, where=\
-            (current_packages.q.computerID ==  client_computer.id)))
+        delitems = session.query(CurrentPackages).filter_by(
+            computer=client_computer)
 
-        conn.query(delquery)
         log.debug("Adding new packages.")
 
         for pk_name, pk_version in pkgs.iteritems():
-            current_packages(computer=client_computer, name=pk_name,
+            CurrentPackages(computer=client_computer, name=pk_name,
                 version=pk_version)
-        log.debug("End.")
         up = update_tbl_version('current_packages', uniq)
         log.debug(repr(up))
  
@@ -301,26 +256,27 @@ class current_packages(SQLObject):
 
     set_list_diff=staticmethod(set_list_diff)
 
-class update_candidates(SQLObject):
+class update_candidates(Entity):
+    using_options(tablename='update_candidates')
 
-    name = StringCol(length=255)
-    version = StringCol(length=30)
-    computer = ForeignKey('computer')
-    class sqlmeta:
-        defaultOrder = 'name'
+    name = Field(String(255))
+    version = Field(String(30))
+    computer = ManyToOne('Computer')
+#    class sqlmeta:
+#        defaultOrder = 'name'
 
-    def set_update_candidates_full(session, pkgs):
-        (uniq, token) = session
+    def set_update_candidates_full(rpc_session, pkgs):
+        (uniq, token) = rpc_session
 
         if type(pkgs) is str:
             pkgs = {}
 
-        if not computer.check_token(uniq, token):
+        if not Computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
         conn = hub.getConnection()
         hub.begin()
-        mach = computer.select(computer.q.uniq==uniq)
+        mach = Computer.select(Computer.q.uniq==uniq)
         l = list(mach)
         q = len(l)
         if q != 1:
@@ -338,7 +294,7 @@ class update_candidates(SQLObject):
         conn.query(delquery)
 
         for pk_name, pk_version in pkgs.iteritems():
-            update_candidates(computer=client_computer, name=pk_name,
+            update_candidates(Computer=client_computer, name=pk_name,
                 version=pk_version)
 
         up = update_tbl_version('update_candidates', uniq)
@@ -348,7 +304,7 @@ class update_candidates(SQLObject):
         hub.end()
         return up
 
-class repositories(SQLObject):
+class repositories(Entity):
     """APT repositories table.
     Example:
 
@@ -357,25 +313,26 @@ class repositories(SQLObject):
     Respective field names:
     deb uri distribution [component1] [component2] [...]
     """
+    using_options(tablename='repositories')
 
-    filename = StringCol() # eg: '/etc/apt/sources.list'
-    type = StringCol(length=30) # eg: deb, deb-src
-    uri = StringCol()
-    distribution = StringCol(length=255)
-    components = StringCol() # space separated list of components
-    computer = ForeignKey('computer')
+    filename = Field(String) # eg: '/etc/apt/sources.list'
+    type = Field(String(30)) # eg: deb, deb-src
+    uri = Field(String)
+    distribution = Field(String(255))
+    components = Field(String) # space separated list of components
+    computer = ManyToOne('Computer')
 
-    def set_repositories(session,reps):
+    def set_repositories(rpc_session,reps):
         """Stores the full repositories list in the database, after
         wiping that computer's repositories table.
         """
-        (uniq, token) = session
-        if not computer.check_token(uniq, token):
+        (uniq, token) = rpc_session
+        if not Computer.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
         conn = hub.getConnection()
         hub.begin()
-        mach = computer.select(computer.q.uniq==uniq)
+        mach = Computer.select(Computer.q.uniq==uniq)
         l = list(mach)
         q = len(l)
         if q != 1:
@@ -414,7 +371,7 @@ class repositories(SQLObject):
                     log.debug("repeated distro: " +  str(k))
 
                 # update repositories
-                setrep = repositories(computer=client_computer, filename=filename,
+                setrep = repositories(Computer=client_computer, filename=filename,
                     type=rep_type, uri=rep_uri, distribution=rep_distribution,
                     components=rep_components)
 
@@ -426,25 +383,27 @@ class repositories(SQLObject):
  
     set_repositories=staticmethod(set_repositories)
 
-class task(SQLObject):
-    
-    action = StringCol(length=255)
+class task(Entity):
+    using_options(tablename='task')
+
+    action = Field(String(255))
     details = StringCol(default=None)
-    computer = ForeignKey('computer')
+    computer = ManyToOne('Computer')
 
-class users(SQLObject):
+class users(Entity):
+    using_options(tablename='users')
 
-    username = StringCol(length=255, unique=True)
-    password = StringCol(length=255)
-    userlevel=IntCol()
+    username = Field(String(255, unique=True)
+    password = Field(String(255))
+    userlevel= Field(Integer)
 
 def create_tables():
     """Creates required tables in the database.
     """
     log.debug("Creating necessary tables in the database.")
 #    os.unlink('/var/lib/nwu/nwu.db')
-    for table in ['computer', 'current_packages', 'update_candidates',
-        'repositories', 'task', 'authcomputer', 'users', 'tables_version']:
+    for table in ['Computer', 'CurrentPackages', 'update_candidates',
+        'repositories', 'task', 'users', 'TablesVersion']:
         try:
             t = eval(table)
             t.createTable()
@@ -460,17 +419,17 @@ if __name__ == '__main__':
     #create_tables()
 
     # FIXME: os name and version from sysinfo
-    m = computer(hostname='localhost', uniq='32109832109832109831209832190321weee', os_name='Linux', os_version='2.6.x')
+    m = Computer(hostname='localhost', uniq='32109832109832109831209832190321weee', os_name='Linux', os_version='2.6.x')
 
-    installed = current_packages(computer=m, name='gcc', version='1.1')
-    installed = current_packages(computer=m, name='znes', version='4.1')
-    reps = repositories(computer=m, filename='/etc/apt/sources.list',type='deb',
+    installed = CurrentPackages(Computer=m, name='gcc', version='1.1')
+    installed = CurrentPackages(Computer=m, name='znes', version='4.1')
+    reps = repositories(Computer=m, filename='/etc/apt/sources.list',type='deb',
         uri='http://blabla', distribution='stable',
         components = 'breezy-updates main restricted')
-    all = computer.select(computer.q.hostname=='localhost')
+    all = Computer.select(Computer.q.hostname=='localhost')
     for ma in all:
         print ma.hostname
-        for package in ma.current_packages:
+        for package in ma.CurrentPackages:
             print package.name, package.version
 
         for rep in ma.repositorieses:
