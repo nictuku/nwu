@@ -17,6 +17,9 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+import sys
+import types
+
 import logging
 import socket
 import SocketServer
@@ -30,8 +33,29 @@ from nwu_server.rpc_agents import *
 
 log = logging.getLogger("nwu_server.db.sslxmlrpc")
 
+def get_refcounts():
+    d = {}
+    sys.modules
+    # collect all classes
+    for m in sys.modules.values():
+        for sym in dir(m):
+            o = getattr (m, sym)
+            if type(o) is types.ClassType:
+                d[o] = sys.getrefcount (o)
+    # sort by refcount
+    pairs = map (lambda x: (x[1],x[0]), d.items())
+    pairs.sort()
+    pairs.reverse()
+    return pairs
+
+def top_100():
+    for n, c in get_refcounts()[:100]:
+        print '%10d %s' % (n, c.__name__)
+
 class NWURequestHandler(SimpleXMLRPCRequestHandler):
+
     def finish(self):
+        top_100()
         log.debug("Request finished.")
         hub.end_close()
 
