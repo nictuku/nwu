@@ -28,7 +28,7 @@ class TestServer:
         nwu_server.db.operation.check_token = self.istrue
 
     def test_fake_check_token(self):
-        assert nwu_server.db.operation.check_token('a', 'b') == True
+        assert nwu_server.db.operation.Computer.check_token('a', 'b') == True
 
     def istrue(self, a, b):
         return True
