@@ -20,7 +20,8 @@
 import logging
 import socket
 import SocketServer
-from M2Crypto import SSL
+import BaseHTTPServer
+from OpenSSL import SSL
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from SimpleXMLRPCServer import SimpleXMLRPCDispatcher 
 from nwu_server.rpc_admin import nwu_admin
@@ -33,6 +34,15 @@ class NWURequestHandler(SimpleXMLRPCRequestHandler):
     def finish(self):
         log.debug("Request finished.")
         hub.end_close()
+
+    def setup(self):
+        # in order to avoid this error:
+        # File "SocketServer.py", line 560, in setup
+        # self.rfile = self.connection.makefile('rb', self.rbufsize)
+        # NotImplementedError: Cannot make file object of SSL.Connection
+        self.connection = self.request # for doPOST
+        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
+        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
 
     def do_POST(self):
         """Handles the HTTPS POST request.
@@ -68,15 +78,14 @@ class NWURequestHandler(SimpleXMLRPCRequestHandler):
 
             # shut down the connection
             self.wfile.flush()
-            self.connection.shutdown(0) # Modified here!
-            # Using '0' to force a shutdown, or the connection freezes
-            # http://www.amk.ca/python/howto/sockets/sockets.html
+            self.connection.shutdown()
             
-
-class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
-       SSL.SSLServer, SimpleXMLRPCServer):
-    def __init__(self, ssl_context, server_uri):
+# we must use Threading or the database magic interface won't work
+class SSLXMLRPCServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer, 
+        SimpleXMLRPCDispatcher):
+    def __init__(self, server_uri, pemfile):
         handler = NWURequestHandler
+        self.pemfile = pemfile
 
         # fix suggest in http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/496786
         try:
@@ -86,21 +95,31 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
             # method has changed and now has 3 arguments (self, allow_none, encoding)
             #
             SimpleXMLRPCDispatcher.__init__(self, False, None)
+        SocketServer.BaseServer.__init__(self, server_uri,
+            handler)
 
         #    self.handle_error = self._quietErrorHandler
-        SSL.SSLServer.__init__(self, server_uri, handler, ssl_context) 
-        self.funcs = {}
+        # XXX: remove these?
+        # self.funcs = {}
         self.logRequests = False 
-        self.instance = None
+        ctx = SSL.Context(SSL.SSLv23_METHOD)
+        ctx.set_options(SSL.OP_NO_SSLv2)
+        ctx.use_privatekey_file(self.pemfile)
+        ctx.use_certificate_file(self.pemfile)
+        self.socket = SSL.Connection(ctx,
+            socket.socket(self.address_family,
+            self.socket_type))
+        self.server_bind()
+        self.server_activate()
 
-    def handle_request(self):
+    def handle_request_off(self):
         """Handle one request, possibly blocking."""
         try:
             request, client_address = self.get_request()
         except socket.error, e:
             log.warn("Socket exception: %s" % e)
             return False
-        except SSL.SSLError, e:
+        except SSL.Error, e:
             log.warn("SSL exception: %s" % e)
             return 
         if self.verify_request(request, client_address):
@@ -112,33 +131,20 @@ class SSLXMLRPCServer(SocketServer.ThreadingMixIn,
 
  
 class SSLServer:
-    
-    def __init__(self,config):
+   
+    def __init__(self, config):
         self.config = config
-        self.pemfile = config['pemfile']
-        self.ssl_context = self.ctx()
-
-    def ctx(self):
-        protocol = 'sslv3'
-        ctx = SSL.Context(protocol)
-        ctx.set_allow_unknown_ca(1)
-        ctx.load_cert(certfile=self.pemfile,
-            keyfile=self.pemfile)
-#        ctx.load_client_ca('/etc/nwu/cacert.pem')
- #       ctx.load_verify_info('/etc/nwu/cacert.pem')
-        ctx.set_verify(SSL.verify_none,10)
-    #    ctx.set_session_id_ctx('nwu')
-        return ctx
 
     def start(self):
         host = self.config['host']
         port = self.config['port']
+        pemfile = self.config['pemfile']
+
         log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
         ".")
-        nadmin = nwu_admin()
-        ssl_context = self.ctx()
+        #nadmin = nwu_admin()
         address = (host, port)
-        server = SSLXMLRPCServer(ssl_context, address)
+        server = SSLXMLRPCServer(address, pemfile)
         server.register_function(repositories.set_repositories)
         server.register_function(current_packages.set_current_packages_full)
         server.register_function(computer.session_setup)
@@ -147,6 +153,6 @@ class SSLServer:
         server.register_function(wipe_this)
         server.register_function(get_tbl_version)
         server.register_function(computer.add_computer)
-        server.register_function(nadmin.get_info)
-        server.register_function(nadmin.computer_del)
+        #server.register_function(nadmin.get_info)
+        #server.register_function(nadmin.computer_del)
         server.serve_forever()
