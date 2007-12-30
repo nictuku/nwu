@@ -47,22 +47,24 @@ class NodeSync(object):
         self.setup_session()
         log.info("Done.")
         tables = {'repositories':'',
-    #     'task':'', 
+# always being updated
+#         'tasks':'', 
          'update_candidates':'',
          'current_packages':'',
           }
         # TODO: nao esta chamando sync_info.. update_candidates
         log.debug("Spool versions: %s" % self.nodeinfo.spool_versions)
-        local_versions = tables.copy()
-        local_versions.update(self.nodeinfo.spool_versions)
+        # FIXME: since we're now using checksum, get rid of "local_versions"?
+        #local_versions = tables.copy()
+        #local_versions.update(self.nodeinfo.spool_versions)
 
-        for tbl in local_versions.keys():
+        for tbl in ['update_candidates','current_packages']:
             r = self.talk.rpc.get_tbl_version(self.my_session, tbl)
             log.debug("remote tbl version (%s): %s" % (tbl, r))
             if self.nodeinfo.cksum_data.has_key(tbl):
-                log.debug("my checksum: %s" % self.nodeinfo.cksum_data[tbl])
+                log.debug("my checksum (%s): %s" % (tbl, self.nodeinfo.cksum_data[tbl]))
         #    remote_versions[tbl] =
-            if str(local_versions[tbl]) != str(r):
+            if  self.nodeinfo.cksum_data[tbl] != str(r):
                 self.sync_this[tbl] = True
                 log.debug("table serial changed (%s)" % tbl)
 

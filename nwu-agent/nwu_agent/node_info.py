@@ -39,7 +39,8 @@ class NodeInfo(object):
                 sourcefiles)
         self.pkgs = sysinfo.software.packages()
         self.info = { 'current_packages' : self.pkgs.installed_ver,
-            'update_candidates' : self.pkgs.update_candidates 
+            'update_candidates' : self.pkgs.update_candidates,
+            'repositories' : self.repositories 
             }
         self.get_all_news()
         self.spool_versions = self.read_spool('tbl_ver')
@@ -72,12 +73,11 @@ class NodeInfo(object):
         cksum_tmp = ''
         keys = current_pkgs.keys()
         keys.sort()
-        if len(keys) > 0:
-            for key in keys:
-                val = current_pkgs[key]
-                my_list.append([where, key, val])
-                cksum_tmp += key + val
-            self.cksum_data[where] = md5(cksum_tmp).hexdigest()
+        for key in keys:
+            val = current_pkgs[key]
+            my_list.append([where, key, val])
+            cksum_tmp += key + val + ' '
+        self.cksum_data[where] = md5(cksum_tmp).hexdigest()
         self.store_data[where] = my_list
         log.debug("Formatting changes for %s." % where)
 #        log.debug("cur: %s " % repr(current_pkgs))
