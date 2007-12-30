@@ -30,17 +30,26 @@ log = logging.getLogger('nwu_server.rpc_agents')
 
 class RPC:
 
+    def add_computer(password, iuniq, hostname, os_name, os_version):
+        """Adds the given computer to the computers database.
+        """
+        log.info("Creating computer " + iuniq + " " + hostname + " " +\
+             os_name + " " + os_version)
+        m = Computer(uniq=iuniq,hostname=hostname, os_name=os_name,
+            os_version=os_version,password=password)
+        objectstore.flush()
+        return True
+
     def get_tbl_version(rpc_session,tbl):
         (uniq, token) = rpc_session
 
         if not Local.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
-        query = session.query(TablesVersion).filter_by(tablename=tbl, 
+        query = TablesVersion.query.filter_by(name=tbl, 
             uniq=uniq)
-        a = list(query)
-        if len(a) > 0:
-            return a[0].version
+        if query.count() > 0:
+            return query[0].version
         else:
             return 0
          
@@ -53,22 +62,25 @@ class RPC:
         communication steps.
         """
         log.info("Setting rpc_session for computer " + uniq + ".")
-        # FIXME: test if token is valid here.
-        check_m = Computer.get_by(uniq=uniq)
-        password = ''
-
-        if not check_m:
-            log.error("Problem in rpc_session auth for: %s" % uniq)
-            return False
-
         if Local.check_token(uniq, token):
-            log.info("Computer authenticated: %s" % repr(check_m))
+            log.info("Computer authenticated: %s" % uniq)
             return [ uniq, token ]
-
-        # FIXME: return False or raise an exception?
-        log.warn("Wrong token for: %s" % uniq)
-        return False
-
+        else:
+            return False
+#
+#        # FIXME: test if token is valid here.
+#        check_m = Computer.get_by(uniq=uniq)
+#        password = ''
+#
+#        if not check_m:
+#            log.error("Problem in rpc_session auth for: %s" % uniq)
+#            return False
+#
+#
+#        # FIXME: return False or raise an exception?
+#        log.warn("Wrong token for: %s" % uniq)
+#        return False
+#
 
     def set_list_diff(rpc_session, change_table, add_pkgs, rm_pkgs):
         """Takes two lists of packages, one for removal and one for
@@ -118,8 +130,9 @@ class RPC:
 
             delitems= session.query(table).filter_by(name=del_pk_name,
                 computer=client_computer)
-            log.debug("Deleting %s entries" % len(delitems))
-            session.delete(delitems)
+            log.debug("Deleting %s entries" % delitems.count())
+            for item in delitems:
+                session.delete(item)
 
         # Updating new packages
         # Deleting possible old entries for those packages
@@ -127,13 +140,14 @@ class RPC:
             # FIXME: update history table here
             delitems = session.query(table).filter_by(name=add_pk_name,
                 computer=client_computer)
-            log.debug("Updating %s entries" % len(delitems))
-            session.delete(delitems)
+            log.debug("Updating %s entries" % delitems.count())
+            for item in delitems:
+                session.delete(item)
             new = table(computer=client_computer,name=add_pk_name,
                 version=add_pk_version)
 
         # using db table name, not mapper name
-        up = update_tbl_version(change_table_name, uniq)
+        up = Local.update_tbl_version(change_table_name, uniq)
         log.debug(repr(up))
         return up
 
@@ -157,7 +171,7 @@ class RPC:
         for pk_name, pk_version in pkgs.iteritems():
             CurrentPackages(computer=client_computer, name=pk_name,
                 version=pk_version)
-        up = update_tbl_version('current_packages', uniq)
+        up = Local.update_tbl_version('current_packages', uniq)
         log.debug(repr(up))
  
         return up
@@ -184,7 +198,7 @@ class RPC:
             UpdateCandidates(Computer=client_computer, name=pk_name,
                 version=pk_version)
 
-        up = update_tbl_version('update_candidates', uniq)
+        up = Local.update_tbl_version('update_candidates', uniq)
         log.debug(repr(up))
         return up
 
@@ -218,14 +232,73 @@ class RPC:
                     type=rep_type, uri=rep_uri, distribution=rep_distribution,
                     components=rep_components)
 
-        up = update_tbl_version('repositories', uniq)
+        up = Local.update_tbl_version('repositories', uniq)
         log.debug(repr(up))
         return up 
 
+    def get_tasks(rpc_session):
+        (uniq, token) = rpc_session
+        if not Local.check_token(uniq, token):
+            raise Exception, "Invalid authentication token"
+        client_computer  = Computer.get_by(uniq=uniq)
+
+        log.info("Checking pending tasks for %s" % repr(client_computer))
+        remote_tasks = []
+    #    task._connection.debug = True
+        t = Tasks.query.filter_by(computer=client_computer)
+        if t.count() == 0:
+            log.info("No pending tasks found for "  + client_computer.hostname + \
+           '(' + str(client_computer.id) + ')' )
+            return remote_tasks
+
+        for tas in t:
+            if tas.action is None: tas.action = ''
+            if tas.details is None: tas.details = ''
+        log.info("Task found for "  + client_computer.hostname +  \
+             '(' + str(client_computer.id) + '): ' + tas.action + ' ' + tas.details)
+        remote_tasks.append((tas.action, tas.details))
+
+        return remote_tasks
+
+    def wipe_this(rpc_session, wipe_table):
+        (uniq, token) = rpc_session
+
+        if not Local.check_token(uniq, token):
+            raise Exception, "Invalid authentication token"
+        client_computer = Computer.get_by(uniq=uniq)
+
+        new_map = { 'update_candidates' : 'UpdateCandidates',
+            'current_packages' : 'CurrentPackages',
+            'repositories' : 'Repositories',
+            'tasks' : 'Tasks' }
+        # compatibility hack
+        # FIXME: future versions of the database know what to do with apt or else
+        new_table = wipe_table
+        if wipe_table in new_map:
+            new_table = new_map[wipe_table]
+        if wipe_table not in ['current_packages', 'update_candidates',
+                'repositories', 'tasks']:
+                raise Exception, "Illegal table."
+
+        log.info("Wiping " + new_table + " for "   +
+            client_computer.hostname + '(' + \
+            str(client_computer.id) + ')' )
+        table = eval(new_table)
+        delitems= session.query(table).filter_by(
+            computer=client_computer)
+        log.debug("Deleting %s entries" % delitems.count())
+        for item in delitems:
+            session.delete(item)
+        up = Local.update_tbl_version(wipe_table, uniq)
+        return up
+
     set_repositories=staticmethod(set_repositories)
     set_list_diff=staticmethod(set_list_diff)
+    get_tbl_version=staticmethod(get_tbl_version)
+    get_tasks=staticmethod(get_tasks)
     session_setup=staticmethod(session_setup)
-
+    wipe_this=staticmethod(wipe_this)
+    add_computer=staticmethod(add_computer)
 
 def create_tables():
     """Creates required tables in the database.

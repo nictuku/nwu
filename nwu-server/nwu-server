@@ -34,14 +34,25 @@ def read_config():
 
     host = config_p.get("webservice", "host").lower()
     port = int(config_p.get("webservice", "port"))
-    databasetype = config_p.get("database", "type").lower()
-    databasefile = config_p.get("database", "database").lower()
+    db_type = config_p.get("database", "type")
+    db_host = config_p.get("database", "host")
+    db_database = config_p.get("database", "database")
+    db_user = config_p.get("database", "user")
+    db_password = config_p.get("database", "password")
+    log.info("db: Using " + db_type + " as database backend.")
+
+#    if db_type == 'sqlite':
+#        connection_string = db_type + "://" + db_database + \
+#           '?cache=True'
+#    else:
+    connection_string = db_type + "://" + db_user + ":" + \
+       db_password + "@" + db_host + "/" + db_database 
 
     config = { 'host' : host, 
     'port' : port, 
     'pemfile' : '/etc/nwu/server.pem',
-    'databasetype' : databasetype,
-    'databasefile' : databasefile
+    'databasetype' : db_type,
+    'connection_string' : connection_string,
     }
     return config
 
@@ -141,7 +152,6 @@ def nwu_main(config):
         'port' : config['port'], 
         'pemfile' : config['pemfile']
         }
-    
 
     try:
         ssl = sslxmlrpc.SSLServer(config)
@@ -179,7 +189,7 @@ if __name__ == '__main__':
             drop_privileges(options.user)
             log.info("Creating required database structure for type: " + dbtype)
             from nwu_server.db.operation import create_tables
-            create_tables()
+            create_tables(config)
             # XXX: needs flush?
         sys.exit(0)
 

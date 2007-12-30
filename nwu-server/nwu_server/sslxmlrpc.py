@@ -58,7 +58,6 @@ class NWURequestHandler(SimpleXMLRPCRequestHandler):
     def finish(self):
         top_100()
         log.debug("Request finished.")
-        hub.end_close()
 
     def setup(self):
         # in order to avoid this error:
@@ -159,6 +158,9 @@ class SSLServer:
    
     def __init__(self, config):
         self.config = config
+        # initialize database
+        metadata.bind=config['connection_string']
+        setup_all()
 
     def start(self):
         host = self.config['host']
@@ -170,14 +172,14 @@ class SSLServer:
         #nadmin = nwu_admin()
         address = (host, port)
         server = SSLXMLRPCServer(address, pemfile)
-        server.register_function(repositories.set_repositories)
-        server.register_function(current_packages.set_current_packages_full)
-        server.register_function(computer.session_setup)
-        server.register_function(current_packages.set_list_diff)
-        server.register_function(get_tasks)
-        server.register_function(wipe_this)
-        server.register_function(get_tbl_version)
-        server.register_function(computer.add_computer)
+        server.register_function(RPC.set_repositories)
+        server.register_function(RPC.set_current_packages_full)
+        server.register_function(RPC.session_setup)
+        server.register_function(RPC.set_list_diff)
+        server.register_function(RPC.get_tasks)
+        server.register_function(RPC.wipe_this)
+        server.register_function(RPC.get_tbl_version)
+        server.register_function(RPC.add_computer)
         #server.register_function(nadmin.get_info)
         #server.register_function(nadmin.computer_del)
         server.serve_forever()

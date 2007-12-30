@@ -35,7 +35,7 @@ log = logging.getLogger('nwu_server.db.model')
 class TablesVersion(Entity):
     using_options(tablename='tables_version')
     
-    tablename = Field(String(255))
+    name = Field(String(255))
     version = Field(Integer)
     uniq = Field(String(32))
 
@@ -111,10 +111,11 @@ class Users(Entity):
     password = Field(String(255))
     userlevel= Field(Integer)
 
-def create_tables():
+def create_tables(config):
     """Creates required tables in the database.
     """
     log.debug("Creating necessary tables in the database.")
+    metadata.bind=config['connection_string']
     setup_all()
     create_all()
 
