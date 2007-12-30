@@ -57,10 +57,11 @@ class NodeSync(object):
         #remote_versions = {}
         for tbl in local_versions.keys():
             r = self.talk.rpc.get_tbl_version(self.my_session, tbl)
+            log.debug("remote tbl version (%s): %d" % (tbl, r))
         #    remote_versions[tbl] =
             if str(local_versions[tbl]) != str(r):
                 self.sync_this[tbl] = True
-                log.debug("table serial changed")
+                log.debug("table serial changed (%s)" % tbl)
 
         # getting tables.keys instead of self.sync_this.keys, because I need to ignore old tables
         for run in tables.keys():
@@ -144,8 +145,8 @@ class NodeSync(object):
         get_tasks = self.talk.rpc.get_tasks(self.my_session)
         log.info("Assigned tasks found: " + str(get_tasks) + ".")
         log.debug("Kindly asking server to wipe old tasks.")
-        taskver = self.talk.rpc.wipe_this(self.my_session,'task')
-        self.store_tbl_ver('task', taskver)
+        taskver = self.talk.rpc.wipe_this(self.my_session,'tasks')
+        self.store_tbl_ver('tasks', taskver)
         store_task = []
         for tas in get_tasks:
            store_task.append(tas)

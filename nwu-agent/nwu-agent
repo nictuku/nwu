@@ -28,14 +28,13 @@ from nwu_agent.node_sync import NodeSync
 
 log = logging.getLogger()
 hdlr = logging.handlers.SysLogHandler(
-  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_USER)
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
 formatter = logging.Formatter(
     "nwu_agent[%(process)d] %(levelname)s %(message)s"
     )
 hdlr.setFormatter(formatter)
 log.addHandler(hdlr)
 log.setLevel(logging.DEBUG)
-
 
 def main():
     if os.geteuid() == 0:
