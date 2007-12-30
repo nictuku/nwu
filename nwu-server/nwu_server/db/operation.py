@@ -21,6 +21,7 @@
 """
 import sys
 import hmac
+from datetime import datetime
 import logging
 from nwu_server.db.model import *
 
@@ -35,20 +36,9 @@ class Local:
 
         query = session.query(TablesVersion).filter_by(name=tbl, 
             uniq=comp_uniq)
-        a = list(query)
-        if len(a) == 0:
-            updated = TablesVersion(name=tbl,version=1,uniq=comp_uniq)
-            return updated.version
-        
-        try:
-            o = a[0]
-            ver = o.version
-        except AttributeError:
-            updated = TablesVersion(name=tbl,version=1,uniq=comp_uniq)
-            return updated.version
-
-        o.version = ver + 1
-        return o.version
+        now= datetime.now().strftime('%s')
+        updated = TablesVersion(name=tbl,version=now,uniq=comp_uniq)
+        return updated.version
 
     def check_token(uniq, token):
         """Checks if the specified token was generated using the stored

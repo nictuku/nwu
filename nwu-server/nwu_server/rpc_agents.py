@@ -33,11 +33,11 @@ class RPC:
     def add_computer(password, iuniq, hostname, os_name, os_version):
         """Adds the given computer to the computers database.
         """
-        log.info("Creating computer " + iuniq + " " + hostname + " " +\
+        log.info("add_computer: " + iuniq + " " + hostname + " " +\
              os_name + " " + os_version)
         m = Computer(uniq=iuniq,hostname=hostname, os_name=os_name,
             os_version=os_version,password=password)
-        objectstore.flush()
+        #objectstore.flush()
         return True
 
     def get_tbl_version(rpc_session,tbl):
@@ -61,7 +61,7 @@ class RPC:
         Returns rpc_session object to be used by the agent in later
         communication steps.
         """
-        log.info("Setting rpc_session for computer " + uniq + ".")
+        log.info("session_setup " + uniq + ".")
         if Local.check_token(uniq, token):
             log.info("Computer authenticated: %s" % uniq)
             return [ uniq, token ]
@@ -87,12 +87,11 @@ class RPC:
         addition, and update the specified table.
         """
         # Affects either CurrentPackages or UpdateCandidates
-
+        
         (uniq, token) = rpc_session
 
         if not Local.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
-
         # old_names are used at the client-side and as db table names
         # NewNames are used for model operations
         mapper = { 'update_candidates' : 'UpdateCandidates',
@@ -119,7 +118,8 @@ class RPC:
 
         client_computer = Computer.get_by(uniq=uniq)
 
-        log.info("Updating %s for %s" % (change_table, repr(client_computer)))
+        log.info("set_list_diff (table: %s) for %s " % (change_table, 
+            repr(client_computer)))
 
         log.debug("going to delete: %s" % str(rm_pkgs))
         log.debug("going to update: %s" % str(add_pkgs))
@@ -140,7 +140,7 @@ class RPC:
             # FIXME: update history table here
             delitems = session.query(table).filter_by(name=add_pk_name,
                 computer=client_computer)
-            log.debug("Updating %s entries" % delitems.count())
+            log.debug("reloading %s entries" % delitems.count())
             for item in delitems:
                 session.delete(item)
             new = table(computer=client_computer,name=add_pk_name,
@@ -158,7 +158,7 @@ class RPC:
             raise Exception, "Invalid authentication token"
         client_computer = Computer.get_by(uniq=uniq)
 
-        log.debug("Updating current packages list for: %s" % repr(client_computer) )
+        log.debug("set_current_packages_full: %s" % repr(client_computer) )
 
         # Deleting old packages
         log.debug("Wiping old packages list.")
@@ -187,7 +187,7 @@ class RPC:
 
         client_computer = Computer.get_by(uniq=uniq)
 
-        log.debug("Creating new update candidates list for: %s" %
+        log.debug("set_update_candidates_full: %s" %
              repr(client_computer)) 
         # Deleting old packages
         delitems = UpdateCandidates.query.filter_by(
@@ -212,7 +212,7 @@ class RPC:
 
         client_computer = Computer.get_by(uniq=uniq)
 
-        log.info("Updating repositories for %s" % repr(client_computer))
+        log.info("set_repositories: for %s" % repr(client_computer))
         # Deleting old reps
         delitems = Repositories.query.filter_by(computer=client_computer)
 
@@ -242,7 +242,7 @@ class RPC:
             raise Exception, "Invalid authentication token"
         client_computer  = Computer.get_by(uniq=uniq)
 
-        log.info("Checking pending tasks for %s" % repr(client_computer))
+        log.info("get_tasks: for %s" % repr(client_computer))
         remote_tasks = []
     #    task._connection.debug = True
         t = Tasks.query.filter_by(computer=client_computer)
@@ -280,7 +280,7 @@ class RPC:
                 'repositories', 'tasks']:
                 raise Exception, "Illegal table."
 
-        log.info("Wiping " + new_table + " for "   +
+        log.info("wipe_this: " + new_table + " for "   +
             client_computer.hostname + '(' + \
             str(client_computer.id) + ')' )
         table = eval(new_table)

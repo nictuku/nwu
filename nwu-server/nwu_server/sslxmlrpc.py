@@ -56,7 +56,8 @@ def top_100():
 class NWURequestHandler(SimpleXMLRPCRequestHandler):
 
     def finish(self):
-        top_100()
+        objectstore.flush()
+#        top_100()
         log.debug("Request finished.")
 
     def setup(self):
