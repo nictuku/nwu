@@ -32,8 +32,6 @@ import xmlrpclib
 log = logging.getLogger('nwu_agent.misc')
 
 class agent_talk:
-    #pemfile='/etc/nwu/client.pem'
-    debug=False
 
     def __init__(self, load_config=True):
         socket.setdefaulttimeout(float(60))

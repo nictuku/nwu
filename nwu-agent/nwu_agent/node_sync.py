@@ -20,8 +20,9 @@
 import hmac
 import logging
 import os
-from nwu_agent.talk import agent_talk
 import ConfigParser
+
+from nwu_agent.talk import agent_talk
 
 log = logging.getLogger("nwu_agent.node_sync")
 
@@ -36,6 +37,7 @@ class NodeSync(object):
         self.sync_this = nodeinfo.sync_this
         self.sync_data = nodeinfo.sync_data
         self.store_data = nodeinfo.store_data
+#        import pdb;pdb.set_trace()
         
     def sync_all(self):
         """Send changes to the server and store them in the cache.
@@ -54,10 +56,11 @@ class NodeSync(object):
         local_versions = tables.copy()
         local_versions.update(self.nodeinfo.spool_versions)
 
-        #remote_versions = {}
         for tbl in local_versions.keys():
             r = self.talk.rpc.get_tbl_version(self.my_session, tbl)
-            log.debug("remote tbl version (%s): %d" % (tbl, r))
+            log.debug("remote tbl version (%s): %s" % (tbl, r))
+            if self.nodeinfo.cksum_data.has_key(tbl):
+                log.debug("my checksum: %s" % self.nodeinfo.cksum_data[tbl])
         #    remote_versions[tbl] =
             if str(local_versions[tbl]) != str(r):
                 self.sync_this[tbl] = True

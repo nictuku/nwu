@@ -29,11 +29,11 @@ class NodeInfo(object):
     """Gets all needed info that will be sync'ed to the server
     No sync operation is done here.
     """
-
     def __init__(self):
         self.sync_this = {}
         self.sync_data = {}
         self.store_data = {}
+        self.cksum_data = {}
         sourcefiles = self.list_sources_list()
         self.repositories, self.rep_md5 = self.read_sources_list(
                 sourcefiles)
@@ -43,7 +43,7 @@ class NodeInfo(object):
             }
         self.get_all_news()
         self.spool_versions = self.read_spool('tbl_ver')
-
+        
     def get_all_news(self):
         """See what info has changed in the system
         Sets sync_data and sync_this approprietly
@@ -69,8 +69,15 @@ class NodeInfo(object):
         """
         [cached_pkgs, current_pkgs, diff_pkgs] = self.diff_new_spool(where)
         my_list = []
-        for key, val in current_pkgs.iteritems():
-            my_list.append([where, key, val])
+        cksum_tmp = ''
+        keys = current_pkgs.keys()
+        keys.sort()
+        if len(keys) > 0:
+            for key in keys:
+                val = current_pkgs[key]
+                my_list.append([where, key, val])
+                cksum_tmp += key + val
+            self.cksum_data[where] = md5(cksum_tmp).hexdigest()
         self.store_data[where] = my_list
         log.debug("Formatting changes for %s." % where)
 #        log.debug("cur: %s " % repr(current_pkgs))
