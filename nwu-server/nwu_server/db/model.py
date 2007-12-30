@@ -25,12 +25,11 @@ import logging
 from elixir import *
 
 log = logging.getLogger('nwu_server.db.model')
-# run this from somewhere else, or tests will brake
-# from setup import read_conf
 
-#cfg = read_conf()
-
-#metadata.bind(cfg.connection_string)
+new_map = { 'update_candidates' : 'UpdateCandidates',
+    'current_packages' : 'CurrentPackages',
+    'repositories' : 'Repositories',
+    'tasks' : 'Tasks' }
 
 class TablesVersion(Entity):
     using_options(tablename='tables_version')

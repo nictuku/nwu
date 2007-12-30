@@ -181,7 +181,7 @@ def main():
 
                 elif view_what == 'tasks':
                     print "Reading tasks for computer " + mach_print
-                    for t in mach.task:
+                    for t in mach.tasks:
                        print t.action + ": " + str(t.details)
 
                 else: usage()
@@ -198,12 +198,10 @@ def main():
 
         if len(args) > 0:
             id = args[0]
-            m = computer.select(computer.q.id==id)
-            ma = list(m)
-            for mach in ma:
-                print "Found computer id=" + id + " in the database. Requesting\
+            ma = Computer.get_by(id=id)
+            print "Found computer id=" + id + " in the database. Requesting\
  " + sub_command + "."
-                t = task(computer=mach, action=sub_command)
+                t = Task(computer=mach, action=sub_command)
         else:
             usage()
         

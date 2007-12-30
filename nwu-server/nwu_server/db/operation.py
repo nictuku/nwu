@@ -21,23 +21,44 @@
 """
 import sys
 import hmac
-from datetime import datetime
 import logging
+import md5
+
 from nwu_server.db.model import *
 
 #cfg = read_conf()
 
 #metadata.bind(cfg.connection_string)
-
 class Local:
     def update_tbl_version(tbl, comp_uniq): 
         """Remember version of clients metadata to enforce data
         syncronization."""
+        try:
+            new_tbl = new_map[tbl]
+        except: 
+            raise Exception, "Illegal table: %s" % tbl
 
-        query = session.query(TablesVersion).filter_by(name=tbl, 
-            uniq=comp_uniq)
-        now= datetime.now().strftime('%s')
-        updated = TablesVersion(name=tbl,version=now,uniq=comp_uniq)
+        mytable = eval(new_tbl)
+        # we need fresh information
+        objectstore.flush()
+        client_computer = Computer.get_by(uniq=comp_uniq)
+        try:
+            query = mytable.query.filter_by(computer=client_computer).order_by(mytable.c.name)
+        except:
+            # FIXME: use "has_options" in the model to avoid this
+            # "Tasks" has no 'name' columns
+            query = mytable.query.filter_by(computer=client_computer)
+        data = ''
+        for info in query.all():
+            data += info.name + info.version + ' '
+        log.debug(data)
+        cksum = md5.new(data).hexdigest()
+        log.debug(cksum)
+        
+        delitems = TablesVersion.query.filter_by(name=tbl,uniq=comp_uniq).all()
+        for item in delitems:
+            session.delete(item)
+        updated = TablesVersion(name=tbl,version=cksum,uniq=comp_uniq)
         return updated.version
 
     def check_token(uniq, token):

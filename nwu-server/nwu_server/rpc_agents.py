@@ -267,10 +267,6 @@ class RPC:
             raise Exception, "Invalid authentication token"
         client_computer = Computer.get_by(uniq=uniq)
 
-        new_map = { 'update_candidates' : 'UpdateCandidates',
-            'current_packages' : 'CurrentPackages',
-            'repositories' : 'Repositories',
-            'tasks' : 'Tasks' }
         # compatibility hack
         # FIXME: future versions of the database know what to do with apt or else
         new_table = wipe_table
