@@ -51,9 +51,7 @@ class Local:
         data = ''
         for info in query.all():
             data += info.name + '+' + info.version + ' '
-        log.debug(data)
         cksum = md5.new(data).hexdigest()
-        log.debug(cksum)
         
         delitems = TablesVersion.query.filter_by(name=tbl,uniq=comp_uniq).all()
         for item in delitems:
@@ -71,7 +69,7 @@ class Local:
 
         if not check_t:
             # No computer with that specified uniq id was found.
-            log.debug("No computer with that uniq found")
+            log.debug("check_token: no computer with that uniq found")
             return False
         else:
             password = check_t.password
@@ -80,9 +78,10 @@ class Local:
 
         if valid_token == token:
             # Yeah, this is a valid token!
+            log.debug("check_token: token authenticated")
             return True
         else:
-            log.debug("Invalid token specified")
+            log.debug("check_token: Invalid token specified")
             return False
 
     check_token=staticmethod(check_token)

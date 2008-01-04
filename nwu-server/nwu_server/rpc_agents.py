@@ -42,8 +42,8 @@ class RPC:
 
     def get_tbl_cksum(rpc_session,tbl):
         # note that "cksum" used to be called "version"
+        log.info("get_tbl_cksum: reading %s" % tbl)
         (uniq, token) = rpc_session
-
         if not Local.check_token(uniq, token):
             raise Exception, "Invalid authentication token"
 
@@ -62,9 +62,8 @@ class RPC:
         Returns rpc_session object to be used by the agent in later
         communication steps.
         """
-        log.info("session_setup " + uniq + ".")
+        log.info("session_setup: %s" % uniq)
         if Local.check_token(uniq, token):
-            log.info("Computer authenticated: %s" % uniq)
             return [ uniq, token ]
         else:
             return False
@@ -88,7 +87,7 @@ class RPC:
         addition, and update the specified table.
         """
         # Affects either CurrentPackages or UpdateCandidates
-        
+        log.info("set_list_diff: updating %s" % change_table)
         (uniq, token) = rpc_session
 
         if not Local.check_token(uniq, token):
@@ -137,19 +136,20 @@ class RPC:
 
         # Updating new packages
         # Deleting possible old entries for those packages
+        # FIXME: performance this is probably slower than it should be
         for add_pk_name, add_pk_version in pkgs['add_pkgs'].iteritems():
-            # FIXME: update history table here
+            # TODO: update history table here
             delitems = session.query(table).filter_by(name=add_pk_name,
                 computer=client_computer)
-            log.debug("reloading %s entries" % delitems.count())
-            for item in delitems:
-                session.delete(item)
+            if delitems.count() > 0:
+                log.debug("reloading %s entries" % delitems.count())
+                for item in delitems:
+                    session.delete(item)
             new = table(computer=client_computer,name=add_pk_name,
                 version=add_pk_version)
 
         # using db table name, not mapper name
         up = Local.update_tbl_version(change_table_name, uniq)
-        log.debug(repr(up))
         return up
 
 # should replace 'wipe_this' semantics later
@@ -201,7 +201,6 @@ class RPC:
                 version=pk_version)
 
         up = Local.update_tbl_version('update_candidates', uniq)
-        log.debug(repr(up))
         return up
 
     def set_repositories(rpc_session,reps):
@@ -235,7 +234,6 @@ class RPC:
                     components=rep_components)
 
         up = Local.update_tbl_version('repositories', uniq)
-        log.debug(repr(up))
         return up 
 
     def get_tasks(rpc_session):
@@ -286,9 +284,10 @@ class RPC:
         table = eval(new_table)
         delitems= session.query(table).filter_by(
             computer=client_computer)
-        log.debug("Deleting %s entries" % delitems.count())
-        for item in delitems:
-            session.delete(item)
+        if delitems.count() > 0:
+            log.debug("Deleting %s entries" % delitems.count())
+            for item in delitems:
+                session.delete(item)
         up = Local.update_tbl_version(wipe_table, uniq)
         return up
 
