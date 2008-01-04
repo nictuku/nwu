@@ -37,7 +37,6 @@ class NodeSync(object):
         self.store_data = nodeinfo.store_data
         self.mark_sync_full = {}
         self.mark_sync_diff = {}
-        self.diff_data = {}
         
     def sync_all(self):
         """Send changes to the server and store them in the cache.
@@ -90,7 +89,7 @@ class NodeSync(object):
 
         for tbl in tables.keys():
             # get A and B
-            self.diff_data[tbl] = self.nodeinfo.get_changes(tbl)
+            self.nodeinfo.get_changes(tbl)
             log.debug("sync_all: cksum_curr (%s): %s" % (tbl, self.nodeinfo.cksum_curr.get(tbl,'-')))
             log.debug("sync_all: cksum_cache (%s): %s" % (tbl, self.nodeinfo.cksum_cache.get(tbl, '-')))
             # get "C" from the server (see above)
@@ -181,21 +180,15 @@ Marking for diff sync." % tbl)
             mode = 'DIFF'
         log.info("Syncing %s (%s)." % (what, mode))
 
-        (updated, deleted) = self.diff_data[what]
-
-# not used after we started using cksum?
-#        # if the list is *still* empty, ignore it
-#        if updated.get('empty','') == 'empty':
-#            return
-#        # If the list in the cache is new, we must send a full update
-#        if updated.get(what,'') == 'new':
-#                # We must wipe the remote info
-#                log.info("Local cache for '%s' is empty" % what)
-#                # also, updated will have all data
-#                ign = self.talk.rpc.wipe_this(self.my_session,what)
         if is_full_sync:
             ign = self.talk.rpc.wipe_this(self.my_session,what)
+            updated = self.nodeinfo.full_data[what][1]
+            deleted = {}
+        else:
+            (updated, deleted) = self.nodeinfo.full_data[what][2]
 
+        log.debug("updated: %s" % updated)
+        log.debug("deleted: %s" % deleted)
         # updating
         ver = self.talk.rpc.set_list_diff(self.my_session, what,
             updated, deleted) 

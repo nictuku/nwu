@@ -26,11 +26,16 @@ import logging
 log = logging.getLogger('nwu_agent.node_info')
 
 class NodeInfo(object):
-    """Gets all needed info that will be sync'ed to the server
+    """Gets all local info that will be sync'ed to the server.
+
     No sync operation is done here.
     """
     def __init__(self):
+        # dict with the data in the 'cached' format
+        # maybe we should use diff_data only
         self.store_data = {}
+        # [ cached_info, curr_info, diff_info ]
+        self.full_data = {}
         self.cksum_curr = {}
         self.cksum_cache = {}
         sourcefiles = self.list_sources_list()
@@ -41,19 +46,6 @@ class NodeInfo(object):
             'update_candidates' : self.pkgs.update_candidates,
             'repositories' : self.repositories 
             }
-
-#    def get_all_news(self):
-#        """See what info has changed in the system
-#        Sets sync_data and sync_this approprietly
-#        """
-#        check_me = ['update_candidates', 'current_packages']
-#        for check in check_me:
-#            diff = self.get_changes(check)
-#            for operation in diff:
-#                self.sync_data[check] = diff
-#                if len(operation) > 0:
-#                    self.sync_this[check] = True
-#                    break
 
     def get_changes(self,where='current_packages'):
         """
@@ -68,6 +60,10 @@ class NodeInfo(object):
         [cached_pkgs, current_pkgs, diff_pkgs] = self.diff_new_spool(where)
         log.debug("get_changes: formatting changes for %s." % where)
 
+        #TODO: my_list is used for formatting things in a 'spool' friendly
+        # way. we should probably drop that, and then unify the code blocks
+        # below
+    
         # cache
         cksum_tmp = ''
         keys = cached_pkgs.keys()
@@ -95,10 +91,11 @@ class NodeInfo(object):
         else:
             self.cksum_curr[where] = md5(cksum_tmp).hexdigest()
         self.store_data[where] = my_list
-
-        return diff_pkgs
+        self.full_data[where] = [cached_pkgs, current_pkgs, diff_pkgs]
+        return
 
     def list_sources_list(self):
+        """Lists APT repositories being used"""
         filenames = ['/etc/apt/sources.list']
         directories = ['/etc/apt/sources.d']
         for dir in directories:
@@ -112,6 +109,7 @@ class NodeInfo(object):
 
     # FIXME: move this to sysinfo
     def read_sources_list(self, filenames):
+        """Read the specified repositories file and format it"""
         full_string = ''
         repositories = []
         for source in filenames:
@@ -126,7 +124,6 @@ class NodeInfo(object):
                 ignore = re.search(r'^$|#|^\s+$', l)
                 if not ignore :
                     thisrep.append(l)
-        #pik = pickle.dumps(repositories)
             repositories.append(thisrep)
         return repositories, md5(full_string).hexdigest()
 
@@ -147,7 +144,8 @@ class NodeInfo(object):
 
     def read_spool(self, category, stream=None):
 
-        if category not in ['current_packages', 'update_candidates', 'tbl_ver',
+        # FIXME: this list of table names is repetead everywhere
+        if category not in ['current_packages', 'update_candidates', 
             'repositories']:
             raise Exception, "Wrong cache category specified: " + category
         if not stream:
