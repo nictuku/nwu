@@ -1,21 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
+
 from md5 import md5
 from optparse import OptionParser
 import getpass
@@ -153,38 +155,35 @@ def main():
 
         if len(args) > 1:
             id = args[0]
-            m = computer.select(computer.q.id==id)
-            ma = list(m)
-            for mach in ma:
-                mach_print =  mach.hostname + "[" + id + "]"
-                view_what = args[1]
+            mach = Computer.get_by(id=id)
+            view_what = args[1]
 
-                if view_what == 'packages':
-                    print "Reading current packages in computer " + mach_print
-                    for package in mach.current_packages:
-                        fill = 45 - len(package.name)
-                        fill_blank = " " * fill 
-                        print package.name + fill_blank +  package.version
+            if view_what == 'packages':
+                print "Reading current packages in computer %s" % repr(mach)
+                for package in mach.current_packages:
+                    fill = 45 - len(package.name)
+                    fill_blank = " " * fill 
+                    print package.name + fill_blank +  package.version
 
-                elif view_what == 'update-candidates':
-                    print "Reading update candidades for computer " + mach_print
-                    for package in mach.update_candidates:
-                        fill = 45 - len(package.name)
-                        fill_blank = " " * fill 
-                        print package.name  + fill_blank + package.version
+            elif view_what == 'update-candidates':
+                print "Reading update candidades for computer %s" % repr(mach)
+                for package in mach.update_candidates:
+                    fill = 45 - len(package.name)
+                    fill_blank = " " * fill 
+                    print package.name  + fill_blank + package.version
 
-                elif view_what == 'repositories':
-                    print "Reading repositories for computer " + mach_print
-                    for rep in mach.repositories:
-                        print rep.type + " " + rep.uri + " " + rep.distribution + \
-                            " " + rep.components + "  (" + rep.filename + ")"
+            elif view_what == 'repositories':
+                print "Reading repositories for computer %s" % repr(mach)
+                for rep in mach.repositories:
+                    print rep.type + " " + rep.uri + " " + rep.distribution + \
+                        " " + rep.components + "  (" + rep.filename + ")"
 
-                elif view_what == 'tasks':
-                    print "Reading tasks for computer " + mach_print
-                    for t in mach.tasks:
-                       print t.action + ": " + str(t.details)
+            elif view_what == 'tasks':
+                print "Reading tasks for computer %s" % repr(mach) 
+                for t in mach.tasks:
+                   print t.action + ": " + str(t.details)
 
-                else: usage()
+            else: usage()
 
         elif len(args) == 1:
             print """Please choose an information to view:
