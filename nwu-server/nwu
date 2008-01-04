@@ -131,7 +131,7 @@ def main():
 
     elif sub_command == 'list':
         if len(args) == 0:
-            m = computer.select()
+            m = Computer.query.select().all()
             ma = list(m)
             for mach in ma:
                 print "%s\t%s\t%s" %( mach.id, mach.hostname, mach.os_name)
@@ -201,7 +201,7 @@ def main():
             ma = Computer.get_by(id=id)
             print "Found computer id=" + id + " in the database. Requesting\
  " + sub_command + "."
-                t = Task(computer=mach, action=sub_command)
+            t = Task(computer=mach, action=sub_command)
         else:
             usage()
         
@@ -209,7 +209,7 @@ def main():
         if len(args) > 1:
             id = args[0]
             details = " ".join(args[1:])
-            m = computer.select(computer.q.id==id)
+            m = Computer.get_by(id=id)
             ma = list(m)
             for mach in ma:
                print "Found computer id=" + id + " in the database. Requesting\

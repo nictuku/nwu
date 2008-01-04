@@ -40,7 +40,8 @@ class RPC:
         #objectstore.flush()
         return True
 
-    def get_tbl_version(rpc_session,tbl):
+    def get_tbl_cksum(rpc_session,tbl):
+        # note that "cksum" used to be called "version"
         (uniq, token) = rpc_session
 
         if not Local.check_token(uniq, token):
@@ -151,30 +152,31 @@ class RPC:
         log.debug(repr(up))
         return up
 
-    def set_current_packages_full(rpc_session, pkgs):
-        (uniq, token) = rpc_session
-
-        if not Local.check_token(uniq, token):
-            raise Exception, "Invalid authentication token"
-        client_computer = Computer.get_by(uniq=uniq)
-
-        log.debug("set_current_packages_full: %s" % repr(client_computer) )
-
-        # Deleting old packages
-        log.debug("Wiping old packages list.")
-
-        delitems = session.query(CurrentPackages).filter_by(
-            computer=client_computer)
-        session.delete(delitems)
-
-        log.debug("Adding new packages.")
-        for pk_name, pk_version in pkgs.iteritems():
-            CurrentPackages(computer=client_computer, name=pk_name,
-                version=pk_version)
-        up = Local.update_tbl_version('current_packages', uniq)
-        log.debug(repr(up))
- 
-        return up
+# should replace 'wipe_this' semantics later
+#    def set_full(rpc_session, change_table, data):
+#        (uniq, token) = rpc_session
+#
+#        if not Local.check_token(uniq, token):
+#            raise Exception, "Invalid authentication token"
+#        client_computer = Computer.get_by(uniq=uniq)
+#
+#        log.debug("set_current_packages_full: %s" % repr(client_computer) )
+#
+#        # Deleting old packages
+#        log.debug("Wiping old packages list.")
+#
+#        delitems = session.query(CurrentPackages).filter_by(
+#            computer=client_computer)
+#        session.delete(delitems)
+#
+#        log.debug("Adding new packages.")
+#        for pk_name, pk_version in pkgs.iteritems():
+#            CurrentPackages(computer=client_computer, name=pk_name,
+#                version=pk_version)
+#        up = Local.update_tbl_version('current_packages', uniq)
+#        log.debug(repr(up))
+# 
+#        return up
 
     def set_update_candidates_full(rpc_session, pkgs):
         (uniq, token) = rpc_session
@@ -260,6 +262,8 @@ class RPC:
 
         return remote_tasks
 
+# TODO: use set_full instead?
+
     def wipe_this(rpc_session, wipe_table):
         (uniq, token) = rpc_session
 
@@ -290,7 +294,7 @@ class RPC:
 
     set_repositories=staticmethod(set_repositories)
     set_list_diff=staticmethod(set_list_diff)
-    get_tbl_version=staticmethod(get_tbl_version)
+    get_tbl_cksum=staticmethod(get_tbl_cksum)
     get_tasks=staticmethod(get_tasks)
     session_setup=staticmethod(session_setup)
     wipe_this=staticmethod(wipe_this)

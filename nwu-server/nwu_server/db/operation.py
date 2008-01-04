@@ -50,7 +50,7 @@ class Local:
             query = mytable.query.filter_by(computer=client_computer)
         data = ''
         for info in query.all():
-            data += info.name + info.version + ' '
+            data += info.name + '+' + info.version + ' '
         log.debug(data)
         cksum = md5.new(data).hexdigest()
         log.debug(cksum)

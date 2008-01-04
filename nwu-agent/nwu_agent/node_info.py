@@ -30,10 +30,9 @@ class NodeInfo(object):
     No sync operation is done here.
     """
     def __init__(self):
-        self.sync_this = {}
-        self.sync_data = {}
         self.store_data = {}
-        self.cksum_data = {}
+        self.cksum_curr = {}
+        self.cksum_cache = {}
         sourcefiles = self.list_sources_list()
         self.repositories, self.rep_md5 = self.read_sources_list(
                 sourcefiles)
@@ -42,21 +41,19 @@ class NodeInfo(object):
             'update_candidates' : self.pkgs.update_candidates,
             'repositories' : self.repositories 
             }
-        self.get_all_news()
-        self.spool_versions = self.read_spool('tbl_ver')
-        
-    def get_all_news(self):
-        """See what info has changed in the system
-        Sets sync_data and sync_this approprietly
-        """
-        check_me = ['update_candidates', 'current_packages']
-        for check in check_me:
-            diff = self.get_changes(check)
-            for operation in diff:
-                self.sync_data[check] = diff
-                if len(operation) > 0:
-                    self.sync_this[check] = True
-                    break
+
+#    def get_all_news(self):
+#        """See what info has changed in the system
+#        Sets sync_data and sync_this approprietly
+#        """
+#        check_me = ['update_candidates', 'current_packages']
+#        for check in check_me:
+#            diff = self.get_changes(check)
+#            for operation in diff:
+#                self.sync_data[check] = diff
+#                if len(operation) > 0:
+#                    self.sync_this[check] = True
+#                    break
 
     def get_changes(self,where='current_packages'):
         """
@@ -69,20 +66,36 @@ class NodeInfo(object):
         - update_candidates
         """
         [cached_pkgs, current_pkgs, diff_pkgs] = self.diff_new_spool(where)
+        log.debug("get_changes: formatting changes for %s." % where)
+
+        # cache
+        cksum_tmp = ''
+        keys = cached_pkgs.keys()
+        keys.sort()
+        for key in keys:
+            val = cached_pkgs[key]
+            cksum_tmp += key + '+' + val + ' '
+        if len(cksum_tmp) == 0:
+            self.cksum_cache[where] = ''            
+        else:
+            self.cksum_cache[where] = md5(cksum_tmp).hexdigest()
+
+        # current
         my_list = []
         cksum_tmp = ''
         keys = current_pkgs.keys()
         keys.sort()
         for key in keys:
             val = current_pkgs[key]
+            # extra step
             my_list.append([where, key, val])
-            cksum_tmp += key + val + ' '
-        self.cksum_data[where] = md5(cksum_tmp).hexdigest()
+            cksum_tmp += key + '+' + val + ' '
+        if len(cksum_tmp) == 0:
+            self.cksum_curr[where] = ''
+        else:
+            self.cksum_curr[where] = md5(cksum_tmp).hexdigest()
         self.store_data[where] = my_list
-        log.debug("Formatting changes for %s." % where)
-#        log.debug("cur: %s " % repr(current_pkgs))
-#        log.debug("cac: %s " % repr(cached_pkgs))
-#        log.debug("dif: %s " % repr(diff_pkgs))
+
         return diff_pkgs
 
     def list_sources_list(self):
