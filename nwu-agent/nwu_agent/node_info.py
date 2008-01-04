@@ -143,19 +143,18 @@ class NodeInfo(object):
             del_k[k] = old_dict[k]
         return (up_k, del_k)
 
-    def read_spool(self, category, stream=None):
+    def read_spool(self, category):
 
         # FIXME: this list of table names is repetead everywhere
         if category not in ['current_packages', 'update_candidates', 
             'repositories']:
             raise Exception, "Wrong cache category specified: " + category
-        if not stream:
-            cache_path = "/var/spool/nwu/nw.%s" % category
-            try:
-                stream = open(cache_path, 'r')
-            except IOError:
-                log.debug("%s spool file not found." % category)
-                return {category:'new'}
+        cache_path = "/var/spool/nwu/nw.%s" % category
+        try:
+            stream = open(cache_path, 'r')
+        except IOError:
+            log.debug("%s spool file not found." % category)
+            return {category:'new'}
         cache = ConfigParser.ConfigParser()
         result = cache.readfp(stream)
         objects = {}

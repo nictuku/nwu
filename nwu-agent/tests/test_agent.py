@@ -25,6 +25,7 @@
 from StringIO import StringIO
 import sys
 sys.path.append('.')
+import ConfigParser
 
 import nwu_agent
 from nwu_agent import node_info
@@ -32,29 +33,95 @@ import nwu_agent.talk
 import nwu_agent.maint
 
 import unittest
+import logging
 
-agent = nwu_agent.talk.agent_talk(load_config=False)
-m = nwu_agent.maint
-i = node_info.NodeInfo()
+log = logging.getLogger()
+hdlr = logging.StreamHandler()
+log.addHandler(hdlr)
+log.setLevel(logging.DEBUG)
 
-class TestAgent(unittest.TestCase):
- 
-    def setup_method(self, method):
-        pass 
-
-    def test_read_update_candidates_spool(self):
-        new = ''
-
-        empty = """[update_candidates]
+# setup
+new = ''
+empty = """[update_candidates]
 empty = empty
 """
-        valid = """[cur_pkgs]
+
+valid = """[cur_pkgs]
 scim-gtk2-immodule = 1.4.4-1ubuntu12
 python-twisted-conch = 1:0.6.0-5ubuntu1
 ttf-lao = 0.0.20060226-1build1
 xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
 """
-   
+
+valid_dict = {'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
+            'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
+            'python-twisted-conch': '1:0.6.0-5ubuntu1', 
+            'ttf-lao': '0.0.20060226-1build1'
+            } 
+
+class TestNodeInfo(node_info.NodeInfo):
+    """NodeInfo class with some methods overloaded to allow testings
+    """
+    def __init__(self):
+        pass
+
+    def read_spool(self, category, stream=None):
+        """Read spool always in "stream mode"
+
+        If no 'stream' is provided, read "self.stream"
+        """
+        if category not in ['current_packages', 'update_candidates',
+            'repositories']:
+            raise Exception, "Wrong cache category specified: " + category
+        cache = ConfigParser.ConfigParser()
+        if not stream:
+            stream = self.stream
+        result = cache.readfp(stream)
+        objects = {}
+        if len(cache.sections()) < 1:
+             return {category:'new'}
+        for s in cache.sections():
+            for option, value in cache.items(s):
+                objects[option] = value
+        return objects
+
+## run the tests
+        
+agent = nwu_agent.talk.agent_talk(load_config=False)
+m = nwu_agent.maint
+i = TestNodeInfo()
+
+class TestMe(unittest.TestCase):
+ 
+    def test_diff_new_spool(self):
+        i.stream = StringIO(valid)
+        update_candidates =  { 
+            'python-glade2' : '2.12.0-0ubuntu2',
+            'python-gmenu' : '2.20.1-0ubuntu1',
+            'python-gnome2' : '2.20.0-0ubuntu1',
+            'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
+            }
+
+        i.info = { 
+            'update_candidates' : update_candidates
+        }
+        diff_spool = i.diff_new_spool('update_candidates')
+        log.debug("cached: %s" % str(diff_spool[0]))
+        log.debug("current: %s" % str(diff_spool[1]))
+        log.debug("diff: %s" % str(diff_spool[2]))
+        assert diff_spool[0] == valid_dict
+        assert diff_spool[1] == update_candidates
+        assert diff_spool[2] == (
+            { 'python-gnome2': '2.20.0-0ubuntu1',
+            'python-glade2': '2.12.0-0ubuntu2', 
+            'python-gmenu': '2.20.1-0ubuntu1' }, 
+            { 'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
+            'python-twisted-conch': '1:0.6.0-5ubuntu1', 
+            'ttf-lao': '0.0.20060226-1build1'}
+            )
+ 
+    def test_read_spool(self):
+  
         assert i.read_spool('update_candidates',  StringIO(new)) == \
             {'update_candidates': 'new' }
 
@@ -62,11 +129,7 @@ xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
             {'empty':'empty'}
  
         assert i.read_spool('update_candidates', StringIO(valid)) == \
-            {'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
-            'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
-            'python-twisted-conch': '1:0.6.0-5ubuntu1', 
-            'ttf-lao': '0.0.20060226-1build1'
-            }
+            valid_dict 
 
     def test_diff_dicts(self):
         dict1 = {'A' : 123, 'B': '....', 'C': False }
@@ -87,7 +150,7 @@ xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
         assert m.apt_get('upgrade', packages=['foo'] ) == ('apt-get', ['upgrade'])
         assert m.apt_get('install', packages=['foo'], assume_yes=True ) == ('apt-get', [ '--assume-yes', 'install', 'foo'])
         assert m.apt_get('upgrade', packages=['foo', 'bar'], allow_unauthenticated=True, assume_yes=True ) == \
-            ('apt-get', ['--assume-yes', '--allow_unauthenticated', 'upgrade'])
+            ('apt-get', ['--assume-yes', '--allow-unauthenticated', 'upgrade'])
 
     def test_is_safe(self):
         assert m.is_safe('xx:') == False
