@@ -63,7 +63,10 @@ class TestNodeInfo(node_info.NodeInfo):
     """NodeInfo class with some methods overloaded to allow testings
     """
     def __init__(self):
-        pass
+        self.cksum_cache = {}
+        self.cksum_curr = {} 
+        self.store_data = {} 
+        self.full_data = {} 
 
     def read_spool(self, category, stream=None):
         """Read spool always in "stream mode"
@@ -92,34 +95,7 @@ m = nwu_agent.maint
 i = TestNodeInfo()
 
 class TestMe(unittest.TestCase):
- 
-    def test_diff_new_spool(self):
-        i.stream = StringIO(valid)
-        update_candidates =  { 
-            'python-glade2' : '2.12.0-0ubuntu2',
-            'python-gmenu' : '2.20.1-0ubuntu1',
-            'python-gnome2' : '2.20.0-0ubuntu1',
-            'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
-            }
 
-        i.info = { 
-            'update_candidates' : update_candidates
-        }
-        diff_spool = i.diff_new_spool('update_candidates')
-        log.debug("cached: %s" % str(diff_spool[0]))
-        log.debug("current: %s" % str(diff_spool[1]))
-        log.debug("diff: %s" % str(diff_spool[2]))
-        assert diff_spool[0] == valid_dict
-        assert diff_spool[1] == update_candidates
-        assert diff_spool[2] == (
-            { 'python-gnome2': '2.20.0-0ubuntu1',
-            'python-glade2': '2.12.0-0ubuntu2', 
-            'python-gmenu': '2.20.1-0ubuntu1' }, 
-            { 'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
-            'python-twisted-conch': '1:0.6.0-5ubuntu1', 
-            'ttf-lao': '0.0.20060226-1build1'}
-            )
- 
     def test_read_spool(self):
   
         assert i.read_spool('update_candidates',  StringIO(new)) == \
@@ -167,3 +143,41 @@ class TestMe(unittest.TestCase):
         assert m.rep_valid('deb http://bla.com ./') == True
         assert m.rep_valid('deb-src http://bla.com distro component1 component2') == True
 
+    def test_changes(self):
+        i.stream = StringIO(valid)
+        update_candidates =  { 
+            'python-glade2' : '2.12.0-0ubuntu2',
+            'python-gmenu' : '2.20.1-0ubuntu1',
+            'python-gnome2' : '2.20.0-0ubuntu1',
+            'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
+            }
+
+        i.info = { 
+            'update_candidates' : update_candidates
+        }
+        diff_spool = i.diff_new_spool('update_candidates')
+        log.debug("cached: %s" % str(diff_spool[0]))
+        log.debug("current: %s" % str(diff_spool[1]))
+        log.debug("diff: %s" % str(diff_spool[2]))
+        assert diff_spool[0] == valid_dict
+        assert diff_spool[1] == update_candidates
+        assert diff_spool[2] == (
+            { 'python-gnome2': '2.20.0-0ubuntu1',
+            'python-glade2': '2.12.0-0ubuntu2', 
+            'python-gmenu': '2.20.1-0ubuntu1' }, 
+            { 'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
+            'python-twisted-conch': '1:0.6.0-5ubuntu1', 
+            'ttf-lao': '0.0.20060226-1build1'}
+            )
+
+        # testing get_changes
+        try:
+            i.full_data['update_candidates']
+        except KeyError:
+            pass
+        else:
+            self.fail("Expected an AttributeError")
+        i.get_changes('update_candidates')
+        # FIXME: broken test. continue from here
+        # assert i.full_data['update_candidates'] == 'BROKEN'
+ 
