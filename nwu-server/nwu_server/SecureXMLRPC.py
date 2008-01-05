@@ -16,6 +16,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # ChangeLog:
+#   2008-01-05  Stephan Peijnik <sp@gnu.org>
+#           * Changed versioning scheme to x.y.z instead of x.y
+#           * Version 0.3.1
+#           * Fix problems with 'anonymous' clients.
+#           * Fix unclean socket shutdown in server (breaks GnuTLS client!).
 #   2008-01-04  Stephan Peijnik <sp@gnu.org>
 #           * Version 0.3
 #           * Added SecureProxy and SecureTransport (client) classes.
@@ -61,6 +66,7 @@ from xmlrpclib import Transport, ServerProxy
 
 try:
     import gnutls
+    from gnutls.library.errors import CertificateSecurityError
 except ImportError, e:
     print '[ERROR] python-gnutls could not be imported.'
     print '        Please install python-gnutls.'
@@ -74,6 +80,10 @@ from gnutls.errors import CertificateSecurityError
 __all__ = ['SecureXMLRPCServer', 'SecureRequestHandler', 'SecureProxy',
            'SecureTransport']
 __version__ = '0.3'
+
+class SecureServerConnection(ServerSession):
+    def shutdown(self, *args):
+        self.bye()
 
 class SecureRequestHandler(SimpleXMLRPCRequestHandler):
     """Extends SimpleXMLRPCRequestHandler."""
@@ -120,7 +130,6 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
         key = X509PrivateKey(open(self.__pem_file).read())
         self.__X509Creds = X509Credentials(cert, key)
 
-
     def get_request(self):
         """Handle an incoming connection.
         
@@ -131,7 +140,7 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
         the TLS handshake fails!
         """
         new_sock, addr = self.socket.accept()
-        session = ServerSession(new_sock, self.__X509Creds)
+        session = SecureServerConnection(new_sock, self.__X509Creds)
         try:
             session.handshake()
             peer_cert = session.peer_certificate
@@ -140,9 +149,14 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
             except AttributeError, e:
                 peer_name = 'Unknown'
 
-            # failed verification is caught below, 
-            # causing the session to be closed
-            session.verify_peer()
+            # If verify_peer fails the client might be an anonymous one.
+            # We still want these to be able to connect in order to ie. 
+            # retrieve the CA certificate, send CRLs and retrieve their
+            # certificates (needs to be discussed).
+            try:
+                session.verify_peer()
+            except CertificateSecurityError, e:
+                pass
         except Exception, e:
             print 'Handshake failed: %s' % (e)
             session.bye()
@@ -165,15 +179,24 @@ class GNUTLSSocket(ClientSession):
     def makefile(self, mode, bufsize=None):
         return _fileobject(self, mode, bufsize)
 
+    def write(self, buffer):
+        return self.send(buffer)
+
+    def read(self, size):
+        return self.recv(size)
+
 class GNUTLSHTTPSConnection(HTTPConnection):
     """ This class implements communication via GNUTLS (SSL/TLS) """
 
     default_port = HTTPS_PORT
 
-    def __init__(self, host, port=None, credentials=None, strict=None):
+    def __init__(self, host, port=None, credentials=None, strict=None,
+                 anonymous=False):
         HTTPConnection.__init__(self, host, port, strict)
         
         self.credentials = credentials
+        self.anonymous = anonymous
+        self.sock = None
 
     def connect(self):
         """ Connect to a host on a given (SSL) port. """
@@ -191,9 +214,10 @@ class GNUTLSHTTPSConnection(HTTPConnection):
             except AttributeError, e:
                 peer_name = 'Unknown'
 
-                # NOTE: this raises a CertificateSecurityError exception
-                # if anything is wrong, so don't forget to catch it.
-            session.verify_peer()
+            if not self.anonymous:
+                session.verify_peer()
+            # for anonymous clients it does not make sense to verify the peer's
+            # certificate (we don't have the CA file yet).
 
         except Exception, e:
             print 'Handshake failed: %s' % (e)
@@ -201,35 +225,38 @@ class GNUTLSHTTPSConnection(HTTPConnection):
             sock.close()
             raise
 
-        self.sock = session
-
+        self.sock = FakeSocket(sock, session)
 
 class GNUTLSHTTPS(HTTP):
     _connection_class = GNUTLSHTTPSConnection
 
     def __init__(self, host='', port=None, credentials=None,
-                 strict=0):
+                 strict=0, anonymous=False):
 
         if port == 0:
             port = None
 
-        self._setup(self._connection_class(host, port, credentials, strict))
+        self._setup(self._connection_class(host, port, credentials, strict, 
+                                           anonymous=anonymous))
 
 class SecureTransport(Transport):
     user_agent = "SecureXMLRPC/%s" % (__version__)
 
-    def __init__(self, credentials, use_datetime=0):
+    def __init__(self, credentials, use_datetime=0, anonymous=False):
         self.credentials = credentials
+        self.anonymous = anonymous
         Transport.__init__(self, use_datetime)
 
     def make_connection(self, host):
         host, extra_headers, ignore = self.get_host_info(host)
-        return GNUTLSHTTPS(host, None, self.credentials)
+        return GNUTLSHTTPS(host, None, self.credentials, 
+                           anonymous=self.anonymous)
 
 class SecureProxy(ServerProxy):
     def __init__(self, uri, pem_file=None, key_file=None, cert_file=None, 
                  encoding=None, verbose=0, allow_none=0, use_datetime=0):
 
+        self.anonymous = False
         self.pem_file = pem_file
         self.key_file = key_file
         self.cert_file = cert_file
@@ -269,12 +296,13 @@ class SecureProxy(ServerProxy):
             self.credentials = X509Credentials(cert, key)
 
         else:
-            raise Exception('Neither PEM file nor key/cert file combination'
-                            ' supplied.')
+            # anonymous connection
+            self.credentials = X509Credentials(None, None)
+            self.anonymous = True
 
-        self.credentials.check_certificate(self.credentials.cert)
 
         t = SecureTransport(credentials=self.credentials, 
-                            use_datetime=use_datetime)
+                            use_datetime=use_datetime, 
+                            anonymous=self.anonymous)
         ServerProxy.__init__(self, uri, t, encoding, verbose, allow_none, 
                              use_datetime)
