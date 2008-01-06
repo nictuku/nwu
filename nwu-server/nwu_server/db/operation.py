@@ -26,6 +26,9 @@ import md5
 
 from nwu_server.db.model import *
 
+#cfg = read_conf()
+
+#metadata.bind(cfg.connection_string)
 class Local:
     def update_tbl_version(tbl, comp_uniq): 
         """Remember version of clients metadata to enforce data

@@ -23,7 +23,6 @@ import sys
 import hmac
 import logging
 from elixir import *
-import ConfigParser
 
 log = logging.getLogger('nwu_server.db.model')
 
@@ -118,31 +117,6 @@ def create_tables(config):
     metadata.bind=config['connection_string']
     setup_all()
     create_all()
-
-def read_config():
-    """Reads configuration data from the config file.
-    """
-    config_p = ConfigParser.ConfigParser()
-    config_p.read("/etc/nwu/server.conf")
-
-    host = config_p.get("webservice", "host").lower()
-    port = int(config_p.get("webservice", "port"))
-    db_type = config_p.get("database", "type")
-    db_host = config_p.get("database", "host")
-    db_database = config_p.get("database", "database")
-    db_user = config_p.get("database", "user")
-    db_password = config_p.get("database", "password")
-    log.info("db: Using " + db_type + " as database backend.")
-    connection_string = db_type + "://" + db_user + ":" + \
-       db_password + "@" + db_host + "/" + db_database
-
-    config = { 'host' : host,
-    'port' : port,
-    'pemfile' : '/etc/nwu/server.pem',
-    'databasetype' : db_type,
-    'connection_string' : connection_string,
-    }
-    return config
 
 if __name__ == '__main__':
 
