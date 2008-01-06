@@ -22,6 +22,7 @@
 import sys
 import hmac
 import logging
+# FIXME: wildcard imports should not be used
 from elixir import *
 
 log = logging.getLogger('nwu_server.db.model')

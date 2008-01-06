@@ -26,7 +26,7 @@ from nwu_server.config import read_config
 VERSION = '0.1.7'
 
 class Commands():
-    sub_commands = {
+    commands = {
     "forceinstall" : "<computer> <packages>  : Install defined packages in the\
  computer (force)",
     "install" : "<computer> <packages>  : Install defined packages in the\
@@ -99,22 +99,23 @@ computer.os_name)
 
     def usage(self):
         print \
-    """Usage: nwu <sub-command> <options> [arguments]
+    """Usage: nwu <command> <options> [arguments]
     Command line manager for NWU, version """ + VERSION + """.
 
-    Available sub-commands:
+    Available commands:
     """
 
-        cmds = sub_commands.keys()
+        cmds = self.commands.keys()
         cmds.sort()
         for cmd in cmds:
-            print "  " + cmd  + " " + sub_commands[cmd] 
+            print "  " + cmd  + " " + self.commands[cmd] 
 
         print """
     Available groups for list command:
 
         outdated
     """
+        sys.exit(64)
 
 def is_safe(str, http=False):
     # FIXME: duplicated code. see nwu_agent/maint. candidate for nwu-common
@@ -133,7 +134,7 @@ def is_safe(str, http=False):
 def main():
     args = len(sys.argv)
 
-    if args < 2 or sys.argv[1] not in sub_commands:
+    if args < 2 or sys.argv[1] not in commands:
 
         print \
     """Type 'nwu help' for usage help
