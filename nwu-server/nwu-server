@@ -23,39 +23,9 @@ import sys
 import traceback
 import pwd
 from optparse import OptionParser
-import ConfigParser
 import logging
 import logging.handlers
-
-def read_config():
-    """Reads configuration data from the config file.
-    """
-    config_p = ConfigParser.ConfigParser()
-    config_p.read("/etc/nwu/server.conf")
-
-    host = config_p.get("webservice", "host").lower()
-    port = int(config_p.get("webservice", "port"))
-    db_type = config_p.get("database", "type")
-    db_host = config_p.get("database", "host")
-    db_database = config_p.get("database", "database")
-    db_user = config_p.get("database", "user")
-    db_password = config_p.get("database", "password")
-    log.info("db: Using " + db_type + " as database backend.")
-
-#    if db_type == 'sqlite':
-#        connection_string = db_type + "://" + db_database + \
-#           '?cache=True'
-#    else:
-    connection_string = db_type + "://" + db_user + ":" + \
-       db_password + "@" + db_host + "/" + db_database 
-
-    config = { 'host' : host, 
-    'port' : port, 
-    'pemfile' : '/etc/nwu/server.pem',
-    'databasetype' : db_type,
-    'connection_string' : connection_string,
-    }
-    return config
+from nwu_server.db import model as db
 
 def drop_privileges(user):
     log.info("Running as user '" + str(user) + "'.")
@@ -174,7 +144,7 @@ if __name__ == '__main__':
     options = getopts()
     log = logging.getLogger()
     
-    config = read_config()
+    config = db.read_config()
     
     # only 
     dbtype = config.get('databasetype', '')
@@ -189,8 +159,7 @@ if __name__ == '__main__':
         if dbtype == 'sqlite' or config.forceinit:
             drop_privileges(options.user)
             log.info("Creating required database structure for type: " + dbtype)
-            from nwu_server.db.operation import create_tables
-            create_tables(config)
+            db.create_tables(config)
             # XXX: needs flush?
         sys.exit(0)
 
