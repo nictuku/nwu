@@ -18,23 +18,25 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
-from md5 import md5
-from optparse import OptionParser
-import getpass
 import sys
-from nwu_server.db.model import *
+from nwu_server.db.model import Computer, Tasks, UpdateCandidates
+from nwu_server.db.model import session, metadata, setup_all
 from nwu_server.config import read_config
 
 VERSION = '0.1.7'
 
 class Commands():
     sub_commands = {
-    "forceinstall" : "<computer> <packages>  : Install defined packages in the computer (force)",
-    "install" : "<computer> <packages>  : Install defined packages in the computer",
+    "forceinstall" : "<computer> <packages>  : Install defined packages in the\
+ computer (force)",
+    "install" : "<computer> <packages>  : Install defined packages in the\
+ computer",
     "help" : "                          : This help message",
-    "upgrade" : "<computer>             : Upgrade all packages in the computer",
+    "upgrade" : "<computer>             : Upgrade all packages in the\
+ computer",
     "update"  : "<computer>             : Update packages list",
-    "list" : "   [group]                : Lists all computers or specified group",
+    "list" : "   [group]                : Lists all computers or specified\
+ group",
     "view" : "   <computer> <info>      : View computer informations",
     "adduser" : "<name> <level:0|1>     : Add a new user, admin or not",
     "addrep" : " <computer> <repository uri>  : Add new repository",
@@ -59,7 +61,7 @@ class Commands():
         packages = " ".join(packages)
         output += "Found %s in the database. Requesting forceinstall of %s" % \
             (repr(computer), packages)
-        t = Tasks(computer=computer, action='forceinstall',details=packages)
+        Tasks(computer=computer, action='forceinstall', details=packages)
         session.flush()
         return output
 
@@ -72,18 +74,20 @@ class Commands():
                 olds[candidate.computer.id] = True
             for computer in Computer.query.select():
                 if olds.has_key(computer.id):
-                   output += "%s\t%s\t%s\n" % ( computer.id, computer.hostname, computer.os_name) 
+                    output += "%s\t%s\t%s\n" % ( computer.id, \
+computer.hostname, computer.os_name) 
         else:
             for computer in Computer.query.select():
-                output += "%s\t%s\t%s\n" % ( computer.id, computer.hostname, computer.os_name)
+                output += "%s\t%s\t%s\n" % ( computer.id, computer.hostname, \
+computer.os_name)
         return output
 
 #    this is for the 'admin' features, which are currently disabled
 #
 #    def cmd_adduser(self, username, level):
 #            if not self.is_safe(username):
-#                print """Username should consist of letters, digits, underscores
-#periods and dashes.
+#                print """Username should consist of letters, digits, \
+# underscores periods and dashes.
 #"""
 #                sys.exit(64)
 #            password = md5(p).hexdigest()
@@ -93,7 +97,7 @@ class Commands():
 #                print "Error adding user. Username duplicated?"
 
 
-    def usage():
+    def usage(self):
         print \
     """Usage: nwu <sub-command> <options> [arguments]
     Command line manager for NWU, version """ + VERSION + """.
@@ -117,14 +121,14 @@ def is_safe(str, http=False):
     # From Byron Ellacot's message in the mod_python list
     # http://www.modpython.org/pipermail/mod_python/2004-December/016987.html
 
-    OK_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.-_"
+    ok_chars = "abcdefghijklmnopqrstuvwxyz0123456789.-_"
 
     # We can also selectively accept other chars
 
     if http:
-        OK_CHARS += "/: "
+        ok_chars += "/: "
 
-    return [x for x in str if x.lower() not in OK_CHARS] == []
+    return [x for x in str if x.lower() not in ok_chars] == []
 
 def main():
     args = len(sys.argv)
@@ -145,8 +149,7 @@ def main():
     args = []
 
     config = read_config()
-    parser = OptionParser()
-    metadata.bind=config['connection_string']
+    metadata.bind = config['connection_string']
     setup_all()
 
 
@@ -182,8 +185,8 @@ def main():
 
             elif view_what == 'tasks':
                 print "Reading tasks for computer %s" % repr(mach) 
-                for t in mach.tasks:
-                   print t.action + ": " + str(t.details)
+                for task in mach.tasks:
+                    print task.action + ": " + str(task.details)
 
             else: usage()
 
@@ -202,20 +205,21 @@ def main():
             ma = Computer.get_by(id=id)
             print "Found computer id=" + id + " in the database. Requesting\
  " + sub_command + "."
-            t = Task(computer=mach, action=sub_command)
+            Tasks(computer=mach, action=sub_command)
         else:
             usage()
         
-    elif sub_command == 'install' or sub_command == 'addrep' or sub_command == 'forceinstall':
+    elif sub_command == 'install' or sub_command == 'addrep' or \
+sub_command == 'forceinstall':
         if len(args) > 1:
             id = args[0]
             details = " ".join(args[1:])
             m = Computer.get_by(id=id)
             ma = list(m)
             for mach in ma:
-               print "Found computer id=" + id + " in the database. Requesting\
+                print "Found computer id=" + id + " in the database. Requesting\
  " + sub_command + " " + details + "."
-               t = task(computer=mach, action=sub_command,details=details)
+                Tasks(computer=mach, action=sub_command, details=details)
         else:
             usage()
 

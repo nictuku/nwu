@@ -24,11 +24,11 @@ import ConfigParser
 import logging
 log = logging.getLogger('nwu_server.config')
 
-def read_config(configPath):
+def read_config(config_path):
     """Reads configuration data from the config file.
     """
     config_p = ConfigParser.ConfigParser()
-    config_p.read(configPath)
+    config_p.read(config_path)
 
     host = config_p.get("webservice", "host").lower()
     port = int(config_p.get("webservice", "port"))

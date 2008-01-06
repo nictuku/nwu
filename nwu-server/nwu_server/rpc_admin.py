@@ -26,7 +26,7 @@ import logging
 from db.operation import *
 log = logging.getLogger('nwu_server.rpc_admin')
 
-class nwu_admin:
+class NwuAdmin:
     """RPC methods that control the database using
     local_data.nwu_data
     """
