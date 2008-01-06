@@ -23,6 +23,7 @@ from optparse import OptionParser
 import getpass
 import sys
 from nwu_server.db.model import *
+from nwu_server.config import read_config
 
 VERSION = '0.1.7'
 
