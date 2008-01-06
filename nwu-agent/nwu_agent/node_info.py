@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 import ConfigParser
 import re
@@ -26,36 +27,26 @@ import logging
 log = logging.getLogger('nwu_agent.node_info')
 
 class NodeInfo(object):
-    """Gets all needed info that will be sync'ed to the server
+    """Gets all local info that will be sync'ed to the server.
+
     No sync operation is done here.
     """
-
     def __init__(self):
-        self.sync_this = {}
-        self.sync_data = {}
+        # dict with the data in the 'cached' format
+        # maybe we should use diff_data only
         self.store_data = {}
+        # [ cached_info, curr_info, diff_info ]
+        self.full_data = {}
+        self.cksum_curr = {}
+        self.cksum_cache = {}
         sourcefiles = self.list_sources_list()
         self.repositories, self.rep_md5 = self.read_sources_list(
                 sourcefiles)
         self.pkgs = sysinfo.software.packages()
         self.info = { 'current_packages' : self.pkgs.installed_ver,
-            'update_candidates' : self.pkgs.update_candidates 
+            'update_candidates' : self.pkgs.update_candidates,
+            'repositories' : self.repositories 
             }
-        self.get_all_news()
-        self.spool_versions = self.read_spool('tbl_ver')
-
-    def get_all_news(self):
-        """See what info has changed in the system
-        Sets sync_data and sync_this approprietly
-        """
-        check_me = ['update_candidates', 'current_packages']
-        for check in check_me:
-            diff = self.get_changes(check)
-            for operation in diff:
-                self.sync_data[check] = diff
-                if len(operation) > 0:
-                    self.sync_this[check] = True
-                    break
 
     def get_changes(self,where='current_packages'):
         """
@@ -68,17 +59,44 @@ class NodeInfo(object):
         - update_candidates
         """
         [cached_pkgs, current_pkgs, diff_pkgs] = self.diff_new_spool(where)
+        log.debug("get_changes: formatting changes for %s." % where)
+
+        #TODO: my_list is used for formatting things in a 'spool' friendly
+        # way. we should probably drop that, and then unify the code blocks
+        # below
+    
+        # cache
+        cksum_tmp = ''
+        keys = cached_pkgs.keys()
+        keys.sort()
+        for key in keys:
+            val = cached_pkgs[key]
+            cksum_tmp += key + '+' + val + ' '
+        if len(cksum_tmp) == 0:
+            self.cksum_cache[where] = ''            
+        else:
+            self.cksum_cache[where] = md5(cksum_tmp).hexdigest()
+
+        # current
         my_list = []
-        for key, val in current_pkgs.iteritems():
+        cksum_tmp = ''
+        keys = current_pkgs.keys()
+        keys.sort()
+        for key in keys:
+            val = current_pkgs[key]
+            # extra step
             my_list.append([where, key, val])
+            cksum_tmp += key + '+' + val + ' '
+        if len(cksum_tmp) == 0:
+            self.cksum_curr[where] = ''
+        else:
+            self.cksum_curr[where] = md5(cksum_tmp).hexdigest()
         self.store_data[where] = my_list
-        log.debug("Formatting changes for %s." % where)
-#        log.debug("cur: %s " % repr(current_pkgs))
-#        log.debug("cac: %s " % repr(cached_pkgs))
-#        log.debug("dif: %s " % repr(diff_pkgs))
-        return diff_pkgs
+        self.full_data[where] = [cached_pkgs, current_pkgs, diff_pkgs]
+        return
 
     def list_sources_list(self):
+        """Lists APT repositories being used"""
         filenames = ['/etc/apt/sources.list']
         directories = ['/etc/apt/sources.d']
         for dir in directories:
@@ -92,6 +110,7 @@ class NodeInfo(object):
 
     # FIXME: move this to sysinfo
     def read_sources_list(self, filenames):
+        """Read the specified repositories file and format it"""
         full_string = ''
         repositories = []
         for source in filenames:
@@ -106,7 +125,6 @@ class NodeInfo(object):
                 ignore = re.search(r'^$|#|^\s+$', l)
                 if not ignore :
                     thisrep.append(l)
-        #pik = pickle.dumps(repositories)
             repositories.append(thisrep)
         return repositories, md5(full_string).hexdigest()
 
@@ -125,18 +143,18 @@ class NodeInfo(object):
             del_k[k] = old_dict[k]
         return (up_k, del_k)
 
-    def read_spool(self, category, stream=None):
+    def read_spool(self, category):
 
-        if category not in ['current_packages', 'update_candidates', 'tbl_ver',
+        # FIXME: this list of table names is repetead everywhere
+        if category not in ['current_packages', 'update_candidates', 
             'repositories']:
             raise Exception, "Wrong cache category specified: " + category
-        if not stream:
-            cache_path = "/var/spool/nwu/nw.%s" % category
-            try:
-                stream = open(cache_path, 'r')
-            except IOError:
-                log.debug("%s spool file not found." % category)
-                return {category:'new'}
+        cache_path = "/var/spool/nwu/nw.%s" % category
+        try:
+            stream = open(cache_path, 'r')
+        except IOError:
+            log.debug("%s spool file not found." % category)
+            return {category:'new'}
         cache = ConfigParser.ConfigParser()
         result = cache.readfp(stream)
         objects = {}

@@ -1,23 +1,25 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import fcntl
 import sys
 import logging
 import logging.handlers
@@ -27,7 +29,7 @@ from nwu_agent.node_sync import NodeSync
 
 log = logging.getLogger()
 hdlr = logging.handlers.SysLogHandler(
-  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_USER)
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_DAEMON)
 formatter = logging.Formatter(
     "nwu_agent[%(process)d] %(levelname)s %(message)s"
     )
@@ -41,6 +43,25 @@ def main():
         log.error("nwu-agent cannot be run as root.")
         sys.exit(1)
     log.info("Starting nwu-agent")
+    log.debug("Acquiring lock")
+    lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
+    filename = '/var/spool/nwu/agentlock'
+    for retry in (1, 0):
+        try:
+            lock_fd = open(filename, 'a')
+            break
+        except IOError, val:    # No such file or directory?
+            if not retry or os.path.exists(filename):
+                raise
+            # Ensure filename exists.
+            lock_fd = open(filename, 'w').close()
+    try:
+        fcntl.lockf(lock_fd, lock)
+    except IOError:
+        log.fatal("Error obtaining exclusive lock.")
+        sys.exit(1)
+    else:
+        log.debug("Lock acquired successfully")
     # FIXME: sysinfo should not generate output here
     info = NodeInfo()
     sync = NodeSync(info)

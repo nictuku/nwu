@@ -1,0 +1,138 @@
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <title>Network Wide Updates - NWU - User Manual</title><link rel="stylesheet" href="html.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.70.1"><meta name="description" content="This document is a step-by-step howto for installing NWU, automatic updates manager for systems that use APT"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="article" lang="en"><div class="titlepage"><div><div><h2 class="title"><a name="d0e1"></a>Network Wide Updates - NWU - User Manual</h2></div><div><div class="author"><h3 class="author"><span class="firstname">Yves</span> <span class="surname">Junqueira <a href="http://cetico.org/nwu" target="_top">http://cetico.org</a></span></h3></div></div><div><p class="releaseinfo">0.1</p></div><div><p class="copyright">Copyright &copy; 2006 Yves Junqueira</p></div><div><div class="abstract"><p class="title"><b>Abstract</b></p><p>This document is a step-by-step howto for installing NWU, automatic updates manager for systems that use APT</p></div></div></div><hr></div><div class="toc"><dl><dt><span class="section"><a href="#d0e22">1. About NWU</a></span></dt><dt><span class="section"><a href="#setup_rep">2. APT repositories setup</a></span></dt><dt><span class="section"><a href="#d0e48">3. Server Installation</a></span></dt><dd><dl><dt><span class="section"><a href="#d0e67">3.1. Database config</a></span></dt><dt><span class="section"><a href="#setup_cert">3.2. SSL certificates creation</a></span></dt><dt><span class="section"><a href="#d0e264">3.3. Run it!</a></span></dt><dt><span class="section"><a href="#d0e277">3.4. Troubleshooting the server</a></span></dt></dl></dd><dt><span class="section"><a href="#setup_agents">4. Agents Installation</a></span></dt><dt><span class="section"><a href="#d0e327">5. Operation</a></span></dt></dl></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e22"></a>1.&nbsp;About NWU</h2></div></div></div><p>NWU helps managing a network of Debian-like computers by making package management as automatic as possible. You would install the server component in a central location and nwu-agent in every computer, then enjoin an up to date environment. You will be able to list, install, upgrade or remove any package in your systems. For more information, see <a href="http://cetico.org/nwu" target="_top">http://cetico.org/nwu</a>.</p></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="setup_rep"></a>2.&nbsp;APT repositories setup</h2></div></div></div><p>NWU can be installed by using APT repositories. Depending on which distribution of Debian you're using, add one of the following lines to your /etc/apt/sources.list:</p><p>Debian 3.1 (Sarge), Ubuntu 6.06 (Dapper) or 6.10 (Edgy):</p><p><strong class="userinput"><code>deb http://cetico.org/debian_old</code></strong></p><p>Debian 4.0 (Etch):</p><p><strong class="userinput"><code>deb http://cetico.org/debian</code></strong></p><p><span><strong class="command">aptitude update</strong></span></p></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e48"></a>3.&nbsp;Server Installation</h2></div></div></div><p><span><strong class="command">aptitude install nwu-server</strong></span></p><p><span><strong class="command">vi /etc/default/nwu-server</strong></span><strong class="userinput"><code></code></strong></p><p><strong class="userinput"><code>NO_START=0</code></strong></p><p>Now change /etc/nwu/server.conf to suit your needs. The default values work, but please start reading the next section too.</p><p>Sample config:</p><pre class="programlisting">[webservice]
+host = 0.0.0.0 
+port = 8088
+
+[database]
+type = sqlite
+host =
+database = /var/lib/nwu/nwu.db
+user = 
+password =</pre><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e67"></a>3.1.&nbsp;Database config</h3></div></div></div><p><em class="citetitle">If you are in a hurry, skip this section and just run "nwu-server -i" as root and you'll be using SQLite as your backend.</em></p><p>In order to use nwu-server you need a database backend compatible with python sqlobject (MySQL, PostgreSQL, SQLite). SQLite is nice and simple, but it may not perform well. It's a very good option for testing and for networks with just a few nodes. If your network is big and many clients would connect at the same time, PostgreSQL and MySQL are better options. NWU tries very hard to be efficient using the database, so your mileage may vary.</p><p>If you want to use MySQL or PostgreSQL, choose one of the following options:</p><p>A) MySQL</p><p>Create database (type your root mysql password):</p><p><span><strong class="command">mysql -uroot -p -e</strong></span> <strong class="userinput"><code>'CREATE DATABASE nwu;'</code></strong></p><p>Create user:</p><p><span><strong class="command">mysql -uroot -p -e</strong></span> <strong class="userinput"><code>'GRANT ALL PRIVILEGES ON nwu.* TO 'nwu'@'%' IDENTIFIED BY 'YOURPASSWORD' WITH GRANT OPTION;'</code></strong></p><p>Create tables:</p><p><span><strong class="command">nwu-server -i</strong></span></p><p>B) PostgreSQL</p><p><span><strong class="command">sudo -u postgres createuser nwu</strong></span></p><p><span><strong class="command">sudo -u postgres createdb nwu</strong></span></p><p><span><strong class="command">sudo -u postgres psql nwu &lt;&lt; EOF</strong></span></p><p><strong class="userinput"><code>ALTER DATABASE nwu OWNER TO nwu \q EOF</code></strong></p><p>Create tables:</p><p><span><strong class="command">nwu-server -i</strong></span></p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="setup_cert"></a>3.2.&nbsp;SSL certificates creation</h3></div></div></div><p>In the current version of NWU, the agent must have a copy of a shared CA certificate, that will issue the server certificate. This maybe change in the future. If you don't have the openssl package installed, please do install it before proceeding. It's a boring task, but you only have to do it once.</p><p>- Create a Certificate Authority (CA):<span><strong class="command"></strong></span></p><pre class="programlisting"><span><strong class="command">cd /var/tmp
+/usr/lib/ssl/misc/CA.pl -newca</strong></span>
+CA certificate filename (or enter to create)
+<strong class="userinput"><code>&lt;type enter&gt;</code></strong>
+Making CA certificate ...
+Generating a 1024 bit RSA private key
+..................++++++
+......++++++
+writing new private key to './demoCA/private/cakey.pem'
+Enter PEM pass phrase:<strong class="userinput"><code>&lt;type a password&gt;</code></strong>
+Verifying - Enter PEM pass phrase:<strong class="userinput"><code>&lt;repeat&gt;</code></strong>
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:<strong class="userinput"><code>&lt;enter this and the next questions aproprietly&gt;</code></strong>
+State or Province Name (full name) [Some-State]:<strong class="userinput"><code>Distrito Federal</code></strong>
+Locality Name (eg, city) []:<strong class="userinput"><code>Brasilia</code></strong>
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:<strong class="userinput"><code>cetico.org</code></strong>
+Organizational Unit Name (eg, section) []: 
+Common Name (eg, YOUR name) []:<strong class="userinput"><code>&lt;fully qualified hostname for this server&gt;</code></strong>
+Email Address []:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:<strong class="userinput"><code>&lt;YOU MAY IGNORE THIS&gt;</code></strong>
+An optional company name []:<strong class="userinput"><code>&lt;THIS TOO&gt;</code></strong>
+Using configuration from /usr/lib/ssl/openssl.cnf
+Enter pass phrase for ./demoCA/private/cakey.pem:<strong class="userinput"><code>&lt;TYPE HERE THE PASSWORD YOU DEFINED FOR cakey.pem&gt;</code></strong>
+Check that the request matches the signature
+Signature ok
+(etc..)
+</pre><p><span><strong class="command"></strong></span>- Generate a Certificate Request. Fill in valid information as before, and <span class="bold"><strong>pay strict attention to the commonName field</strong></span> - it must be the FQDN for the server, or the full hostname your clients will use to connect to this server (e.g: <span class="emphasis"><em>myserver.mycorp.somewhere</em></span>, with the domain part).</p><p><span><strong class="command"></strong></span></p><pre class="programlisting"><span><strong class="command">/usr/lib/ssl/misc/CA.pl -newreq</strong></span>
+Generating a 1024 bit RSA private key
+.................++++++
+.++++++
+writing new private key to 'newkey.pem'
+Enter PEM pass phrase:<strong class="userinput"><code>&lt;enter a temporary password here&gt;</code></strong><sup>[<a name="d0e182" href="#ftn.d0e182">1</a>]</sup>
+Verifying - Enter PEM pass phrase:
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:<strong class="userinput"><code>BR</code></strong>
+State or Province Name (full name) [Some-State]:<strong class="userinput"><code>Distrito Federal</code></strong>
+Locality Name (eg, city) []:<strong class="userinput"><code>Brasilia</code></strong>
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:<strong class="userinput"><code>cetico.org</code></strong>
+Organizational Unit Name (eg, section) []:
+Common Name (eg, YOUR name) []:<strong class="userinput"><code>server883.cetico.org</code></strong>
+Email Address []:<strong class="userinput"><code>yves..@..cetico.org</code></strong>
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:<strong class="userinput"><code>&lt;you can leave this blank&gt;</code></strong>
+An optional company name []:<strong class="userinput"><code>&lt;again&gt;</code></strong>
+Request is in newreq.pem, private key is in newkey.pem
+</pre><p>- Remove the passphrase from the key:</p><pre class="programlisting"><span><strong class="command">cp newkey.pem newkey.pem.orig
+openssl rsa -in newkey.pem.orig -out newkey.pem</strong></span>
+Enter pass phrase for newkey.pem.orig:<strong class="userinput"><code>&lt;type here the password for newkey.pem you set earlier&gt;</code></strong>
+writing RSA key
+</pre><p>- Sign the certificate using the CA certificate:</p><pre class="programlisting"><span><strong class="command">yves@elvis:/var/tmp$ /usr/lib/ssl/misc/CA.pl -sign</strong></span>
+Using configuration from /usr/lib/ssl/openssl.cnf
+Enter pass phrase for ./demoCA/private/cakey.pem:<strong class="userinput"><code>&lt;type here the password you set earlier for the CA&gt;</code></strong>
+Check that the request matches the signature
+Signature ok
+Certificate Details:
+        Serial Number:
+            a7:4a:d7:67:db:a1:23:ef
+        Validity
+            Not Before: Oct 10 03:44:00 2006 GMT
+            Not After : Oct 10 03:44:00 2007 GMT
+        Subject:
+            countryName               = BR
+            stateOrProvinceName       = Distrito Federal
+            localityName              = Brasilia
+            organizationName          = cetico.org
+            commonName                = server883.cetico.org
+            emailAddress              = yves@cetico.org
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            Netscape Comment: 
+                OpenSSL Generated Certificate
+            X509v3 Subject Key Identifier: 
+                4A:AD:26:D5:89:AB:FB:87:A6:36:D8:F8:24:55:37:75:E1:6B:DE:76
+            X509v3 Authority Key Identifier: 
+                keyid:9D:89:E3:C6:EF:D8:49:87:DD:CF:34:32:C6:27:17:84:DC:6E:AA:8E
+
+Certificate is to be certified until Oct 10 03:44:00 2007 GMT (365 days)
+Sign the certificate? [y/n]:<strong class="userinput"><code>y</code></strong>
+
+
+1 out of 1 certificate requests certified, commit? [y/n]<strong class="userinput"><code>y</code></strong>
+Write out database with 1 new entries
+Data Base Updated
+Signed certificate is in newcert.pem
+</pre><p>- Move the certificate and keys to a safe place:</p><p><span><strong class="command">sudo cp demoCA/cacert.pem /etc/nwu/</strong></span></p><p><span><strong class="command">sudo cp newcert.pem /etc/nwu/server.pem</strong></span></p><p><span><strong class="command">sudo cat newkey.pem &gt;&gt; /etc/nwu/server.pem</strong></span></p><p><span><strong class="command">sudo chown nwuserver.nwuserver /etc/nwu/server.pem</strong></span></p><p><span><strong class="command">sudo chmod 660 /etc/nwu/server.pem</strong></span></p><p>When you are sure everything was copied:</p><p><span><strong class="command">sudo mv demoCA /etc/nwu/</strong></span></p><p><span><strong class="command">sudo chmod 600 /etc/nwu/demoCA -R</strong></span></p><p><span><strong class="command">rm new*pem</strong></span></p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e264"></a>3.3.&nbsp;Run it!</h3></div></div></div><p>Cross your fingers and start the server:</p><p><span><strong class="command">/etc/init.d/nwu-server start</strong></span></p><p>See in the syslog if everything is running fine. Now let's install the <a href="#setup_agents" title="4.&nbsp;Agents Installation">agent</a> somewhere - or even in the same machine you installed the server, no problem with that.</p></div><div class="section" lang="en"><div class="titlepage"><div><div><h3 class="title"><a name="d0e277"></a>3.4.&nbsp;Troubleshooting the server</h3></div></div></div><p>It's easy to troubleshoot the server in case you run into troubles. You can play with the paramaters for nwu-server. First, stop the server if it's running, then call:</p><p><span><strong class="command">sudo -u nwuserver nwu-server -f -l DEBUG</strong></span></p><p>The server will remain in the foreground, dumping diagnostic messages. If you need, ask for help in the <a href="http://cetico.org/nwu" target="_top">mailing list</a>.</p></div></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="setup_agents"></a>4.&nbsp;Agents Installation</h2></div></div></div><p>First, configure the APT repositories as explained <a href="#setup_rep" title="2.&nbsp;APT repositories setup">before</a>. Then install the agent package:</p><p><span><strong class="command">apt-get install nwu-agent</strong></span></p><p>This will also install <span class="emphasis"><em>python-sysinfo</em></span>, which is a abstraction layer to collect system information. Next, a debconf question will ask the URL used for connecting to the server. Specify it in the format <span class="emphasis"><em>https://domain.tld:8088</em></span>, using the hostname of exactly as specified when creating the <a href="#setup_cert" title="3.2.&nbsp;SSL certificates creation">server certificate</a>.</p><p><span class="inlinemediaobject"><img src="resources/nwuagent_debconf.png"></span></p><p>Finally, you must copy the <code class="filename">cacert.pem</code> from the server to each machine at <code class="filename">/etc/nwu/cacert.pem</code>:</p><p><span><strong class="command"># sudo scp boogie@cetico.org:/etc/nwu/cacert.pem /etc/nwu/cacert.pem</strong></span></p></div><div class="section" lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d0e327"></a>5.&nbsp;Operation</h2></div></div></div><p>First of all, how does nwu-agent work? The first time the nwu-agent is run, it will generate its auth information and save it on /var/spool/nwu/, then load system information - including current APT state and send that to the server. The agents will push and pull data to the servers every 10 minutes. They notify the server of the changes (eg: "package 'foo' installed") then get the list of pending tasks.</p><p>You can then manage NWU using the nwu CLI tool from the server you installed nwu-server. Type 'nwu help' to get list of options. You can either run it as <span class="emphasis"><em>root</em></span> or someone in the <span class="emphasis"><em>nwuserver</em></span> group, which has privilege to read <code class="filename">/etc/nwu/server.conf</code>.</p><p><span><strong class="command">$ nwu help</strong></span> </p><pre class="programlisting">Usage: nwu &lt;sub-command&gt; &lt;options&gt; [arguments]
+Command line manager for NWU, version 0.1.5.
+
+Available sub-commands:
+
+  addrep  &lt;computer&gt; &lt;repository uri&gt;  : Add new repository
+  adduser &lt;name&gt; &lt;level:0|1&gt;     : Add a new user, admin or not
+  forceinstall &lt;computer&gt; &lt;packages&gt;  : Install defined packages in the computer (force)
+  help                           : This help message
+  install &lt;computer&gt; &lt;packages&gt;  : Install defined packages in the computer
+  list    [group]                : Lists all computers or specified group
+  update &lt;computer&gt;             : Update packages list
+  upgrade &lt;computer&gt;             : Upgrade all packages in the computer
+  view    &lt;computer&gt; &lt;info&gt;      : View computer informations
+
+Available groups for list command:
+
+    outdated
+</pre><p>The first command you should try is 'list':</p><p><span><strong class="command">$ nwu list</strong></span></p><p><code class="computeroutput">1 elvis Linux "QY4PRLHPY39WUQXQRZLR22O2W4ML4W43" </code></p><p>In this case we have only one agent installed. The line is showing its id, its hostname, OS and the unique used internally to identify each machine, and works as the 'username' of each computer. You can ignore it.</p><p>You can ask a list of outdated machines:</p><p><span><strong class="command">$ nwu list outdated</strong></span></p><p><code class="computeroutput">elvis[1] </code></p><p>Hmm we better give elvis an upgrade:</p><p><span><strong class="command">$ nwu upgrade 1</strong></span></p><p><code class="computeroutput">Found computer id=1 in the database. Requesting upgrade.</code></p><p>Then there is 'view', which</p><p><span><strong class="command">$ nwu view 1 packages</strong></span></p><pre class="programlisting">Reading current packages in computer elvis[1]
+alacarte                                     0.10.0-0ubuntu1
+app-install-data                             0.2.11
+apport                                       0.19
+apport-gtk                                   0.19</pre><p>.. etc etc (todo)</p></div><div class="footnotes"><br><hr width="100" align="left"><div class="footnote"><p><sup>[<a name="ftn.d0e182" href="#d0e182">1</a>] </sup>If your organization policy says so, you can use this password and make nwu-server ask for it interactively. If that is the case, skip the next step for removing the password from the priv key.</p></div></div></div></body></html>

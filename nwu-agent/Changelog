@@ -1,0 +1,49 @@
+Version 0.1.7 (not released)
+2008-01-05
+
+- Placing lock files in more restrict directories
+- Fixed a bug that made locks ineffective
+- Implemented 'forceinstall' command
+- The client+server synchronization could become stale in rare ocasions.
+Fixed.
+
+Version 0.1.6
+2007-02-25
+
+- Let's make things simple. SQLite is the way to go.
+- SSL certificate creation using debconf
+- Bugs squashes (See the trac timeline)
+
+Version 0.1.5
+2006-09-15
+
+- ***Many*** bugs fixed, including memory leak and db connections leak
+- Deb packaging now following new python policy
+- Local root is notified by email if a task operation fails
+
+Version 0.1.4
+2006-04-04
+
+- nwu-server now dropping privileges
+- nwu-gtk using XML-RPC
+- Deb packages is really nice now
+- Improved README's
+- Fixed random bugs
+
+Version 0.1.3
+2006-03-13
+
+- Using XML-RPC instead of SOAP
+- Fixed missing agent.conf in debian package
+- Implemented logging through syslog
+- Prototyping a PyGTK interface
+- Nwu-server is now a syslog logging daemon
+- Created a README for the server
+- Implemented "nwu list outdated" command
+
+Version 0.1.2
+2006-03-05
+
+- Initial Release
+
+

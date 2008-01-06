@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
+
 """This class is accessed from the RPC interface by administration tools and
 provides data and methods for controlling the nwu hosts database.
 """
@@ -23,9 +25,6 @@ from md5 import md5
 import logging
 from db.operation import *
 log = logging.getLogger('nwu_server.rpc_admin')
-
-hub = PackageHub()
-__connection__ = hub
 
 class nwu_admin:
     """RPC methods that control the database using
@@ -41,7 +40,6 @@ class nwu_admin:
         else:
             log.debug("AUTH OK")
         export = []
-        hub.begin()
         # This was in __init__, but we must try to avoid caching
         if info == 'computers':
             for mach in computer.select():
@@ -61,17 +59,12 @@ class nwu_admin:
                     'action' : tk.action,
                     'details' : tk.details,
                     })
-        hub.commit()
-        hub.end()
         return export
 
     def computer_del(self, computer_id):
 
         if not self._verify_auth(auth, admin=True):
             raise Exception, "Wrong auth"
-
-        hub.begin()
-        conn = hub.getConnection()
 
         m = computer.select(computer.q.id==computer_id)
         ma = list(m)
@@ -91,8 +84,6 @@ class nwu_admin:
             (computer.q.id ==  client_computer.id)))
 
         conn.query(delquery)
-        hub.commit()
-        hub.end()
         return True 
 
     def task_append(self, new_task_dict):
@@ -107,7 +98,6 @@ class nwu_admin:
         else:
             task_detail = None
 
-        hub.begin()
         m = computer.select(computer.q.id==computer_id)
         ma = list(m)
         for mach in ma:
@@ -116,28 +106,19 @@ class nwu_admin:
             str(task_detail) + ".")
 
             t = task(computer=computer_id, action=task_name,details=task_detail)
-        hub.commit()
-        hub.end()
 
     def _verify_auth(self, auth, admin=True):
         # verify given user against the user database
 	# FIXME: is this really safe?
 
-        hub.begin()
         (username, password) = auth
         u = users.select(users.q.username==username)
         for login in u:
             if not md5(password).hexdigest() == login.password:
-                 hub.commit()
-                 hub.end()
                  return False
             elif admin == True and login.userlevel == 1:
-                 hub.commit()
-                 hub.end()
                  return True
             else:
-                 hub.commit()
-                 hub.end()
                  return True
                         
 if __name__ == '__main__':

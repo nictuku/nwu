@@ -1,74 +1,132 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 import hmac
 import logging
 import os
-from nwu_agent.talk import agent_talk
 import ConfigParser
+
+from nwu_agent.talk import agent_talk
 
 log = logging.getLogger("nwu_agent.node_sync")
 
 class NodeSync(object):
     """Syncs the local info to the remote server.
-    It must receive a NodeInfo instance.
+    Note that it must be called with a NodeInfo instance.
     """
 
     def __init__(self, nodeinfo):
         self.talk = agent_talk()
         self.nodeinfo = nodeinfo
-        self.sync_this = nodeinfo.sync_this
-        self.sync_data = nodeinfo.sync_data
         self.store_data = nodeinfo.store_data
+        self.mark_sync_full = {}
+        self.mark_sync_diff = {}
         
     def sync_all(self):
         """Send changes to the server and store them in the cache.
         This is the main method and probably the only one needed
         by callers.
+
+        It's a very crucial part of the system, because this function
+        decides what should be sync'ed to the server and how (full, diff,
+        etc).
+        
+        = components =
+        - A) the client "real" data (as read from python-sysinfo) 
+        - B) the client current 'local cache' (which normally represents what 
+        the client *thinks* the server knows) 
+        - C) the data about this client currently stored at the database 
+        by the server
+
+        So on every sync, they must be compared based on checksum 
+        (possible drawback: more CPU usage)
+
+        if C == B == A: do nothing
+
+        if ( C == B ) && (C != A): client data changed. send diff of changes
+
+        unlikely:
+
+        if C != B: "server wiped database?" - full sync
+
+        if C, B, A are different - full sync
+
+        if B is empty: "wiped or new" - full sync 
         """
+
+        # A = self.nodeinfo.cksum_curr[tbl]
+        # B = self.nodeinfo.cksum_cache[tbl]
+        # C = server_ver (see below)
+
         self.setup_session()
-        log.info("Done.")
-        tables = {'repositories':'',
-    #     'task':'', 
-         'update_candidates':'',
-         'current_packages':'',
+
+        # FIXME: keep this somewhere else. there are duplicates around
+        tables = {
+
+        # not being updated
+        # 'repositories':'',
+        # always being updated
+        # 'tasks':'', 
+             'update_candidates':'',
+             'current_packages':'',
           }
-        # TODO: nao esta chamando sync_info.. update_candidates
-        log.debug("Spool versions: %s" % self.nodeinfo.spool_versions)
-        local_versions = tables.copy()
-        local_versions.update(self.nodeinfo.spool_versions)
 
-        #remote_versions = {}
-        for tbl in local_versions.keys():
-            r = self.talk.rpc.get_tbl_version(self.my_session, tbl)
-        #    remote_versions[tbl] =
-            if str(local_versions[tbl]) != str(r):
-                self.sync_this[tbl] = True
-                log.debug("table serial changed")
-
-        # getting tables.keys instead of self.sync_this.keys, because I need to ignore old tables
-        for run in tables.keys():
-            if run == 'repositories':
-                # FIXME, should not ignore repo update
+        for tbl in tables.keys():
+            # get A and B
+            self.nodeinfo.get_changes(tbl)
+            log.debug("sync_all: cksum_curr (%s): %s" % (tbl, self.nodeinfo.cksum_curr.get(tbl,'-')))
+            log.debug("sync_all: cksum_cache (%s): %s" % (tbl, self.nodeinfo.cksum_cache.get(tbl, '-')))
+            # get "C" from the server (see above)
+            server_ver = self.talk.rpc.get_tbl_cksum(self.my_session, tbl)
+            log.debug("sync_all: server_ver (%s): %s" % (tbl, server_ver))
+            if not self.nodeinfo.cksum_curr.has_key(tbl):
+                log.warn("sync_all: no cksum_curr found for %s. Skipping." % tbl)
                 continue
-            if self.sync_this.get(run, False) is True:
-                self.sync_info(run)
+            elif not self.nodeinfo.cksum_cache.has_key(tbl):
+                log.warn("sync_all: no cksum_cache found for %s. \
+This is not normal, so marking for full sync..." % tbl )
+                self.mark_sync_full[tbl] = True
+            elif self.nodeinfo.cksum_cache == '':
+                log.debug("sync_all: empty cache (%s). Marking for full sync." % tbl)
+                self.mark_sync_full[tbl] = True
+                continue
+            elif self.nodeinfo.cksum_cache[tbl] != str(server_ver):
+                log.info("sync_all: local cache and server cache mismatch \
+(%s)!! Marking for full sync" % tbl)
+                self.mark_sync_full[tbl] = True
+            elif  self.nodeinfo.cksum_curr[tbl] != str(server_ver):
+                log.debug("sync_all: server and curr cksum mismatch (%s). \
+Marking for diff sync" % tbl)
+                self.mark_sync_diff[tbl] = True
+            elif self.nodeinfo.cksum_curr[tbl] != self.nodeinfo.cksum_cache[tbl]:
+                log.debug("sync_all: local cache not current (%s). \
+Marking for diff sync." % tbl)
+                self.mark_sync_diff[tbl] = True
+                
+        # getting tables.keys instead of self.sync_this.keys, because I need
+        # to ignore old tables
+        for run in tables.keys():
+            if self.mark_sync_full.get(run, False) is True:
+                self.sync_info(run, True)
+            elif self.mark_sync_diff.get(run, False) is True:
+                self.sync_info(run, False)
 
         # FIXME: Should only sync tasks if remote version differs from locals
         self.sync_task()
@@ -76,7 +134,7 @@ class NodeSync(object):
     def setup_session(self):
         """Setups server communication
         """
-        (uniq, password) = self.talk.get_auth()
+        (uniq, password) = self.talk.auth
         token = hmac.new(password, uniq).hexdigest()
         uname = os.uname()
         os_name = uname[0]
@@ -98,7 +156,7 @@ class NodeSync(object):
                 log.error("Server did not create the account.")
                 raise Exception, "Failed to create computer account in the server."
             self.my_session = self.talk.rpc.session_setup(uniq, token)
-
+        log.debug("setup_session: done")
  
     def sync_rep(self):
         """Syncs repository information.
@@ -106,36 +164,38 @@ class NodeSync(object):
         """
         #FIXME: there is repeted code here and in sync_info()
         if self.check_diff_rep():
-            self.store_tbl_ver('repositories', 'please-update')
             log.info("Storing md5 spool for repositories list.")
             self.store_spool('repositories', [  ['rep_md5','md5',self.rep_md5 ] ], True)
             self.sync_this['repositories'] = True
             log.debug("repositories changed. Must update")
 
-    def sync_info(self,what):
+    def sync_info(self,what,is_full_sync):
         """Synchronizes information that changed.
         See diff_new_spool(), but diff_list must be a list of two dicts:
             - updated['package'] = version 
             - deleted['package'] = empty
         """
-        log.info("Sync %s." % what)
-        (updated, deleted) = self.sync_data[what]
-        # if the list is *still* empty, ignore it
-        if updated.get('empty','') == 'empty':
-            return
-        # If the list in the cache is new, we must send a full update
-        if updated.get(what,'') == 'new':
-                # We must wipe the remote info
-                log.info("Local cache for '%s' is empty" % what)
-                # also, updated will have all data
-                ign = self.talk.rpc.wipe_this(self.my_session,what)
+        if is_full_sync:
+            mode = 'FULL'
+        else:
+            mode = 'DIFF'
+        log.info("Syncing %s (%s)." % (what, mode))
+
+        if is_full_sync:
+            ign = self.talk.rpc.wipe_this(self.my_session,what)
+            updated = self.nodeinfo.full_data[what][1]
+            deleted = {}
+        else:
+            (updated, deleted) = self.nodeinfo.full_data[what][2]
+
+        log.debug("updated: %s" % updated)
+        log.debug("deleted: %s" % deleted)
         # updating
         ver = self.talk.rpc.set_list_diff(self.my_session, what,
             updated, deleted) 
         # FIXME: this is **WRONG**.
         # we must format the list. see below in blaaa
         self.store_spool(what, self.store_data[what], True)
-        self.store_tbl_ver(what, ver)
 
     def sync_task(self):
         """This operation will *get* new tasks from the server.
@@ -144,19 +204,13 @@ class NodeSync(object):
         get_tasks = self.talk.rpc.get_tasks(self.my_session)
         log.info("Assigned tasks found: " + str(get_tasks) + ".")
         log.debug("Kindly asking server to wipe old tasks.")
-        taskver = self.talk.rpc.wipe_this(self.my_session,'task')
-        self.store_tbl_ver('task', taskver)
+        taskver = self.talk.rpc.wipe_this(self.my_session,'tasks')
         store_task = []
         for tas in get_tasks:
            store_task.append(tas)
         if len(store_task) > 0:
             log.debug("Storing tasks in spool.")
             self.store_spool('tasks', store_task)
-
-    def store_tbl_ver(self,tablename, version):
-        log.debug("Updating table version: %s - %s" % (tablename, version))
-        change_ver = [['tbl_ver', tablename, version]]
-        self.store_spool('tbl_ver', change_ver, False)
 
     def store_spool(self, spool, item_list, wipe_old=False):
         """Stores data in the services pool directory.

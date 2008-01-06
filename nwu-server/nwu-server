@@ -1,24 +1,26 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
+import traceback
 import pwd
 from optparse import OptionParser
 import ConfigParser
@@ -31,9 +33,28 @@ def read_config():
     config_p = ConfigParser.ConfigParser()
     config_p.read("/etc/nwu/server.conf")
 
-    host = config_p.get("webservice", "host")
+    host = config_p.get("webservice", "host").lower()
     port = int(config_p.get("webservice", "port"))
-    config = { 'host' : host, 'port' : port, 'pemfile' : '/etc/nwu/server.pem' }
+    db_type = config_p.get("database", "type")
+    db_host = config_p.get("database", "host")
+    db_database = config_p.get("database", "database")
+    db_user = config_p.get("database", "user")
+    db_password = config_p.get("database", "password")
+    log.info("db: Using " + db_type + " as database backend.")
+
+#    if db_type == 'sqlite':
+#        connection_string = db_type + "://" + db_database + \
+#           '?cache=True'
+#    else:
+    connection_string = db_type + "://" + db_user + ":" + \
+       db_password + "@" + db_host + "/" + db_database 
+
+    config = { 'host' : host, 
+    'port' : port, 
+    'pemfile' : '/etc/nwu/server.pem',
+    'databasetype' : db_type,
+    'connection_string' : connection_string,
+    }
     return config
 
 def drop_privileges(user):
@@ -100,6 +121,8 @@ def getopts():
     parser = OptionParser()
     loglevels=('DEBUG','INFO','WARNING', 'WARN','ERROR','FATAL')
 
+    parser.add_option("", "--force-init", dest="forceinit", action="store_true",
+        help="Force database initialization even if db type is not SQLite")
     parser.add_option("-i", "--initialize", dest="init", action="store_true",
         help="Initialize the server environment (database) and exit")
     parser.add_option("-f", "--foreground", dest="daemonize", 
@@ -124,29 +147,51 @@ def getopts():
     (options, args) = parser.parse_args()
     return options
 
-def nwu_main():
+def nwu_main(config):
 
-    config = read_config()
-    nadmin = nwu_admin()
+    http_config = { 'host' : config['host'], 
+        'port' : config['port'], 
+        'pemfile' : config['pemfile']
+        }
 
-    ssl = sslxmlrpc.SSLServer(config)
+    try:
+        ssl = sslxmlrpc.SSLServer(config)
+    except:
+        log.error(traceback.format_exc())
     if options.daemonize:
         log.info("Daemonizing.")
         daemonize(options.pidfile, options.errorlog)
         drop_privileges(options.user)
 
-    server = ssl.start()
+    # loop
+    try:
+        ssl.start()
+    except:
+        #msg = apply(traceback.format_exception,sys.exc_info())
+        log.error(traceback.format_exc())
 
 if __name__ == '__main__':
     options = getopts()
     log = logging.getLogger()
     
+    config = read_config()
+    
+    # only 
+    dbtype = config.get('databasetype', '')
     if options.init:
-        drop_privileges(options.user)
-        log.info("Creating required database structure.")
-        from nwu_server.db.operation import create_tables, hub
-        create_tables()
-        hub.commit()
+        if dbtype == 'sqlite':
+            dbfile = config.get('databasefile', False)
+            # check file size
+            if dbfile and os.path.exists(dbfile) and os.stat(dbfile)[6] == 0:
+                # delete if zero-sized
+                os.unlink(dbfile)
+
+        if dbtype == 'sqlite' or config.forceinit:
+            drop_privileges(options.user)
+            log.info("Creating required database structure for type: " + dbtype)
+            from nwu_server.db.operation import create_tables
+            create_tables(config)
+            # XXX: needs flush?
         sys.exit(0)
 
     if options.daemonize:
@@ -173,4 +218,4 @@ the syslog daemon running?"
 
     from nwu_server import sslxmlrpc
 
-    nwu_main()
+    nwu_main(config)
