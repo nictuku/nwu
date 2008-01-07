@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2006,2007,2008 Yves Junqueira (yves@cetico.org)
 #
 #    This file is part of NWU.
 #
@@ -23,47 +23,60 @@ sys.path.append('.')
 from nwu_server.db.operation import Local
 from nwu_server.rpc_agents import RPC
 from nwu_server.db.model import *
-import random
+from nwu_server.cli import Commands
 import hmac
 import logging
 
 log = logging.getLogger()
-hdlr = logging.StreamHandler()
-log.addHandler(hdlr)
+HDLR = logging.StreamHandler()
+log.addHandler(HDLR)
 log.setLevel(logging.DEBUG)
+CONFIG = { 'connection_string' : 'sqlite:///' }
+CLI = Commands(config=CONFIG, initialize=False)
+PASSWORD = 'foobar'
+UNIQ = 'dsadsad1921832918312weee'
+TOKEN = hmac.new(PASSWORD, UNIQ).hexdigest()
+
 def setup():
-    metadata.bind="sqlite:///"
+    metadata.bind = CONFIG['connection_string']
     setup_all()
     create_all()
     
 class TestServer:
- 
 
     def test_add_computer(self):
-        password='foobar'
-        uniq='dsadsad1921832918312weee'
-        token = hmac.new(password, uniq).hexdigest()
 
-        assert Local.check_token(uniq, token) == False
+        assert Local.check_token(UNIQ, TOKEN) == False
 
         # no servers in the database
         zero = Computer.query.count()
         assert zero == 0
 
         # server doesn't exist yet
-        session = RPC.session_setup(uniq, token)
+        session = RPC.session_setup(UNIQ, TOKEN)
         assert session == False
 
-        m = Computer(hostname='moinmoin', uniq=uniq, os_name='Linux', os_version='2.6.x',
-            password=password)
+        m = Computer(hostname='moinmoin', uniq=UNIQ, os_name='Linux', 
+            os_version='2.6.x',
+            password=PASSWORD)
         objectstore.flush()
+        log.debug("Created %s" % repr(m))
+        assert Local.check_token(UNIQ, TOKEN) == True
+        assert Local.check_token(UNIQ, 'foo') == False
+        assert Local.check_token(UNIQ, TOKEN + 'oops') == False
 
-        assert Local.check_token(uniq, token) == True
-        assert Local.check_token(uniq, 'foo') == False
-        assert Local.check_token(uniq, token + 'oops') == False
+        session = RPC.session_setup(UNIQ, TOKEN)
+        assert session == [ UNIQ, TOKEN ] 
 
-        session = RPC.session_setup(uniq, token)
-        assert session == [ uniq, token ] 
+class TestServerCli:
+    # Important: this class name must be alphabetically after "TestServer"
 
-
+    def test_install(self):
+        # we need objects from the other tests    
+        objectstore.flush()
+        target_pkgs = ['install_a', 'install_b']
+        CLI.cmd_forceinstall(1, *target_pkgs)
+        assert RPC.get_tasks([UNIQ, TOKEN]) == [('forceinstall', 
+            'install_a install_b')]
+        assert CLI.cmd_list() == '1\tmoinmoin\tLinux\n'
 
