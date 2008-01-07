@@ -35,6 +35,7 @@ def read_config(config_path):
     host = config_p.get("webservice", "host", "localhost").lower()
     port = int(config_p.get("webservice", "port", 8088))
     pemfile = config_p.get("webservice", "pemfile", "/etc/nwu/server.pem")
+    cacert = config_p.get("webservice", "cacert", "/etc/nwu/ca.crt")
     db_type = config_p.get("database", "type", "sqlite")
     db_host = config_p.get("database", "host")
     db_database = config_p.get("database", "database", "/var/lib/nwu/nwu.db")
@@ -47,6 +48,7 @@ def read_config(config_path):
     config = { 'host' : host, 
     'port' : port, 
     'pemfile' : pemfile,
+    'cacert': cacert,
     'databasetype' : db_type,
     'connection_string' : connection_string,
     }

@@ -124,7 +124,8 @@ def nwu_main(config):
 
     http_config = { 'host' : config['host'], 
         'port' : config['port'], 
-        'pemfile' : config['pemfile']
+        'pemfile' : config['pemfile'],
+        'cacert': config['cacert'],
         }
 
     try:
@@ -148,6 +149,7 @@ if __name__ == '__main__':
     log = logging.getLogger()
     
     config = read_config(options.config)
+    print config
     
     # only 
     dbtype = config.get('databasetype', '')

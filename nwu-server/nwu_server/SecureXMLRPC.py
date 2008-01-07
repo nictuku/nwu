@@ -1,4 +1,4 @@
-# SecureXMLRPC.py - gnutls-enabled XML-RPC Server
+# SecureXMLRPC.py - gnutls-enabled XML-RPC Server and Client
 #
 # Copyright (C) 2007, 2008 Stephan Peijnik
 #
@@ -16,6 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # ChangeLog:
+#   2008-01-08   Stephan Peijnik <sp@gnu.org>
+#           * Preparations for TLS authentication support.
+#             NOTE: For this to work both the client and the server need
+#                   a valid certificate signed by the same CA!
 #   2008-01-05  Stephan Peijnik <sp@gnu.org>
 #           * Changed versioning scheme to x.y.z instead of x.y
 #           * Version 0.3.1
@@ -34,7 +38,9 @@
 #
 #
 # TODO:
-#  * certificate authentication 
+#  * Inject session.peer_certificate into *EVERY* XML-RPC request
+#    (ie. call to foo(5, 3) becomes foo(session.peer_certificate, 5, 3) or
+#    find another way to do proper authentication.
 
 """A gnutls-enabled XML-RPC Server and Client.
 
@@ -97,16 +103,19 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
         SimpleXMLRPCRequestHandler.setup(self)
         self.rfile = _fileobject(self.request, 'rb', self.rbufsize)
         self.wfile = _fileobject(self.request, 'wb', self.wbufsize)
-
+        # XXX: debug, print certificate
+        #      any other value than None means the client presented us with
+        #      a valid certificate.
+        print 'client cert: %s' % (session.peer_certificate)
 
 class SecureXMLRPCServer(SimpleXMLRPCServer):
     """Implements a gnutls-enabled XML-RPC server"""
-    def __init__(self, addr, pem_file, *args, **kwargs):
+    def __init__(self, addr, pem_file, ca_cert_file, *args, **kwargs):
         """Initialize a new instance, passing the bind address and
         the path to a PEM file."""
         self.__addr = addr
         self.__pem_file = pem_file
-
+        self.__ca_cert_file = ca_cert_file
 
         self.__tls_init()
 
@@ -128,7 +137,8 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
             sys.exit(255)
         cert = X509Certificate(open(self.__pem_file).read())
         key = X509PrivateKey(open(self.__pem_file).read())
-        self.__X509Creds = X509Credentials(cert, key)
+        ca_cert = X509Certificate(open(self.__ca_cert_file).read())
+        self.__X509Creds = X509Credentials(cert, key, [ca_cert])
 
     def get_request(self):
         """Handle an incoming connection.
@@ -253,13 +263,26 @@ class SecureTransport(Transport):
                            anonymous=self.anonymous)
 
 class SecureProxy(ServerProxy):
-    def __init__(self, uri, pem_file=None, key_file=None, cert_file=None, 
-                 encoding=None, verbose=0, allow_none=0, use_datetime=0):
+    def __init__(self, uri, pem_file=None, key_file=None, cert_file=None,
+                 ca_cert_file=None, encoding=None, 
+                 verbose=0, allow_none=0, use_datetime=0):
 
         self.anonymous = False
         self.pem_file = pem_file
         self.key_file = key_file
         self.cert_file = cert_file
+        self.ca_cert_file = ca_cert_file
+        ca = None
+
+        if self.ca_cert_file:
+            if not os.path.exists(self.ca_cert_file):
+                raise Exception('TLS CA certificate file does not exist: %s'
+                                % (self._ca_cert_file))
+
+            fp = open(self.ca_cert_file)
+            ca_contents = fp.read()
+            ca = X509Certificate(ca_contents)
+            fp.close()
 
         # first try using the PEM file and then fall back to key/cert files    
         if self.pem_file:
@@ -272,7 +295,7 @@ class SecureProxy(ServerProxy):
 
             cert = X509Certificate(pemcontents)
             key = X509PrivateKey(pemcontents)
-            self.credentials = X509Credentials(cert, key)
+            self.credentials = X509Credentials(cert, key, [ca])
 
         elif self.key_file and cert_file:
             if not os.path.exists(self.key_file):
@@ -293,7 +316,7 @@ class SecureProxy(ServerProxy):
             cert = X509Certificate(certcontents)
             key = X509PrivateKey(keycontents)
 
-            self.credentials = X509Credentials(cert, key)
+            self.credentials = X509Credentials(cert, key, [ca])
 
         else:
             # anonymous connection

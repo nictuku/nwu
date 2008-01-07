@@ -61,12 +61,13 @@ class SSLServer:
         host = self.config['host']
         port = self.config['port']
         pemfile = self.config['pemfile']
+        cacertfile = self.config['cacert']
 
         log.info("Starting nwu-server. Listening at " + host + ":" + str(port) +\
         ".")
         #nadmin = nwu_admin()
         address = (host, port)
-        server = SecureXMLRPCServer(address, pemfile)
+        server = SecureXMLRPCServer(address, pemfile, cacertfile)
         server.register_function(RPC.set_repositories)
         server.register_function(RPC.session_setup)
         server.register_function(RPC.set_list_diff)
