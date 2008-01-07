@@ -17,6 +17,7 @@
 #
 # ChangeLog:
 #   2008-01-08   Stephan Peijnik <sp@gnu.org>
+#           * Documentation of the client code.
 #           * Preparations for TLS authentication support.
 #             NOTE: For this to work both the client and the server need
 #                   a valid certificate signed by the same CA!
@@ -88,7 +89,15 @@ __all__ = ['SecureXMLRPCServer', 'SecureRequestHandler', 'SecureProxy',
 __version__ = '0.3.1'
 
 class SecureServerConnection(ServerSession):
+    """ Extends GnuTLS' ServerSession """
     def shutdown(self, *args):
+        """ Overrides GnuTLS' ServerSession.shutdown.
+        
+        Needed in order to avoid problems in the client. """
+        # NOTE: simply closing the connection will cause the client,
+        #       even though it may have received a valid reply from the server
+        #       to report an invalid TLS packet length (only GnuTLS seems to be
+        #       affected by this).
         self.bye()
 
 class SecureRequestHandler(SimpleXMLRPCRequestHandler):
@@ -183,16 +192,27 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
 ###
 
 class GNUTLSSocket(ClientSession):
+    """ Overrides GnuTLS' ClientSession 
+
+    This class makes ClientSession behave more like OpenSSL's
+    SSL socket class and makes it compatible with the xmlrpclib.ServerProxy
+    implementation."""
     def __init__(self, sock, creds):
+        """ Initializes a new GNUTLSSocket """
         ClientSession.__init__(self, sock, creds)
 
     def makefile(self, mode, bufsize=None):
+        """ Creates a new file object from the GnuTLS socket. """
         return _fileobject(self, mode, bufsize)
 
     def write(self, buffer):
+        """ Writes data to the socket (ClientSession does not implement write
+        but send)."""
         return self.send(buffer)
 
     def read(self, size):
+        """ Reads data from the socket (ClientSession does not implement read
+        but recv)."""
         return self.recv(size)
 
 class GNUTLSHTTPSConnection(HTTPConnection):
@@ -202,6 +222,7 @@ class GNUTLSHTTPSConnection(HTTPConnection):
 
     def __init__(self, host, port=None, credentials=None, strict=None,
                  anonymous=False):
+        """ Initializes a new GnuTLS-enabled HTTPS connection. """
         HTTPConnection.__init__(self, host, port, strict)
         
         self.credentials = credentials
@@ -238,11 +259,14 @@ class GNUTLSHTTPSConnection(HTTPConnection):
         self.sock = FakeSocket(sock, session)
 
 class GNUTLSHTTPS(HTTP):
+    """ Overrides httplib.HTTP to provide a GnuTLS-enabled
+    HTTPS  implementation. """
     _connection_class = GNUTLSHTTPSConnection
 
     def __init__(self, host='', port=None, credentials=None,
                  strict=0, anonymous=False):
-
+        """ Initializes new HTTPS connection, adds anonymous
+        argument. """
         if port == 0:
             port = None
 
@@ -250,23 +274,45 @@ class GNUTLSHTTPS(HTTP):
                                            anonymous=anonymous))
 
 class SecureTransport(Transport):
+    """ GnuTLS-enabled Transport for httplib. """
     user_agent = "SecureXMLRPC/%s" % (__version__)
 
     def __init__(self, credentials, use_datetime=0, anonymous=False):
+        """ Initializes SecureTransport. """
         self.credentials = credentials
         self.anonymous = anonymous
         Transport.__init__(self, use_datetime)
 
     def make_connection(self, host):
+        """ Creates a new (TLS) connection to the given host. """
         host, extra_headers, ignore = self.get_host_info(host)
         return GNUTLSHTTPS(host, None, self.credentials, 
                            anonymous=self.anonymous)
 
 class SecureProxy(ServerProxy):
+    """ Overrides xmlrpclib.ServerProxy. """
     def __init__(self, uri, pem_file=None, key_file=None, cert_file=None,
                  ca_cert_file=None, encoding=None, 
                  verbose=0, allow_none=0, use_datetime=0):
+        """ Initializes a new proxy class using GnuTLS for encryption. 
 
+        Overrides xmlrpclib.ServerProxy.__init__
+
+        Added arguments:
+
+        pem_file     - PEM file containing both a certificate and private key.
+        key_file     - File containing private key.
+        cert_file    - File containing client certificate.
+        ca_cert_file - File containing CA certificate.
+
+        If none of these files is provided the client will enter 'anonymous'
+        mode.
+        If either pem_file and ca_cert_file or all three of key_file, cert_file
+        and ca_cert_file are provided TLS authentication will be possible.
+
+        NOTE: The server needs a certifiate signed by the CA for which
+              the ca_cert_file is provided.
+        """
         self.anonymous = False
         self.pem_file = pem_file
         self.key_file = key_file
