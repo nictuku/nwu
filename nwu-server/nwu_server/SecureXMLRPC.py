@@ -79,7 +79,7 @@ from gnutls.errors import CertificateSecurityError
 
 __all__ = ['SecureXMLRPCServer', 'SecureRequestHandler', 'SecureProxy',
            'SecureTransport']
-__version__ = '0.3'
+__version__ = '0.3.1'
 
 class SecureServerConnection(ServerSession):
     def shutdown(self, *args):

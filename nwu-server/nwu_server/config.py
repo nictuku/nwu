@@ -20,25 +20,24 @@
 
 """Reads and parses the configuration for nwu-server
 """
-import ConfigParser
+# Make use of new config parser.
+# XXX: nwu_server.Config is going to become nwu.common.config after
+#      re-structuring.
+from nwu_server.Config import Config
 import logging
 log = logging.getLogger('nwu_server.config')
 
 def read_config(config_path):
     """Reads configuration data from the config file.
     """
-    config_p = ConfigParser.ConfigParser()
-    config_p.read(config_path)
+    config_p = Config(config_path)
 
-    host = config_p.get("webservice", "host").lower()
-    port = int(config_p.get("webservice", "port"))
-    # FIXME: make pemfile configurable, but use a 'default' value 
-    # (requires a special ConfigParser)
-    #pemfile = config_p.get("webservice", "pemfile")
-    pemfile = '/etc/nwu/server.pem'
-    db_type = config_p.get("database", "type")
+    host = config_p.get("webservice", "host", "localhost").lower()
+    port = int(config_p.get("webservice", "port", 8088))
+    pemfile = config_p.get("webservice", "pemfile", "/etc/nwu/server.pem")
+    db_type = config_p.get("database", "type", "sqlite")
     db_host = config_p.get("database", "host")
-    db_database = config_p.get("database", "database")
+    db_database = config_p.get("database", "database", "/var/lib/nwu/nwu.db")
     db_user = config_p.get("database", "user")
     db_password = config_p.get("database", "password")
     log.info("db: Using " + db_type + " as database backend.")
