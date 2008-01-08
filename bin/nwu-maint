@@ -28,7 +28,9 @@ import fcntl
 import sys
 import logging
 import logging.handlers
-from nwu_agent.maint import *
+from nwu.agent.maint import *
+
+from nwu.common import is_safe
 
 #print >>sys.stderr,"All messages will be sent to syslog"
 

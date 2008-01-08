@@ -22,8 +22,8 @@
 """
 
 import sys
-from nwu_server.cli import Commands
-from nwu_server.config import read_config
+from nwu.server.cli import Commands
+from nwu.server.config import read_config
 
 def main():
     # TODO: make this path configurable
