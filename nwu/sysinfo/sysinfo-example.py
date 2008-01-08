@@ -2,7 +2,7 @@
 
 #Sample python-sysinfo usage
 
-import sysinfo
+from nwu import sysinfo
 import logging
 
 format = "%(asctime)s %(levelname)s %(message)s"

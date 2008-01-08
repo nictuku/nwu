@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#   Copyright (C) 2006,2007,2008 Yves Junqueira (yves@cetico.org)
 #   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
 #
 #    This file is part of NWU.
@@ -18,3 +19,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
+def is_safe(str, http=False):
+    # Moved here from nwu.server.cli/nwu.
+    # From Byron Ellacot's message in the mod_python list     
+    # http://www.modpython.org/pipermail/mod_python/2004-December/016987.html  
+
+    ok_chars = "abcdefghijklmnopqrstuvwxyz0123456789.-_"
+
+    # We can also selectively accept other chars
+    if http:
+        ok_chars += "/: "
+
+    return [x for x in str if x.lower() not in ok_chars] == []

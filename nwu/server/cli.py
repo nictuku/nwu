@@ -25,6 +25,9 @@ from nwu.server.db.model import session, metadata, setup_all
 # XXX: What about using nwu.common.config directly?
 from nwu.server.config import read_config
 
+# XXX: Seems to be unused right now, still importing...
+from nwu.common import is_safe
+
 VERSION = '0.1.7'
 
 class Commands():
@@ -118,20 +121,6 @@ computer.os_name)
         outdated
     """
         sys.exit(64)
-
-def is_safe(str, http=False):
-    # FIXME: duplicated code. see nwu_agent/maint. candidate for nwu-common
-    # From Byron Ellacot's message in the mod_python list
-    # http://www.modpython.org/pipermail/mod_python/2004-December/016987.html
-
-    ok_chars = "abcdefghijklmnopqrstuvwxyz0123456789.-_"
-
-    # We can also selectively accept other chars
-
-    if http:
-        ok_chars += "/: "
-
-    return [x for x in str if x.lower() not in ok_chars] == []
 
 def main():
     args = len(sys.argv)

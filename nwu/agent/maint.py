@@ -25,6 +25,7 @@ import logging
 import traceback
 import sys
 
+
 try:
     import subprocess
 except ImportError:
@@ -34,6 +35,8 @@ else:
     old_py = False
 
 import smtplib
+
+from nwu.common import is_safe
 
 log = logging.getLogger('nwu-maint.agent.maint')
 mesg = """To: %s
@@ -125,21 +128,6 @@ def run_apt_get(command, args=[]):
         for mm in syslog_err:
             log.debug(mm)
     return ret
-
-def is_safe(check_str, http=False):
-    """Checks if check_str is safe enough.
-
-    If http is True, accept some extra chars.
-    """
-    # unit test: DONE
-    
-    # From Byron Ellacot's message in the mod_python list
-    # http://www.modpython.org/pipermail/mod_python/2004-December/016987.html
-    OK_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.-_~"
-    # We can also selectively accept other chars
-    if http:
-        OK_CHARS += "/: "
-    return [x for x in check_str if x.lower() not in OK_CHARS] == []
 
 def rep_valid(repository):
     """Validate repository string.

@@ -21,10 +21,10 @@
 import ConfigParser
 import re
 from md5 import md5
-import sysinfo
+from nwu import sysinfo
 import logging
 
-log = logging.getLogger('nwu_agent.node_info')
+log = logging.getLogger('nwu.agent.node_info')
 
 class NodeInfo(object):
     """Gets all local info that will be sync'ed to the server.

@@ -30,7 +30,7 @@ import socket
 
 import xmlrpclib
 
-log = logging.getLogger('nwu_agent.misc')
+log = logging.getLogger('nwu.agent.misc')
 
 class agent_talk:
 

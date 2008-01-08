@@ -21,11 +21,11 @@
 import hmac
 import logging
 import os
-import ConfigParser
 
-from nwu_agent.talk import agent_talk
+from nwu.common.config import Config
+from nwu.agent.talk import agent_talk
 
-log = logging.getLogger("nwu_agent.node_sync")
+log = logging.getLogger("nwu.agent.node_sync")
 
 class NodeSync(object):
     """Syncs the local info to the remote server.
@@ -230,8 +230,8 @@ Marking for diff sync." % tbl)
                 pass
             else:
                 log.info("Deleted old spool file.")
-        store = ConfigParser.ConfigParser()
-        r = store.read(spool_path)
+        store = Config(spool_path)
+
     	for it in item_list:
             if type(it) is not list or len(it) < 2:
                 raise Exception, "item_list is not right."
@@ -250,10 +250,13 @@ Marking for diff sync." % tbl)
             store.set(section, option, value)
         try:
             updt_spool = open(spool_path, 'w')
+            # XXX: What happens with updt_spool here? Looks unused.
+            #      Either way, udpt_spool.close() might be missing here.
         except:
             log.error("!!! Problem writing to spool directory in " + spool_path + ".")
             pass
         else:
             log.info("Updating spool file for " + spool + ".")
             store.write(updt_spool)
+            # XXX: Are we missing updt_spool.close() here?
 
