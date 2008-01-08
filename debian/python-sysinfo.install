@@ -1,0 +1,10 @@
+debian/tmp/lib/sysinfo/common.py usr/share/python-support/python-sysinfo/sysinfo
+debian/tmp/lib/sysinfo/__init__.py usr/share/python-support/python-sysinfo/sysinfo
+debian/tmp/lib/sysinfo/linux/network.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/misc.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/hardware.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/__init__.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/services.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/my_rpm.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/apt.py usr/share/python-support/python-sysinfo/sysinfo/linux
+debian/tmp/lib/sysinfo/linux/my_rpm.py usr/share/python-support/python-sysinfo/sysinfo/linux

@@ -1,0 +1,9 @@
+#!/bin/sh -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+# Get server connection string
+db_input high nwu-agent/connection_string || true
+db_go
+

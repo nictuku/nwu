@@ -1,0 +1,46 @@
+Source: nwu
+Section: admin
+Priority: optional
+Maintainer: Yves Junqueira (nictuku) <yves@cetico.org>
+Build-Depends: debhelper (>= 5.0.37.2), python-all-dev (>= 2.3.5-11), python-support (>= 0.4.1)
+Standards-Version: 3.7.2
+
+Package: nwu-agent
+Architecture: all
+Depends: adduser, ${python:Depends}, m2crypto, python-sysinfo
+Suggests: nwu-server
+Description: Network-wide updates for systems which use APT - agent
+ Nwu lets administrators manage APT of remote machines from one central point.
+ It can do many apt tasks remotely, like update, upgrade and install. Also it
+ provides relevant information about each node, like listing current installed
+ packages, upgrade candidates, APT repositories and some basic system inf-
+ ormation.
+ .
+ This package installs the nwu agent software, but you also need the nwu ser-
+ ver somewhere in your network.
+
+Package: nwu-server
+Architecture: all
+Depends: adduser, ssl-cert (>= 1.0-7), lsb-base, python-gnutls (>= 1.1.4-1), python-elixir (>= 0.5,0), python-sqlite | python-mysqldb | python-psycopg, ${python:Depends}
+Recommends: openssl
+Description: Network-wide updates for systems which use APT - server
+ Nwu lets administrators manage APT of remote machines from one central point.
+ It can do many apt tasks remotely, like update, upgrade and install. Also it
+ provides relevant information about each node, like listing current installed
+ packages, upgrade candidates, APT repositories and some basic system inf-
+ ormation.
+ .
+ This package installs the nwu server software
+
+Package: python-sysinfo
+Architecture: all
+Depends: lshw, aptitude (>= 0.2.15.9-2), python-apt (>= 0.5.10)
+Description: Multi-platform system information library
+ Python-sysinfo provides an abstraction layer to system information for
+ hardware, software and services in the local computer.
+ .
+ The GNU/Linux version uses lshw to collect hardware info and the other data
+ come from config files, /proc and such.
+ .
+ python-sysinfo is part of NWU (Network Wide Updates) 
+ See http://cetico.org/nwu

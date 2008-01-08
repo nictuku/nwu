@@ -1,0 +1,56 @@
+#!/bin/sh -e
+
+USER_NAME=nwuserver
+CREATE_GROUP=0
+CREATE_USER=0
+
+# Due to older deb packages, sometimes the system has the user but
+# does not have the group
+
+if ! getent passwd $USER_NAME >/dev/null; then
+	CREATE_USER=1;
+fi
+	
+if ! getent group $USER_NAME > /dev/null ; then
+	CREATE_GROUP=1
+fi 
+
+if [ "$CREATE_USER" -eq 1 ]; then
+
+  adduser --system --home /var/lib/nwu --group \
+  --no-create-home --shell /bin/sh --disabled-login \
+  --gecos 'Network Wide Updates' $USER_NAME
+  if [ "$?" -eq 0 ]; then CREATE_GROUP=0; fi
+fi
+
+if [ "$CREATE_GROUP" -eq 1 ]; then
+  addgroup --quiet --system $USER_NAME
+  adduser --quiet $USER_NAME $USER_NAME
+fi
+
+if ! test -d /var/lib/nwu; then
+    mkdir /var/lib/nwu
+fi
+chown -R $USER_NAME.$USER_NAME /var/lib/nwu
+chown -R $USER_NAME.$USER_NAME /var/run/nwu-server/
+chown -R $USER_NAME.$USER_NAME /etc/nwu/server.conf
+
+chmod 770 /var/lib/nwu -R
+chmod 660 /etc/nwu/server.conf
+
+make_selfsigned_cert() {
+# Make self-signed certificate
+    if [ ! -f /etc/nwu/server.pem ]; then
+        /usr/sbin/make-ssl-cert /usr/share/ssl-cert/ssleay.cnf /etc/nwu/server.pem
+	chown nwuserver /etc/nwu/server.pem
+    fi
+}
+
+make_selfsigned_cert
+#DEBHELPER#
+
+# this populates the database
+if [ ! -s "/var/lib/nwu/nwu.db" ]; then
+    nwu-server -i
+fi
+
