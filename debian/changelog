@@ -1,0 +1,5 @@
+nwu (0.1.7-1) experimental; urgency=low
+
+  * Initial debian release Closes: #390569 
+
+ -- Yves Junqueira <yves@cetico.org>  Sun, 25 Feb 2007 16:34:57 -0200

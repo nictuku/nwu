@@ -1,0 +1,13 @@
+debian/tmp/lib/nwu_server/db/backport_thread.py usr/share/python-support/nwu-server/nwu_server/db
+debian/tmp/lib/nwu_server/db/__init__.py usr/share/python-support/nwu-server/nwu_server/db 
+debian/tmp/lib/nwu_server/db/setup.py usr/share/python-support/nwu-server/nwu_server/db
+debian/tmp/lib/nwu_server/db/operation.py usr/share/python-support/nwu-server/nwu_server/db
+debian/tmp/lib/nwu_server/db/backport.py usr/share/python-support/nwu-server/nwu_server/db
+debian/tmp/lib/nwu_server/rpc_admin.py usr/share/python-support/nwu-server/nwu_server
+debian/tmp/lib/nwu_server/rpc_agents.py usr/share/python-support/nwu-server/nwu_server
+debian/tmp/lib/nwu_server/__init__.py usr/share/python-support/nwu-server/nwu_server
+debian/tmp/lib/nwu_server/sslxmlrpc.py usr/share/python-support/nwu-server/nwu_server
+debian/tmp/bin/nwu usr/bin
+debian/tmp/bin/nwu-server usr/sbin
+nwu-server/sample_conf/server.conf etc/nwu
+nwu-server/README usr/share/doc/nwu-server

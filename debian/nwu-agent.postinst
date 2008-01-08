@@ -1,0 +1,38 @@
+#!/bin/sh -e
+
+USER_NAME=nwuagent
+
+if ! id -u $USER_NAME >/dev/null 2>&1; then
+  adduser --quiet --system --home /var/spool/nwu \
+          --no-create-home \
+          --shell /bin/sh --disabled-login \
+          --gecos 'Network Wide Updates' $USER_NAME
+elif ! test -d /var/spool/nwu; then
+    mkdir /var/spool/nwu
+fi
+
+chown -R $USER_NAME /var/spool/nwu
+chown nwuagent /etc/nwu/agent.conf
+chmod 600 /etc/nwu/agent.conf
+
+. /usr/share/debconf/confmodule
+
+# Check their answer.
+db_get nwu-agent/connection_string
+
+if [ -n "$RET" ]; then
+#  server=$(echo $RET |sed -e 's/\//\\\//g') # only required if user
+                                             # supplied https://, which is not
+                                             # the case anymore
+   server="https:\/\/$RET"
+
+   grep -q -e '^[[:space:]]*server_uri[[:space:]]*=' /etc/nwu/agent.conf
+
+   if [ "$?" -eq 0 ]; then
+      sed -i /etc/nwu/agent.conf -e "s/^\s*server_uri.*/server_uri\ \=\ $server/"
+   else
+      echo "server_uri = $server" >> /etc/nwu/agent.conf
+   fi
+fi
+
+#DEBHELPER#
