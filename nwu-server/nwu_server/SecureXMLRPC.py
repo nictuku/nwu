@@ -98,7 +98,9 @@ class SecureServerConnection(ServerSession):
         #       even though it may have received a valid reply from the server
         #       to report an invalid TLS packet length (only GnuTLS seems to be
         #       affected by this).
-        self.bye()
+        # self.bye()
+        # temp fix to prevent connection hangs
+        self.socket.shutdown(0)
 
 class SecureRequestHandler(SimpleXMLRPCRequestHandler):
     """Extends SimpleXMLRPCRequestHandler."""
@@ -115,7 +117,7 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
         # XXX: debug, print certificate
         #      any other value than None means the client presented us with
         #      a valid certificate.
-        print 'client cert: %s' % (session.peer_certificate)
+        #print 'client cert: %s' % (session.peer_certificate)
 
 class SecureXMLRPCServer(SimpleXMLRPCServer):
     """Implements a gnutls-enabled XML-RPC server"""
