@@ -36,30 +36,30 @@ import unittest
 import logging
 
 log = logging.getLogger()
-hdlr = logging.StreamHandler()
-log.addHandler(hdlr)
+HDLR = logging.StreamHandler()
+log.addHandler(HDLR)
 log.setLevel(logging.DEBUG)
 
 # setup
-new = ''
-empty = """[update_candidates]
+NEW = ''
+EMPTY = """[update_candidates]
 empty = empty
 """
 
-valid = """[cur_pkgs]
+VALID = """[cur_pkgs]
 scim-gtk2-immodule = 1.4.4-1ubuntu12
 python-twisted-conch = 1:0.6.0-5ubuntu1
 ttf-lao = 0.0.20060226-1build1
 xserver-xorg-driver-tseng = 1:1.0.0.5-0ubuntu1
 """
 
-valid_dict = {'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
+VALID_DICT = {'scim-gtk2-immodule': '1.4.4-1ubuntu12', 
             'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
             'python-twisted-conch': '1:0.6.0-5ubuntu1', 
             'ttf-lao': '0.0.20060226-1build1'
             } 
 
-class TestNodeInfo(node_info.NodeInfo):
+class NewNodeInfo(node_info.NodeInfo):
     """NodeInfo class with some methods overloaded to allow testings
     """
     def __init__(self):
@@ -82,7 +82,7 @@ class TestNodeInfo(node_info.NodeInfo):
         result = cache.readfp(stream)
         objects = {}
         if len(cache.sections()) < 1:
-             return {category:'new'}
+            return {category:'new'}
         for s in cache.sections():
             for option, value in cache.items(s):
                 objects[option] = value
@@ -90,61 +90,70 @@ class TestNodeInfo(node_info.NodeInfo):
 
 ## run the tests
         
-agent = nwu_agent.talk.agent_talk(load_config=False)
-m = nwu_agent.maint
-i = TestNodeInfo()
+NWU_MAINT = nwu_agent.maint
+TEST_NODE_INFO = NewNodeInfo()
 
 class TestMe(unittest.TestCase):
 
+    TEST_NODE_INFO.stream = StringIO(VALID)
+ 
     def test_read_spool(self):
   
-        assert i.read_spool('update_candidates',  StringIO(new)) == \
-            {'update_candidates': 'new' }
+        assert TEST_NODE_INFO.read_spool('update_candidates',  StringIO(NEW))\
+ == {'update_candidates': 'new' }
 
-        assert i.read_spool('update_candidates', StringIO(empty)) == \
-            {'empty':'empty'}
+        assert TEST_NODE_INFO.read_spool('update_candidates', StringIO(EMPTY))\
+ == {'empty':'empty'}
  
-        assert i.read_spool('update_candidates', StringIO(valid)) == \
-            valid_dict 
+        assert TEST_NODE_INFO.read_spool('update_candidates', StringIO(VALID))\
+ == VALID_DICT 
 
     def test_diff_dicts(self):
         dict1 = {'A' : 123, 'B': '....', 'C': False }
         dict2 = {'A' : 123, 'B': '....', 'C': False }
-        assert i.diff_dicts(dict1, dict2) == ({},{})
+        assert TEST_NODE_INFO.diff_dicts(dict1, dict2) == ({}, {})
         dict2 = {}
-        assert i.diff_dicts(dict1, dict2) == ({}, dict1)
-        assert i.diff_dicts(dict2, dict1) == (dict1, {})
-        assert i.diff_dicts({}, {}) == ({}, {})    
+        assert TEST_NODE_INFO.diff_dicts(dict1, dict2) == ({}, dict1)
+        assert TEST_NODE_INFO.diff_dicts(dict2, dict1) == (dict1, {})
+        assert TEST_NODE_INFO.diff_dicts({}, {}) == ({}, {})    
 
     def test_apt_get(self):
-        self.assertRaises(Exception, "m.apt_get('BLA')") 
-        self.assertRaises(Exception, "m.apt_get('install', packages='')")
-        self.assertRaises(Exception, "m.apt_get('install', packages=[])")
-        self.assertRaises(Exception, "m.apt_get('install')")
-        assert m.apt_get('install', packages=['foo'] ) == ('apt-get', ['install', 'foo'])
-        assert m.apt_get('update' ) == ('apt-get', ['update'])
-        assert m.apt_get('upgrade', packages=['foo'] ) == ('apt-get', ['upgrade'])
-        assert m.apt_get('install', packages=['foo'], assume_yes=True ) == ('apt-get', [ '--assume-yes', 'install', 'foo'])
-        assert m.apt_get('upgrade', packages=['foo', 'bar'], allow_unauthenticated=True, assume_yes=True ) == \
-            ('apt-get', ['--assume-yes', '--allow-unauthenticated', 'upgrade'])
+        self.assertRaises(Exception, "NWU_MAINT.apt_get('BLA')") 
+        self.assertRaises(Exception, 
+            "NWU_MAINT.apt_get('install', packages='')")
+        self.assertRaises(Exception, 
+            "NWU_MAINT.apt_get('install', packages=[])")
+        self.assertRaises(Exception, "NWU_MAINT.apt_get('install')")
+        assert NWU_MAINT.apt_get('install', packages=['foo'] ) == ('apt-get', 
+            ['install', 'foo'])
+        assert NWU_MAINT.apt_get('update' ) == ('apt-get', ['update'])
+        assert NWU_MAINT.apt_get('upgrade', packages=['foo'] ) == ('apt-get', 
+            ['upgrade'])
+        assert NWU_MAINT.apt_get('install', packages=['foo'], 
+            assume_yes=True ) == ('apt-get', 
+            [ '--assume-yes', 'install', 'foo'])
+        assert NWU_MAINT.apt_get('upgrade', packages=['foo', 'bar'], \
+allow_unauthenticated=True, assume_yes=True ) == \
+            ('apt-get', ['--assume-yes', '--allow-unauthenticated', 
+            'upgrade'])
 
     def test_is_safe(self):
-        assert m.is_safe('xx:') == False
-        assert m.is_safe('`') == False
-        assert m.is_safe("'") == False
-        assert m.is_safe('"') == False
-        assert m.is_safe('12._') == True
-        assert m.is_safe('xx:', True) == True
+        assert NWU_MAINT.is_safe('xx:') == False
+        assert NWU_MAINT.is_safe('`') == False
+        assert NWU_MAINT.is_safe("'") == False
+        assert NWU_MAINT.is_safe('"') == False
+        assert NWU_MAINT.is_safe('12._') == True
+        assert NWU_MAINT.is_safe('xx:', True) == True
 
     def test_rep_valid(self):
-        assert m.rep_valid('deb') == False
-        assert m.rep_valid('deb incomplete') == False
-        assert m.rep_valid('deb-invalid url component') == False
-        assert m.rep_valid('deb http://bla.com ./') == True
-        assert m.rep_valid('deb-src http://bla.com distro component1 component2') == True
+        assert NWU_MAINT.rep_valid('deb') == False
+        assert NWU_MAINT.rep_valid('deb incomplete') == False
+        assert NWU_MAINT.rep_valid('deb-invalid url component') == False
+        assert NWU_MAINT.rep_valid('deb http://bla.com ./') == True
+        assert NWU_MAINT.rep_valid('deb-src http://bla.com distro component1 \
+component2') == True
 
     def test_changes(self):
-        i.stream = StringIO(valid)
         update_candidates =  { 
             'python-glade2' : '2.12.0-0ubuntu2',
             'python-gmenu' : '2.20.1-0ubuntu1',
@@ -152,14 +161,14 @@ class TestMe(unittest.TestCase):
             'xserver-xorg-driver-tseng': '1:1.0.0.5-0ubuntu1', 
             }
 
-        i.info = { 
+        TEST_NODE_INFO.info = { 
             'update_candidates' : update_candidates
         }
-        diff_spool = i.diff_new_spool('update_candidates')
+        diff_spool = TEST_NODE_INFO.diff_new_spool('update_candidates')
         log.debug("cached: %s" % str(diff_spool[0]))
         log.debug("current: %s" % str(diff_spool[1]))
         log.debug("diff: %s" % str(diff_spool[2]))
-        assert diff_spool[0] == valid_dict
+        assert diff_spool[0] == VALID_DICT
         assert diff_spool[1] == update_candidates
         assert diff_spool[2] == (
             { 'python-gnome2': '2.20.0-0ubuntu1',
@@ -172,12 +181,12 @@ class TestMe(unittest.TestCase):
 
         # testing get_changes
         try:
-            i.full_data['update_candidates']
+            TEST_NODE_INFO.full_data['update_candidates']
         except KeyError:
             pass
         else:
             self.fail("Expected an AttributeError")
-        i.get_changes('update_candidates')
+        TEST_NODE_INFO.get_changes('update_candidates')
         # FIXME: broken test. continue from here
-        # assert i.full_data['update_candidates'] == 'BROKEN'
+        # assert TEST_NODE_INFO.full_data['update_candidates'] == 'BROKEN'
  
