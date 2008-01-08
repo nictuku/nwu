@@ -6,7 +6,7 @@
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -17,10 +17,14 @@
 #
 # ChangeLog:
 #   2008-01-08   Stephan Peijnik <sp@gnu.org>
+#           * Fixing problems with stale connection (only caused by old 
+#             clients).
+#           * Finally fix unclean socket shutdown in server.
 #           * Documentation of the client code.
 #           * Preparations for TLS authentication support.
 #             NOTE: For this to work both the client and the server need
 #                   a valid certificate signed by the same CA!
+#           * Version 0.3.2
 #   2008-01-05  Stephan Peijnik <sp@gnu.org>
 #           * Changed versioning scheme to x.y.z instead of x.y
 #           * Version 0.3.1
@@ -86,7 +90,7 @@ from gnutls.errors import CertificateSecurityError
 
 __all__ = ['SecureXMLRPCServer', 'SecureRequestHandler', 'SecureProxy',
            'SecureTransport']
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 
 class SecureServerConnection(ServerSession):
     """ Extends GnuTLS' ServerSession """
@@ -94,12 +98,21 @@ class SecureServerConnection(ServerSession):
         """ Overrides GnuTLS' ServerSession.shutdown.
         
         Needed in order to avoid problems in the client. """
-        # NOTE: simply closing the connection will cause the client,
-        #       even though it may have received a valid reply from the server
-        #       to report an invalid TLS packet length (only GnuTLS seems to be
-        #       affected by this).
-        # self.bye()
-        # temp fix to prevent connection hangs
+
+        # Seems like this is the final fix to the problem:
+        # GnuTLS uses TLS 1.1, whilst OpenSSL seems to use TLS 1.0.
+        # The GnuTLS clients require the server to do a graceful shutdown,
+        # whilst the OpenSSL clients break if you do a graceful shutdown
+        # of the connection.
+        # NOTE: This could be a workaround and might need some additional 
+        #       testing!
+        #       This needs some research, it's likely that this is a bug in
+        #       OpenSSL or python's SSL implementation.
+        if self.protocol == 'TLS 1.1':
+            try:
+                self.bye()
+            except Exception, e:
+                pass
         self.socket.shutdown(0)
 
 class SecureRequestHandler(SimpleXMLRPCRequestHandler):
@@ -114,10 +127,7 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
         SimpleXMLRPCRequestHandler.setup(self)
         self.rfile = _fileobject(self.request, 'rb', self.rbufsize)
         self.wfile = _fileobject(self.request, 'wb', self.wbufsize)
-        # XXX: debug, print certificate
-        #      any other value than None means the client presented us with
-        #      a valid certificate.
-        #print 'client cert: %s' % (session.peer_certificate)
+        self.certificate = self.request.peer_certificate
 
 class SecureXMLRPCServer(SimpleXMLRPCServer):
     """Implements a gnutls-enabled XML-RPC server"""
@@ -180,7 +190,12 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
                 pass
         except Exception, e:
             print 'Handshake failed: %s' % (e)
-            session.bye()
+            try:
+                if session.protocol == 'TLS 1.1':
+                    session.bye()
+            except Exception, e:
+                # ignore any exceptions here!
+                pass
             new_sock.close()
             # raising a socket error should cause SocketServer.BaseServer's
             # handle_request to return cleanly.
@@ -215,7 +230,13 @@ class GNUTLSSocket(ClientSession):
     def read(self, size):
         """ Reads data from the socket (ClientSession does not implement read
         but recv)."""
-        return self.recv(size)
+        # Client side workaround of the GnuTLS vs. OpenSSL issue.
+        # This should the client cause not to break even after an unclean
+        # shutdown of the connection.
+        try:
+            return self.recv(size)
+        except Exception, e:
+            return ''
 
 class GNUTLSHTTPSConnection(HTTPConnection):
     """ This class implements communication via GNUTLS (SSL/TLS) """
