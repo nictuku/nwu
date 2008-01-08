@@ -24,7 +24,7 @@ provides data and methods for controlling the nwu hosts database.
 from md5 import md5
 import logging
 from db.operation import *
-log = logging.getLogger('nwu_server.rpc_admin')
+log = logging.getLogger('nwu.server.rpc_admin')
 
 class NwuAdmin:
     """RPC methods that control the database using

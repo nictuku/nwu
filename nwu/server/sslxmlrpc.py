@@ -21,14 +21,14 @@
 
 import logging
 
-from SecureXMLRPC import SecureXMLRPCServer
+from nwu.common.SecureXMLRPC import SecureXMLRPCServer
 
 # XXX: admin temporarily deactivated
-#from nwu_server.rpc_admin import nwu_admin
-from nwu_server.db.operation import *
-from nwu_server.rpc_agents import *
+#from nwu.server.rpc_admin import nwu_admin
+from nwu.server.db.operation import *
+from nwu.server.rpc_agents import *
 
-log = logging.getLogger("nwu_server.db.sslxmlrpc")
+log = logging.getLogger("nwu.server.db.sslxmlrpc")
 
 def get_refcounts():
     d = {}

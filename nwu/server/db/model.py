@@ -25,7 +25,7 @@ import logging
 # FIXME: wildcard imports should not be used
 from elixir import *
 
-log = logging.getLogger('nwu_server.db.model')
+log = logging.getLogger('nwu.server.db.model')
 
 new_map = { 'update_candidates' : 'UpdateCandidates',
     'current_packages' : 'CurrentPackages',

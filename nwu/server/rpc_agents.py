@@ -23,11 +23,11 @@
 import sys
 import hmac
 import logging
-from nwu_server.db.operation import *
+from nwu.server.db.operation import *
 #cfg = read_conf()
 
 #metadata.bind(cfg.connection_string)
-log = logging.getLogger('nwu_server.rpc_agents')
+log = logging.getLogger('nwu.server.rpc_agents')
 
 class RPC:
 

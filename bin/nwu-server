@@ -25,8 +25,8 @@ import pwd
 from optparse import OptionParser
 import logging
 import logging.handlers
-from nwu_server.db import model as db
-from nwu_server.config import read_config
+from nwu.server.db import model as db
+from nwu.server.config import read_config
 
 def drop_privileges(user):
     log.info("Running as user '" + str(user) + "'.")
@@ -149,7 +149,6 @@ if __name__ == '__main__':
     log = logging.getLogger()
     
     config = read_config(options.config)
-    print config
     
     # only 
     dbtype = config.get('databasetype', '')
@@ -190,6 +189,6 @@ the syslog daemon running?"
     log.addHandler(hdlr)
     log.setLevel(eval('logging.' + options.loglevel)) 
 
-    from nwu_server import sslxmlrpc
+    from nwu.server import sslxmlrpc
 
     nwu_main(config)

@@ -19,9 +19,11 @@
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from nwu_server.db.model import Computer, Tasks, UpdateCandidates
-from nwu_server.db.model import session, metadata, setup_all
-from nwu_server.config import read_config
+from nwu.server.db.model import Computer, Tasks, UpdateCandidates
+from nwu.server.db.model import session, metadata, setup_all
+
+# XXX: What about using nwu.common.config directly?
+from nwu.server.config import read_config
 
 VERSION = '0.1.7'
 

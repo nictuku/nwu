@@ -24,7 +24,7 @@ import hmac
 import logging
 import md5
 
-from nwu_server.db.model import *
+from nwu.server.db.model import *
 
 class Local:
     def update_tbl_version(tbl, comp_uniq): 

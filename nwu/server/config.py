@@ -21,11 +21,12 @@
 """Reads and parses the configuration for nwu-server
 """
 # Make use of new config parser.
-# XXX: nwu_server.Config is going to become nwu.common.config after
-#      re-structuring.
-from nwu_server.Config import Config
+#
+# XXX: Can we completly get rid of this module? We could use nwu.common.config
+#      directly.
+from nwu.common.config import Config
 import logging
-log = logging.getLogger('nwu_server.config')
+log = logging.getLogger('nwu.server.config')
 
 def read_config(config_path):
     """Reads configuration data from the config file.
