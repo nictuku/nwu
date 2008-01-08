@@ -1,0 +1,13 @@
+Network wide updates for systems using APT.
+
+nwu is free software and licensed under the GPLv3 or later.
+Some small components are also licensed under the LGPLv3 or later.
+
+The complete text of the licenses can be found in COPYING and COPYING.LIB.
+
+
+Every component now has its own README file which can be found in
+nwu/<component>/README, such as nwu/server/README.
+Changelog files are also per-component now.
+
+Documentation can be found in doc/<component>/.
