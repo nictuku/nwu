@@ -1,0 +1,139 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+#   Copyright (C) 2006-2008 Yves Junqueira (yves@cetico.org)
+#
+#    This file is part of NWU.
+#
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Network Wide Updates maintenance script.
+
+This is called by cron and runs as root.
+"""
+import ConfigParser 
+import os 
+import fcntl
+import sys
+import logging
+import logging.handlers
+from nwu.agent.maint import *
+
+from nwu.common import is_safe
+
+#print >>sys.stderr,"All messages will be sent to syslog"
+
+log = logging.getLogger('nwu-maint')
+hdlr = logging.handlers.SysLogHandler(
+  "/dev/log",facility=logging.handlers.SysLogHandler.LOG_USER)
+formatter = logging.Formatter(
+"nwu_maint[%(process)d] %(levelname)s %(message)s"
+    )
+hdlr.setFormatter(formatter)
+log.addHandler(hdlr)
+log.setLevel(logging.DEBUG)
+
+def main():
+    # unit test: N/A
+    log.debug("Acquiring lock")
+    lock =  fcntl.LOCK_EX | fcntl.LOCK_NB
+    filename = '/var/spool/nwu/maintlock'
+    for retry in (1, 0):
+        try:
+            lock_fd = open(filename, 'a')
+            break
+        except IOError, val:    # No such file or directory?
+            if not retry or os.path.exists(filename):
+                raise
+            # Ensure filename exists.
+            open(filename, 'w').close()
+    try:
+        fcntl.lockf(lock_fd, lock)
+    except IOError:
+        log.fatal("Error obtaining exclusive lock.")
+        sys.exit(1)
+    else:
+        log.debug("Lock acquired successfully")
+
+    accepted_actions = ['update', 'install', 'forceinstall', 'upgrade', 'addrep']
+    task_spool_path = "/var/spool/nwu/nw.tasks"
+    if not os.access(task_spool_path, os.F_OK):
+        log.info("Task file not found. Exiting.")
+        sys.exit(1)
+    action_file = ConfigParser.ConfigParser()
+    r = action_file.read(task_spool_path)
+    if r and len(r) == 0:
+        log.warn("Could not read the task file in" + task_spool_path)
+        sys.exit(1)
+    actions = action_file.sections()
+    # FIXME: currently, if a task is set many times, it will run many times
+    for act in actions:
+        # Sample structure 
+        # act = 'update', details = [None]
+        # act = 'upgrade', details = [None]
+        # act = 'install', details = ['package1', 'package2', 'package3']
+        if act not in accepted_actions:
+            log.warn("Bogus task section found. Deleting %s" % act)
+            action_file.remove_section(act)
+            continue
+        log.debug("Running pending '%s' task" % act)
+        details = action_file.options(act)
+        status = {}
+        # Iterate over the list of task details (package names for example)
+        iterate_list = details[:]
+        if len(iterate_list) == 0:
+            continue
+        if act == 'addrep':
+            for my_rep in iterate_list:
+                if is_safe(my_rep) and is_safe(extra, http=True):
+                    extra = action_file.get(act, my_rep)
+                    rep_add(extra)
+        elif act == 'update':
+            run = apt_get('update')
+            ret = run_apt_get(run[0], run[1])
+        elif act == 'upgrade':
+            run = apt_get('upgrade', assume_yes=True)
+            ret = run_apt_get(run[0], run[1])
+        elif act == 'forceinstall':
+            run = apt_get('install', packages=details,
+                allow_unauthenticated=True, assume_yes=True)
+            ret = run_apt_get(run[0], run[1])
+        elif act == 'install':
+            run = apt_get('install', packages=details,
+                assume_yes=True)
+            ret = run_apt_get(run[0], run[1])
+        else:
+            log.warn("Unrecognized task: " + act)
+        log.info("Clearing task %s" % act)
+        # should I remove the task from the queue, even if it failed?
+        # if we do, some operations that should be tried again would not
+        # like a locked dpkg
+
+        # if ret == 0:   
+	if True:  # always update spool
+            for detail in details:
+                action_file.remove_option(act, detail)
+    try:
+        updt_spool = open(task_spool_path, 'w')
+    except:
+        log.error("!!! Problem writing to spool directory in " + task_spool_path)
+        pass
+    else:
+        log.info("Updating task spool file.")
+        action_file.write(updt_spool)
+    #    if len(action_file.sections()) == 0:
+    #        print "Deleting", task_spool_path, "task spool."
+    #        os.unlink(task_spool_path)
+
+main()
