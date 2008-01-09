@@ -24,13 +24,14 @@ from nwu.common.config import Config
 
 class Option:
     """ Command line option """
-    def __init__(self, longName, help, shortName=None, argument=False):
+    def __init__(self, longName, help, shortName=None, argument=False,
+                 default=None):
         self.longName = longName
         self.shortName = shortName
         self.argument = argument
         self.help = help
         self.present = False
-        self.value = None
+        self.value = default
 
 class Command:
     """ Command base class.
@@ -90,9 +91,11 @@ class Command:
         cmd = self.commands[cmdName]
         return cmd.execute_command(app, args)
 
-    def register_option(self, longName, help, shortName=None, argument=False):
+    def register_option(self, longName, help, shortName=None, argument=False,
+                        default=None):
         """ Registers a command line option. """
-        self.options[longName] = Option(longName, help, shortName, argument)
+        self.options[longName] = Option(longName, help, shortName, argument,
+                                        default=default)
 
     def find_option(self, name, short=False):
         """ Used internally """
@@ -122,8 +125,6 @@ class Command:
         Returns None for options which were not set and for options
         which do not require an argument.
         """
-        if not self.option_is_set(name):
-            return None
         return self.options[name].value
 
     def parse_options(self, app, args):
@@ -236,10 +237,10 @@ class Command:
                 if opt.shortName:
                     s += '-%s,' % (opt.shortName)
                 else:
-                    s += '    '
+                    s += '   '
                 s += '--%s' % (opt.longName)
 
-                if o.argument:
+                if opt.argument:
                     s+= '=value'
 
                 for i in range(len(s), maxLength):
