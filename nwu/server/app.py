@@ -80,9 +80,14 @@ class CryptoHelper:
         self.app = app
         self.config = app.config
         self.log = app.log
+        self.admin_key = app.config_path(app.config.get(\
+                'crypto', 'adminkey', app.DEFAULT_ADMIN_KEY))
+        self.admin_cert = app.config_path(app.config.get(\
+                'crypto', 'admincert', app.DEFAULT_ADMIN_CERT))
 
     def initCrypto(self):
         # step 0: reset/create ca_serial file
+        os.chmod(self.app.ca_serial, stat.S_IWUSR)
         fp = open(self.app.ca_serial, 'w')
         fp.write('1')
         fp.close()
@@ -143,8 +148,31 @@ class CryptoHelper:
         fp = open(self.app.server_cert, 'w')
         fp.write(server_cert)
         fp.close()
+
+        self.log.info('Generating administrator client private key. This'
+                      ' may take some time.')
+
+        admin_key = certtool.generate_privkey()
+        self.log.info('Administrator client key generated.')
+        fp = open(self.admin_key, 'w')
+        fp.write(admin_key)
+        fp.close()
+        os.chmod(self.admin_key, stat.S_IRUSR)
+
+        self.log.info('Generating administrator client certificate.')
+        # expiration_days not set to make sure this certificate never expires.
+        admin_serial = self.get_next_serial()
+        template = ['cn = root', 'tls_www_client', 
+                    'serial = %s' % (admin_serial) ]
+        admin_cert = certtool.generate_certificate_from_privkey(
+            ca['key'], ca['cert'], admin_key, template)
+
+        fp = open(self.admin_cert, 'w')
+        fp.write(admin_cert)
+        fp.close()
+        self.log.info('Administrator client certificate generated.')
+
         self.log.info('Crypto initialization finished.')
-                                                                 
 
     def get_input(self, request, target):
         while True:
@@ -158,7 +186,7 @@ class CryptoHelper:
         fp = open(self.app.ca_serial, 'r')
         cur_serial = int(fp.read())
         fp.close()
-        os.chmod(self.app.ca_serial, stat.S_IWUSR)
+        os.chmod(self.app.ca_serial, stat.S_IWUSR|stat.S_IRUSR)
         fp = open(self.app.ca_serial, 'w')
         fp.write(str(cur_serial + 1))
         fp.close()
@@ -195,13 +223,16 @@ class ServerApp(Application):
     # DEFAULT SETTINGS
     DEFAULT_DB_DB = '/var/lib/nwu/nwu.db'
     DEFAULT_DB_TYPE = 'sqlite'
+    DEFAULT_CONFIG_BASE = '/etc/nwu/'
     DEFAULT_CONFIG = '/etc/nwu/server.conf'
-    DEFAULT_CA_CERT = '/etc/nwu/cacert.pem'
-    DEFAULT_CA_KEY = '/etc/nwu/cakey.pem'
-    DEFAULT_SERVER_CERT = '/etc/nwu/server.crt'
-    DEFAULT_SERVER_KEY = '/etc/nwu/server.key'
-    DEFAULT_CA_SERIAL = '/etc/nwu/ca_serial'
-    DEFAULT_CA_CRL = '/etc/nwu/ca.crl'
+    DEFAULT_CA_CERT = 'cacert.pem'
+    DEFAULT_CA_KEY = 'cakey.pem'
+    DEFAULT_SERVER_CERT = 'server.crt'
+    DEFAULT_SERVER_KEY = 'server.key'
+    DEFAULT_CA_SERIAL = 'ca_serial'
+    DEFAULT_CA_CRL = 'ca.crl'
+    DEFAULT_ADMIN_CERT = 'admin.crt'
+    DEFAULT_ADMIN_KEY = 'admin.key'
     DEFAULT_ERRORLOG = '/dev/null'
     DEFAULT_LOGLEVEL = 'INFO'
     DEFAULT_PIDFILE = '/var/run/nwu/nwu-server.pid'
@@ -454,21 +485,32 @@ class ServerApp(Application):
             raise Exception('Security violation: %s is world-accessible.' 
                             % (path))
 
+    def config_path(self, filename):
+        # Do not touch absolute paths.
+        if filename[0] == '/' or (filename[0] == '.' and filename[1] == '/'): 
+            return filename
+        
+        return os.path.join(self.config.get(
+                'general', 'configbase', ServerApp.DEFAULT_CONFIG_BASE),
+                            filename)
+                                            
+
     def init_crypto(self, fail=True):
         # Load crypto-specific files.
         try:
-            self.ca_cert = self.config.get('crypto', 'cacert',
-                                           ServerApp.DEFAULT_CA_CERT)
-            self.ca_key = self.config.get('crypto', 'cakey',
-                                          ServerApp.DEFAULT_CA_KEY)
-            self.ca_crl = self.config.get('crypto', 'cacrl',
-                                          ServerApp.DEFAULT_CA_CRL)
-            self.ca_serial = self.config.get('crypto', 'caserial',
-                                             ServerApp.DEFAULT_CA_SERIAL)
-            self.server_cert =self.config.get('crypto', 'servercert',
-                                              ServerApp.DEFAULT_SERVER_CERT)
-            self.server_key = self.config.get('crypto', 'serverkey',
-                                              ServerApp.DEFAULT_SERVER_KEY)
+            self.ca_cert = self.config_path(self.config.get(\
+                    'crypto', 'cacert', ServerApp.DEFAULT_CA_CERT))
+            self.ca_key = self.config_path(self.config.get(\
+                    'crypto', 'cakey', ServerApp.DEFAULT_CA_KEY))
+            # XXX: Unused for now.
+            self.ca_crl = self.config_path(self.config.get(\
+                    'crypto', 'cacrl', ServerApp.DEFAULT_CA_CRL))
+            self.ca_serial = self.config_path(self.config.get(\
+                    'crypto', 'caserial', ServerApp.DEFAULT_CA_SERIAL))
+            self.server_cert = self.config_path(self.config.get(\
+                    'crypto', 'servercert', ServerApp.DEFAULT_SERVER_CERT))
+            self.server_key = self.config_path(self.config.get(\
+                    'crypto', 'serverkey', ServerApp.DEFAULT_SERVER_KEY))
 
             self.cryptoHelper = CryptoHelper(self)
 

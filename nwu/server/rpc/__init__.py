@@ -18,6 +18,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
+from gnutls.crypto import X509Certificate
+
 from nwu.common.rpc import RPCError
 from nwu.server.db.model import Account
 
@@ -91,6 +93,29 @@ class RPCDispatcher:
         self.config = app.config
         self.log = app.log
         self.handlers = {}
+
+        # Check if administrator account is present and privileges are correct.
+        admin_cert_file = app.config_path(
+            app.config.get('crypto', 'admincert', app.DEFAULT_ADMIN_CERT))
+        admin_cert = open(admin_cert_file, 'r').read()
+
+        cert = X509Certificate(admin_cert)
+        serial = cert.serial_number
+
+        ac = Account.query.filter_by(cert_serial_number=serial)
+
+        if ac.count() == 0:
+            ac = Account(name='root', csr='ROOT_CSR', 
+                         cert_serial_number=serial, cert=admin_cert,
+                         privileges=PRIV_ADMIN)
+            ac.save()
+            ac.flush()
+        else:
+            ac = ac.first()
+            if ac.privileges < PRIV_ADMIN:
+                ac.privileges = PRIV_ADMIN
+                ac.save()
+                ac.flush()
         
     def register_handler(self, name, handler, privileges=None):
         self.handlers[name] = handler
@@ -101,7 +126,8 @@ class RPCDispatcher:
 
             acc = Account.query.filter_by(cert_serial_number=cert_serial)
 
-            if acc:
+            if acc.count() > 0:
+                acc = acc.first()
                 return (acc.privileges, acc)
 
             # Fall-through
