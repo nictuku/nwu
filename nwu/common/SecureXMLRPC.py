@@ -244,11 +244,14 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
             # check to see if a subclass implements _dispatch and dispatch
             # using the method if present (Should not apply for us).
             #
-            # Additional argument (certificate) is passed to the dispatcher
-            # method.
+            # Two additional arguments (certificate, remote_host) are passed 
+            # to the dispatcher method.
+            remote_host = self.request.socket.getpeername()[0]
+
             response = self.server._marshaled_dispatch(
-                data, getattr(self, '_dispatch', None), self.certificate)
-        except:
+                data, getattr(self, '_dispatch', None), self.certificate,
+                remote_host)
+        except Exception, e:
             # interal error, report as HTTP server error
             self.send_response(500)
             self.end_headers()
@@ -273,10 +276,12 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
 
 class SecureXMLRPCServer(SimpleXMLRPCServer):
     """Implements a gnutls-enabled XML-RPC server"""
-    def __init__(self, addr, pem_file, ca_cert_file, *args, **kwargs):
+    def __init__(self, addr, key_file, cert_file, ca_cert_file, *args, 
+                 **kwargs):
         """Initialize a new instance, passing the bind address and
         the path to a PEM file."""
-        self.pem_file = pem_file
+        self.key_file = key_file
+        self.cert_file = cert_file
         self.ca_cert_file = ca_cert_file
 
         self._tls_init()
@@ -294,11 +299,13 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
         Creates an X509Credentials instance using the PEM file pased to 
         __init__.
         """
-        if not os.path.exists(self.pem_file):
-            print '[ERROR] TLS PEM file does not exist: %s' % (self.pem_file)
+        if not os.path.exists(self.key_file) or \
+                not os.path.exists(self.cert_file):
+            print '[ERROR] Key or certificate file missing.'
             sys.exit(255)
-        cert = X509Certificate(open(self.pem_file).read())
-        key = X509PrivateKey(open(self.pem_file).read())
+
+        cert = X509Certificate(open(self.cert_file).read())
+        key = X509PrivateKey(open(self.key_file).read())
         ca_cert = X509Certificate(open(self.ca_cert_file).read())
         self.__X509Creds = X509Credentials(cert, key, [ca_cert])
 
@@ -346,7 +353,7 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
         return (session, addr)
 
     def _marshaled_dispatch(self, data, dispatch_method = None, 
-                            certificate=None):
+                            certificate=None, remote_host=None):
         """ Overrides SecureXMLRPCDispatcher's _marshaled_dispatch method.
 
         This method is heavily based on the code found in the original 
@@ -363,9 +370,10 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
         try:
             params, method = xmlrpclib.loads(data)
 
-            # inject certificate into params, it becomes the first parameter.
+            # inject certificate and remote_host as first two values
+            # into params.
             # XXX: Is there a cleaner way to do this?
-            params_new = (certificate, )
+            params_new = (certificate, remote_host, )
             params_new += params
             params = params_new
 
@@ -517,9 +525,11 @@ class SecureTransport(xmlrpclib.Transport):
         """
         if not self.disable_gzip and HAVE_COMPRESSION:
             try:
-                xmlrpclib.Transport.request(self, host, handler, request_body,
-                                            verbose=verbose)
-            except xmlrpclib.ProtocolError, e:
+                res = xmlrpclib.Transport.request(self, host, handler, 
+                                                  request_body,
+                                                  verbose=verbose)
+                return res
+            except xmlrpclib.ProtocolError:
                 # Fall back to non-gzip mode, re-send request.
                 self.disable_gzip = True
                 return self.request(host, handler, request_body, 

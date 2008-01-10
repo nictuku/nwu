@@ -30,7 +30,8 @@ log = logging.getLogger('nwu.server.db.model')
 new_map = { 'update_candidates' : 'UpdateCandidates',
     'current_packages' : 'CurrentPackages',
     'repositories' : 'Repositories',
-    'tasks' : 'Tasks' }
+    'tasks' : 'Tasks',
+    'account': 'Account'}
 
 class TablesVersion(Entity):
     using_options(tablename='tables_version')
@@ -52,6 +53,8 @@ class Computer(Entity):
     has_many('update_candidates', of_kind='UpdateCandidates',inverse='computer')
     has_many('repositories', of_kind='Repositories',inverse='computer')
     has_many('tasks', of_kind='Tasks')
+
+    belongs_to('account', of_kind='Account', required=False)
 
     def __repr__(self):
         return '<Computer %s(%s)>' % (self.hostname, self.id)
@@ -104,21 +107,34 @@ class Tasks(Entity):
 
     belongs_to('computer', of_kind='Computer', inverse='tasks')
 
-class Users(Entity):
-    using_options(tablename='users')
+class Account(Entity):
+    using_options(tablename='account')
+    
+    name = Field(String(255), unique=True)
+    csr = Field(String, unique=True)
+    cert_serial_number = Field(Integer, default=-1)
+    cert = Field(String, default=None)
+    privileges = Field(Integer, default=0)
 
-    username = Field(String(255), unique=True)
-    password = Field(String(255))
-    userlevel= Field(Integer)
+    has_one('computer', of_kind='Computer', inverse='account')
 
-def create_tables(config):
+    def __repr__(self):
+        return '<Account: %s>' % (self.name)
+        
+
+def db_bind(connection_string, rebind=False):
+    """ Binds a database connection. """
+    if not metadata.is_bound() or rebind:
+        metadata.bind = connection_string
+        setup_all()
+        return True
+    return False
+
+def create_tables():
     """Creates required tables in the database.
     """
+    if not metadata.is_bound():
+        raise Exception('Database connection not initialized yet.')
     log.debug("Creating necessary tables in the database.")
-    metadata.bind=config['connection_string']
-    setup_all()
     create_all()
-
-if __name__ == '__main__':
-
-    sys.exit(0)
+    session.flush()

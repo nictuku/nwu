@@ -156,7 +156,7 @@ class Command:
 
                     # option with a value?
                     if '=' in name:
-                        name, value = name.split('=', 2)
+                        name, value = name.split('=', 1)
                     
                     # This only happens with multiple short options and a value
                     if short and len(name) > 1:

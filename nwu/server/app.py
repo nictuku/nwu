@@ -32,6 +32,10 @@ from nwu.common import certtool
 from nwu.common.app import Application, Command
 from nwu.common.SecureXMLRPC import SecureXMLRPCServer
 
+from nwu.server.db.model import db_bind, create_tables
+from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS
+from nwu.server.rpc.anonymous import AnonymousHandler
+
 class ServerRootCommand(Command):
     def execute(self, app, args, cmdName=None):
         if len(args) > 0 or cmdName:
@@ -59,14 +63,19 @@ class ServerRootCommand(Command):
         if not self.option_is_set('foreground'):
             app.log.info('Daemonizing.')
             app.daemonize()
-            app.drop_privileges(self.option_get_value('user'))
+        app.drop_privileges()
 
         app.init_crypto()
+        app.init_db()
 
         # This method should never return as it starts the server.
         app.init_server()
 
 class CryptoHelper:
+    # As discussed on the mailing list: 730 days is probably a good choice
+    # for certificates to expire.
+    CERT_EXPIRATION_DAYS = 730
+
     def __init__(self, app):
         self.app = app
         self.config = app.config
@@ -124,7 +133,9 @@ class CryptoHelper:
         template = ['cn = %s' % (server_name), 
                     'organization = %s' % (server_org),
                     'tls_www_server', 'encryption_key', 'signing_key',
-                    'serial = %s' % (self.get_next_serial())]
+                    'serial = %s' % (self.get_next_serial()),
+                    'expiration_days = %d' 
+                    % (CryptoHelper.CERT_EXPIRATION_DAYS)]
         server_cert = certtool.generate_certificate_from_privkey(
             ca['key'], ca['cert'], server_key, template)
 
@@ -160,14 +171,25 @@ class CryptoHelper:
         serial = self.get_next_serial()
         cert = certtool.generate_certificate_from_csr(
             ca_key, ca_cert, csr, ['tls_www_client', 'serial = %d' 
-                                   % (serial)])
+                                   % (serial),
+                                   'expiration_days = %d' 
+                                   % (CryptoHelper.CERTIFICATE_EXPIRATION_DAYS)
+                                   ])
         return {'certificate': cert, 'serial': serial}
                                                       
         
 
 class Server(SecureXMLRPCServer):
-    def __init__(self, app):
-        pass
+    def __init__(self, host, port, app):
+        SecureXMLRPCServer.__init__(self, (host, port),
+                                    app.server_key, app.server_cert,
+                                    app.ca_cert)
+
+        self.dispatcher = RPCDispatcher(app)
+        self.register_instance(self.dispatcher)
+        # Register handler classes.
+        self.dispatcher.register_handler('anon', AnonymousHandler(app), 
+                                         PRIV_ANONYMOUS)
 
 class ServerApp(Application):
     # DEFAULT SETTINGS
@@ -234,14 +256,19 @@ class ServerApp(Application):
 
         # Per-database type initialization
         if dbtype == 'sqlite' or force:
-            # XXX: What do we need to pass to that function?
-            # db.create_tables(None)
-            pass
+            self.init_db()
+            create_tables()
 
         # Warn the user that nothing has happened.
         else:
             print 'Initialization of database with type %s not possible.' \
                 % (dbtype)
+
+        if dbtype == 'sqlite':
+            dbfile = self.config.get('database', 'database', 
+                                     ServerApp.DEFAULT_DB_DB)
+            # Fix file permissions.
+            os.chmod(dbfile, stat.S_IRUSR|stat.S_IWUSR)
 
         # After DB initialization we have to do crypto initialization.
         if not force or not self.rootCommand.option_is_set('foreground'):
@@ -259,7 +286,7 @@ class ServerApp(Application):
 
     def init_db(self):
         # get settings from config file
-        dbtype = self.config.get('database', 'type',
+        db_type = self.config.get('database', 'type',
                                  ServerApp.DEFAULT_DB_TYPE)
         db_host = self.config.get('database', 'host')
         db_database = self.config.get('database', 'database', 
@@ -280,6 +307,8 @@ class ServerApp(Application):
         # Check file permissions of sqlite database file.
         if db_type == 'sqlite':
             self.check_file_security(db_database, allowGroup=True)
+
+        db_bind(self.db_connstring)
 
     def drop_privileges(self):
         user = self.rootCommand.option_get_value('user')
@@ -377,9 +406,9 @@ class ServerApp(Application):
             self.exit(255)
 
         try:
-            self.server = Server(host, port, app)
-            log.info('Starting nwu-server. Listening at ' + host +
-                     ':' + port + '.')
+            self.server = Server(host, port, self)
+            self.log.info('Starting nwu-server. Listening at %s:%d.'\
+                              % (host, port))
             self.server.serve_forever()
         except:
             self.log.error(traceback.format_exc())
@@ -407,7 +436,11 @@ class ServerApp(Application):
     
     def check_file_security(self, path, allowGroup=False):
         ''' Checks whether a file's permissions are secure. '''
-        statres = os.stat(path)
+        try:
+            statres = os.stat(path)
+        except OSError, e:
+            return True
+
         mode = statres[stat.ST_MODE]
 
         if not allowGroup:
