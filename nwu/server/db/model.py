@@ -45,7 +45,6 @@ class Computer(Entity):
 
     uniq = Field(String(32),unique=True)
     hostname = Field(String(255))
-    password = Field(String(255))
     os_name = Field(String(255))
     os_version = Field(String(255))
     
@@ -59,11 +58,22 @@ class Computer(Entity):
     def __repr__(self):
         return '<Computer %s(%s)>' % (self.hostname, self.id)
 
+    def to_dict(self):
+        account_id = 0
+        if self.account:
+            account_id = self.account.oid
+        return {'id': self.oid, 'hostname': self.hostname, 
+                'os_name': self.os_name, 'os_version': self.os_version,
+                'account_id': account_id}
+
 class CurrentPackages(Entity):
     using_options(tablename='current_packages')
     
     name = Field(String(255))
     version = Field(String(30))
+    
+    def to_dict(self):
+        return {'id': self.oid, 'name': self.name, 'version': self.version}
 
     belongs_to('computer', of_kind='Computer', inverse='current_packages')
 #    class sqlmeta:
@@ -75,7 +85,11 @@ class UpdateCandidates(Entity):
     name = Field(String(255))
     version = Field(String(30))
 
+    def to_dict(self):
+        return {'id': self.oid, 'name': self.name, 'version': self.version}
+
     belongs_to('computer', of_kind='Computer', inverse='update_candidates')
+
 
 #    class sqlmeta:
 #        defaultOrder = 'name'
@@ -97,6 +111,11 @@ class Repositories(Entity):
     distribution = Field(String(255))
     components = Field(String) # space separated list of components
 
+    def to_dict(self):
+        return {'id': self.oid, 'filename': self.filename, 'type': self.type,
+                'uri': self.uri, 'distribution': self.distribution,
+                'components': self.components}
+
     belongs_to('computer', of_kind='Computer', inverse='repositores')
 
 class Tasks(Entity):
@@ -104,6 +123,10 @@ class Tasks(Entity):
 
     action = Field(String(255))
     details = Field(String)
+
+    def to_dict(self):
+        return {'id': self.oid, 'action': self.action, 
+                'details': self.details }
 
     belongs_to('computer', of_kind='Computer', inverse='tasks')
 
@@ -117,6 +140,16 @@ class Account(Entity):
     privileges = Field(Integer, default=0)
 
     has_one('computer', of_kind='Computer', inverse='account')
+
+    def to_dict(self):
+        computer_id = 0
+        if self.computer:
+            computer_id = self.computer.oid
+
+        return {'id': self.oid, 'name': self.name, 'csr': self.csr,
+                'cert_serial_number': self.cert_serial_number,
+                'cert': self.cert, 'privileges': self.privileges,
+                'computer_id': computer_id}
 
     def __repr__(self):
         return '<Account: %s>' % (self.name)

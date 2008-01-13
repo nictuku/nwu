@@ -26,8 +26,14 @@ class AnonymousHandler(RPCHandler):
         RPCHandler.__init__(self, app, PRIV_ANONYMOUS)
         self.cacert_data = open(app.ca_cert, 'r').read()
     
+    def get_my_privileges(self, account, remote_host):
+        priv = 0
+        if account:
+            priv = account.privileges
+        return RPCResult.result(privileges=priv)
+
     def get_ca_certificate(self, account, remote_host):
-        return RPCResult.result({'ca_certificate': self.cacert_data})
+        return RPCResult.result(ca_certificate=self.cacert_data)
 
     def request_csr_signing(self, account, remote_host, name, csr):
         # TODO: Create some kind of block list to protect us
@@ -35,31 +41,35 @@ class AnonymousHandler(RPCHandler):
 
         # Check if CSR is already present in database.
         ac = Account.query.filter_by(csr=csr)
-        if ac:
-            return RPCResult.not_possible('CSR already present in DB.')
+
+        if ac.count() > 0:
+            return RPCResult.not_possible('CSR already present in DB.',
+                                          'csr_present')
 
         # Now check if the account name is already taken.
         ac = Account.query.filter_by(name=name)
         if ac:
-            return RPCResult.not_possible('Account name already taken.')
+            return RPCResult.not_possible('Account name already taken.',
+                                          'account_name_taken')
 
         ac = Account(name=name, csr=csr, privileges=PRIV_ANONYMOUS)
         ac.save()
         ac.flush()
         
-        return RPCResult.result({'id': ac.oid})
+        return RPCResult.result(id=ac.oid)
 
     def get_certificate(self, account, remote_host, account_id):
         # Try getting account.
         ac = Account.get(account_id)
         
         if not ac:
-            return RPCResult.not_possible('Account with ID %d does not exist.'
-                                          % (account_id))
+            return RPCResult.not_found('Account', 'ID', account_id)
 
         if not ac.cert:
             return RPCResult.not_possible('No certificate present for account'
-                                          ' %d.' % (account_id))
+                                          ' %d.' % (account_id),
+                                          'no_cert_present', 
+                                          account_id=account_id)
 
-        return RPCResult.result({'certificate': ac.cert})
+        return RPCResult.result(certificate=ac.cert)
         

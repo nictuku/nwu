@@ -16,6 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # ChangeLog:
+#   2008-01-13   Stephan Peijnik <sp@gnu.org>
+#          * SecureXMLRPCServer is now multithreaded.
+#          * Version 0.3.4
+#  
 #   2008-01-09   Stephan Peijnik <sp@gnu.org>
 #          * Support for gzip compressed XML-RPC.
 #          * ChangeLog cleanup (we needed a few spaces for this to look
@@ -103,9 +107,15 @@ import sys
 import xmlrpclib
 
 from httplib import HTTP, HTTPConnection, HTTPS_PORT, FakeSocket
-from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler,\
-    Fault
+from SimpleXMLRPCServer import SimpleXMLRPCDispatcher
+from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler, Fault
+from SocketServer import ThreadingTCPServer
 from socket import _fileobject
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 try:
     import gnutls
@@ -122,7 +132,7 @@ from gnutls.errors import CertificateSecurityError
 
 __all__ = ['SecureXMLRPCServer', 'SecureRequestHandler', 'SecureProxy',
            'SecureTransport']
-__version__ = '0.3.3'
+__version__ = '0.3.4'
 
 try:
     import gzip
@@ -274,24 +284,35 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
             self.wfile.flush()
             self.connection.shutdown(1)
 
-class SecureXMLRPCServer(SimpleXMLRPCServer):
+class SecureXMLRPCServer(SimpleXMLRPCDispatcher, ThreadingTCPServer):
     """Implements a gnutls-enabled XML-RPC server"""
-    def __init__(self, addr, key_file, cert_file, ca_cert_file, *args, 
+
+    allow_reuse_address = True
+
+    def __init__(self, addr, key_file, cert_file, ca_cert_file, 
+                 allow_none=False, encoding=None, *args, 
                  **kwargs):
         """Initialize a new instance, passing the bind address and
         the path to a PEM file."""
         self.key_file = key_file
         self.cert_file = cert_file
         self.ca_cert_file = ca_cert_file
+        self.logRequests = False
 
         self._tls_init()
 
         if kwargs.has_key('requestHandler'):
             del kwargs['requestHandler']
 
-        SimpleXMLRPCServer.__init__(self, addr, 
-                                    requestHandler=SecureRequestHandler,
-                                    *args, **kwargs)
+        SimpleXMLRPCDispatcher.__init__(self, allow_none, encoding)
+        ThreadingTCPServer.__init__(self, addr, SecureRequestHandler)
+
+        # Just like in SimpleXMLRPCServer we need to set the close-on-exec 
+        # flag
+        if fcntl is not None and hasattr(fcntl, 'FD_CLOEXEC'):
+            flags = fcntl.fcntl(self.fileno(), fcntl.F_GETFD)
+            flags |= fcntl.FD_CLOEXEC
+            fcntl.fcntl(self.fileno(), fcntl.F_SETFD, flags)
 
     def _tls_init(self):
         """Initialize gnutls.

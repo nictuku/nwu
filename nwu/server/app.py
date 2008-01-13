@@ -33,8 +33,9 @@ from nwu.common.app import Application, Command
 from nwu.common.SecureXMLRPC import SecureXMLRPCServer
 
 from nwu.server.db.model import db_bind, create_tables
-from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS
+from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS, PRIV_ADMIN
 from nwu.server.rpc.anonymous import AnonymousHandler
+from nwu.server.rpc.admin import AdminHandler
 
 class ServerRootCommand(Command):
     def execute(self, app, args, cmdName=None):
@@ -160,10 +161,12 @@ class CryptoHelper:
         os.chmod(self.admin_key, stat.S_IRUSR)
 
         self.log.info('Generating administrator client certificate.')
-        # expiration_days not set to make sure this certificate never expires.
+
         admin_serial = self.get_next_serial()
         template = ['cn = root', 'tls_www_client', 
-                    'serial = %s' % (admin_serial) ]
+                    'serial = %s' % (admin_serial),
+                    'expiration_days = %s' \
+                        % (CryptoHelper.CERT_EXPIRATION_DAYS)]
         admin_cert = certtool.generate_certificate_from_privkey(
             ca['key'], ca['cert'], admin_key, template)
 
@@ -218,6 +221,8 @@ class Server(SecureXMLRPCServer):
         # Register handler classes.
         self.dispatcher.register_handler('anon', AnonymousHandler(app), 
                                          PRIV_ANONYMOUS)
+        self.dispatcher.register_handler('admin', AdminHandler(app),
+                                         PRIV_ADMIN)
 
 class ServerApp(Application):
     # DEFAULT SETTINGS

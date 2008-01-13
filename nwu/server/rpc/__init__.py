@@ -44,38 +44,54 @@ PRIV_ADMIN = 0x200
 
 class RPCResult:
     @staticmethod
-    def result(values={}, error=False):
+    def result(error=False, **kwargs):
         result = {'error': error}
-        result.update(values)
+        result.update(kwargs)
         return result
     
     @staticmethod
-    def error(identifier, message):
-        return RPCResult.result(values={'error_message': message,
-                                        'error_identifier': identifier
-                                        }, 
-                                error=True)
+    def error(identifier, message, **kwargs):
+        if 'error_message' in kwargs:
+            del kwargs['error_message']
+        if 'error_identifier' in kwargs:
+            del kwargs['error_identifier']
+
+        return RPCResult.result(error=True, error_message=message,
+                                error_identifier=identifier, **kwargs)
 
     @staticmethod
     def unknown_method(method_name):
         return RPCResult.error(
             RPCError.ERR_UNKNOWN_METHOD,
-            'Unknown method: %s' % (method_name)
+            'Unknown method: %s' % (method_name),
+            method_name=method_name
             )
     
     @staticmethod
     def access_denied(method_name):
         return RPCResult.error(
             RPCError.ERR_ACCESS_DENIED,
-            'Access to method %s denied.' % (method_name)
+            'Access to method %s denied.' % (method_name),
+            method_name=method_name
             )
     
     @staticmethod
-    def not_possible(message):
+    def not_possible(message, identifier, **kwargs):
         return RPCResult.error(
             RPCError.ERR_NOT_POSSIBLE,
-            'Operation not possible: %s' % (message)
+            'Operation not possible: %s' % (message),
+            identifier=identifier,
+            **kwargs
             )
+
+    @staticmethod
+    def not_found(object_type, attribute_name, attribute_value):
+        return RPCResult.error(
+            RPCError.ERR_NOT_FOUND,
+            '%s with %s=%s not found.' % (object_type, attribute_name,
+                                          attribute_value),
+            object_type=object_type, attribute_name=attribute_name,
+            attribute_value=attribute_value)
 
 class RPCHandler:
     def __init__(self, app, required_privilege):
@@ -85,6 +101,7 @@ class RPCHandler:
     def _has_access(self, methodName, held_privilege):
         if held_privilege >= self.required_privilege:
             return True
+        # TODO: Logging
         return False
 
 class RPCDispatcher:
@@ -131,12 +148,16 @@ class RPCDispatcher:
                 return (acc.privileges, acc)
 
             # Fall-through
+            # TODO: Logging (connection from client with valid certificate
+            #       but w/out account)
         except AttributeError:
             pass
         return (PRIV_ANONYMOUS, None)
 
     def _dispatch(self, method, params):
         """ Handles authentication and in turn calls the specific methods. """
+        # TODO: Log all requests, whether they failed or not, etc.
+
         # Initially all clients are handled as anonymous ones.
         client_privilege = PRIV_ANONYMOUS
         account_info = None
