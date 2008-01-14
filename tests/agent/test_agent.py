@@ -27,10 +27,10 @@ import sys
 sys.path.append('.')
 import ConfigParser
 
-import nwu_agent
-from nwu_agent import node_info
-import nwu_agent.talk
-import nwu_agent.maint
+import nwu.agent
+from nwu.agent import node_info
+import nwu.agent.talk
+import nwu.agent.maint
 
 import unittest
 import logging
@@ -90,7 +90,7 @@ class NewNodeInfo(node_info.NodeInfo):
 
 ## run the tests
         
-NWU_MAINT = nwu_agent.maint
+NWU_MAINT = nwu.agent.maint
 TEST_NODE_INFO = NewNodeInfo()
 
 class TestMe(unittest.TestCase):

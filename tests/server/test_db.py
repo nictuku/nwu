@@ -19,7 +19,7 @@
  db operations tests
 
 """
-from nwu_server.db.model import *
+from nwu.server.db.model import *
 
 def setup():
     metadata.bind='sqlite:///'

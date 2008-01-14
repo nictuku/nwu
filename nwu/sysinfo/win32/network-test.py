@@ -1,3 +1,11 @@
+# FIXME: <yves> I don't remember writing this code, so we should probably 
+# rewrite it for copyright reasons
+
+import sys
+if sys.platform != 'win32':
+    print >> sys.stderr, "Ignoring sysinfo.network tests for win32 platform"
+    sys.exit(0)
+
 import win32com.client
 strComputer = "."
 objWMIService = win32com.client.Dispatch("WbemScripting.SWbemLocator")

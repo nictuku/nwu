@@ -20,12 +20,14 @@
 
 import sys
 sys.path.append('.')
-from nwu_server.db.operation import Local
-from nwu_server.rpc_agents import RPC
-from nwu_server.db.model import *
-from nwu_server.cli import Commands
-import hmac
 import logging
+# FIXME: all hmac stuff is doomed
+import hmac
+from elixir import setup_all, create_all, metadata, objectstore
+from nwu.server.db.operation import Local
+from nwu.server.rpc_agents import RPC
+from nwu.server.db.model import metadata, Computer 
+from nwu.server.cli import Commands
 
 log = logging.getLogger()
 HDLR = logging.StreamHandler()
@@ -69,6 +71,8 @@ class TestServer:
         assert session == [ UNIQ, TOKEN ] 
 
 class TestServerCli:
+    """Makes sure that the 'nwu' CLI commands have the expected effects
+    """
     # Important: this class name must be alphabetically after "TestServer"
 
     def test_install(self):
