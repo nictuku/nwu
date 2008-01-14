@@ -30,7 +30,8 @@ log = logging.getLogger('nwu.server.db.model')
 new_map = { 'update_candidates' : 'UpdateCandidates',
     'current_packages' : 'CurrentPackages',
     'repositories' : 'Repositories',
-    'tasks' : 'Tasks' }
+    'tasks' : 'Tasks',
+    'account': 'Account'}
 
 class TablesVersion(Entity):
     using_options(tablename='tables_version')
@@ -44,7 +45,6 @@ class Computer(Entity):
 
     uniq = Field(String(32),unique=True)
     hostname = Field(String(255))
-    password = Field(String(255))
     os_name = Field(String(255))
     os_version = Field(String(255))
     
@@ -53,14 +53,27 @@ class Computer(Entity):
     has_many('repositories', of_kind='Repositories',inverse='computer')
     has_many('tasks', of_kind='Tasks')
 
+    belongs_to('account', of_kind='Account', required=False)
+
     def __repr__(self):
         return '<Computer %s(%s)>' % (self.hostname, self.id)
+
+    def to_dict(self):
+        account_id = 0
+        if self.account:
+            account_id = self.account.oid
+        return {'id': self.oid, 'hostname': self.hostname, 
+                'os_name': self.os_name, 'os_version': self.os_version,
+                'account_id': account_id}
 
 class CurrentPackages(Entity):
     using_options(tablename='current_packages')
     
     name = Field(String(255))
     version = Field(String(30))
+    
+    def to_dict(self):
+        return {'id': self.oid, 'name': self.name, 'version': self.version}
 
     belongs_to('computer', of_kind='Computer', inverse='current_packages')
 #    class sqlmeta:
@@ -72,7 +85,11 @@ class UpdateCandidates(Entity):
     name = Field(String(255))
     version = Field(String(30))
 
+    def to_dict(self):
+        return {'id': self.oid, 'name': self.name, 'version': self.version}
+
     belongs_to('computer', of_kind='Computer', inverse='update_candidates')
+
 
 #    class sqlmeta:
 #        defaultOrder = 'name'
@@ -94,6 +111,11 @@ class Repositories(Entity):
     distribution = Field(String(255))
     components = Field(String) # space separated list of components
 
+    def to_dict(self):
+        return {'id': self.oid, 'filename': self.filename, 'type': self.type,
+                'uri': self.uri, 'distribution': self.distribution,
+                'components': self.components}
+
     belongs_to('computer', of_kind='Computer', inverse='repositores')
 
 class Tasks(Entity):
@@ -102,23 +124,50 @@ class Tasks(Entity):
     action = Field(String(255))
     details = Field(String)
 
+    def to_dict(self):
+        return {'id': self.oid, 'action': self.action, 
+                'details': self.details }
+
     belongs_to('computer', of_kind='Computer', inverse='tasks')
 
-class Users(Entity):
-    using_options(tablename='users')
+class Account(Entity):
+    using_options(tablename='account')
+    
+    name = Field(String(255), unique=True)
+    csr = Field(String, unique=True)
+    cert_serial_number = Field(Integer, default=-1)
+    cert = Field(String, default=None)
+    privileges = Field(Integer, default=0)
 
-    username = Field(String(255), unique=True)
-    password = Field(String(255))
-    userlevel= Field(Integer)
+    has_one('computer', of_kind='Computer', inverse='account')
 
-def create_tables(config):
+    def to_dict(self):
+        computer_id = 0
+        if self.computer:
+            computer_id = self.computer.oid
+
+        return {'id': self.oid, 'name': self.name, 'csr': self.csr,
+                'cert_serial_number': self.cert_serial_number,
+                'cert': self.cert, 'privileges': self.privileges,
+                'computer_id': computer_id}
+
+    def __repr__(self):
+        return '<Account: %s>' % (self.name)
+        
+
+def db_bind(connection_string, rebind=False):
+    """ Binds a database connection. """
+    if not metadata.is_bound() or rebind:
+        metadata.bind = connection_string
+        setup_all()
+        return True
+    return False
+
+def create_tables():
     """Creates required tables in the database.
     """
+    if not metadata.is_bound():
+        raise Exception('Database connection not initialized yet.')
     log.debug("Creating necessary tables in the database.")
-    metadata.bind=config['connection_string']
-    setup_all()
     create_all()
-
-if __name__ == '__main__':
-
-    sys.exit(0)
+    session.flush()
