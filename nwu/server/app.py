@@ -20,11 +20,15 @@
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import logging.handlers
 import os
 import pwd
 import stat
 import sys
 import traceback
+
+# for socket.error
+import socket
 
 from gnutls.crypto import X509Certificate, X509PrivateKey
 
@@ -410,16 +414,16 @@ class ServerApp(Application):
     def init_logging(self, daemon=False):
         if daemon:
             try:
+                formatter = logging.Formatter('nwu-server[%(process)d] '
+                                              '%(levelname)s %(message)s')
                 hdlr = logging.handlers.SysLogHandler(
                     '/dev/log', 
                     facility = logging.handlers.SysLogHandler.LOG_DAEMON)
-            except:
-                print 'Error while connecting log instance to syslog. Is the'\
+            except socket.error:
+                print 'Error while connecting log instance to syslog. Is the '\
                     'syslog daemon running?'
                 sys.exit(1)
 
-                formatter = logging.Formatter('nwu-server[%(process)d] '
-                                              '%(levelname)s %(message)s')
         else:
             hdlr = logging.StreamHandler()
             formatter = logging.Formatter('%(asctime)s (%(levelname)s): '

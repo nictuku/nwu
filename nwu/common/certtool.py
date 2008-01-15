@@ -112,7 +112,7 @@ tmp_info=tmp_output.split(' ', 3)
 # tmp_info should now contain: ['certtool', '(GnuTLS)', '<version>'].
 # We obviously need to validate that.
 
-if tmp_info[0] != 'certtool' or tmp_info[1] != '(GnuTLS)':
+if not tmp_info[0].endswith('certtool') or not tmp_info[1].startswith('(GnuTLS'):
     print '[ERROR] certtool seems not to be GnuTLS\' certtool binary.'
     sys.exit(255)
 
