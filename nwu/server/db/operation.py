@@ -62,24 +62,13 @@ class Local:
         """
         check_t = Computer.get_by(uniq=uniq)
 
-        password = ''
-
         if not check_t:
             # No computer with that specified uniq id was found.
             log.debug("check_token: no computer with that uniq found")
             return False
         else:
-            password = check_t.password
-
-        valid_token = hmac.new(password, uniq).hexdigest()
-
-        if valid_token == token:
-            # Yeah, this is a valid token!
-            log.debug("check_token: token authenticated")
-            return True
-        else:
-            log.debug("check_token: Invalid token specified")
-            return False
+            # XXX: being replaced by x509 authentication
+            return True 
 
     check_token=staticmethod(check_token)
     update_tbl_version=staticmethod(update_tbl_version)

@@ -163,7 +163,8 @@ if __name__ == '__main__':
         if dbtype == 'sqlite' or config.forceinit:
             drop_privileges(options.user)
             log.info("Creating required database structure for type: " + dbtype)
-            db.create_tables(config)
+            db.db_bind(config['connection_string'])
+            db.create_all()
             # XXX: needs flush?
         sys.exit(0)
 

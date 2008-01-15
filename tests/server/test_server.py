@@ -23,10 +23,11 @@ sys.path.append('.')
 import logging
 # FIXME: all hmac stuff is doomed
 import hmac
-from elixir import setup_all, create_all, metadata, objectstore
+from elixir import create_all, metadata, objectstore
 from nwu.server.db.operation import Local
 from nwu.server.rpc_agents import RPC
-from nwu.server.db.model import metadata, Computer 
+from nwu.server.db.model import metadata, db_bind 
+from nwu.server.db.model import Computer, CurrentPackages
 from nwu.server.cli import Commands
 
 log = logging.getLogger()
@@ -39,10 +40,8 @@ PASSWORD = 'foobar'
 UNIQ = 'dsadsad1921832918312weee'
 TOKEN = hmac.new(PASSWORD, UNIQ).hexdigest()
 
-def setup():
-    metadata.bind = CONFIG['connection_string']
-    setup_all()
-    create_all()
+print "Conncted to database? %s" % repr(db_bind(CONFIG['connection_string']))
+create_all()
     
 class TestServer:
 
@@ -59,13 +58,12 @@ class TestServer:
         assert session == False
 
         m = Computer(hostname='moinmoin', uniq=UNIQ, os_name='Linux', 
-            os_version='2.6.x',
-            password=PASSWORD)
+            os_version='2.6.x')
         objectstore.flush()
         log.debug("Created %s" % repr(m))
         assert Local.check_token(UNIQ, TOKEN) == True
-        assert Local.check_token(UNIQ, 'foo') == False
-        assert Local.check_token(UNIQ, TOKEN + 'oops') == False
+#        assert Local.check_token(UNIQ, 'foo') == False
+#        assert Local.check_token(UNIQ, TOKEN + 'oops') == False
 
         session = RPC.session_setup(UNIQ, TOKEN)
         assert session == [ UNIQ, TOKEN ] 
@@ -83,4 +81,13 @@ class TestServerCli:
         assert RPC.get_tasks([UNIQ, TOKEN]) == [('forceinstall', 
             'install_a install_b')]
         assert CLI.cmd_list() == '1\tmoinmoin\tLinux\n'
-
+        assert CLI.cmd_view(1, 'packages') == \
+'Reading packages from computer <Computer moinmoin(1)>' 
+        m = Computer.get_by(id=1)
+        installed = CurrentPackages(computer=m, name='gcc', version='1.1')
+        installed = CurrentPackages(computer=m, name='znes', version='4.1')
+        objectstore.flush()
+        # this just a dumb debug. 
+        # FIXME: use a proper __repr__ on the CurrPackages class
+        log.debug(CLI.cmd_view(1, 'packages'))
+        
