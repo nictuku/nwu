@@ -18,8 +18,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
+from nwu.common.rpc import NotFoundFault, NotPossibleFault
 from nwu.server.db.model import Account
-from nwu.server.rpc import RPCResult, RPCHandler, PRIV_ANONYMOUS
+from nwu.server.rpc import RPCHandler, PRIV_ANONYMOUS
 
 class AnonymousHandler(RPCHandler):
     def __init__(self, app):
@@ -30,10 +31,10 @@ class AnonymousHandler(RPCHandler):
         priv = 0
         if account:
             priv = account.privileges
-        return RPCResult.result(privileges=priv)
+        return priv
 
     def get_ca_certificate(self, account, remote_host):
-        return RPCResult.result(ca_certificate=self.cacert_data)
+        return self.cacert_data
 
     def request_csr_signing(self, account, remote_host, name, csr):
         # TODO: Create some kind of block list to protect us
@@ -43,33 +44,28 @@ class AnonymousHandler(RPCHandler):
         ac = Account.query.filter_by(csr=csr)
 
         if ac.count() > 0:
-            return RPCResult.not_possible('CSR already present in DB.',
-                                          'csr_present')
+            raise NotPossibleFault('CSR already present in DB.')
 
         # Now check if the account name is already taken.
         ac = Account.query.filter_by(name=name)
         if ac:
-            return RPCResult.not_possible('Account name already taken.',
-                                          'account_name_taken')
+            raise NotPossibleFault('Account name already taken.')
 
         ac = Account(name=name, csr=csr, privileges=PRIV_ANONYMOUS)
         ac.save()
         ac.flush()
         
-        return RPCResult.result(id=ac.oid)
+        return ac.oid
 
     def get_certificate(self, account, remote_host, account_id):
         # Try getting account.
         ac = Account.get(account_id)
         
         if not ac:
-            return RPCResult.not_found('Account', 'ID', account_id)
+            raise NotFoundFault('Account with id %s' % (account_id))
 
         if not ac.cert:
-            return RPCResult.not_possible('No certificate present for account'
-                                          ' %d.' % (account_id),
-                                          'no_cert_present', 
-                                          account_id=account_id)
+            raise NotPossibleFault('No certificate present for account.')
 
-        return RPCResult.result(certificate=ac.cert)
+        return ac.cert
         

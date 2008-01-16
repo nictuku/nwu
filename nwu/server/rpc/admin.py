@@ -18,7 +18,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
-from nwu.server.rpc import RPCResult, RPCHandler, PRIV_ADMIN
+from nwu.common.rpc import NotFoundFault
+from nwu.server.rpc import RPCHandler, PRIV_ADMIN
 
 class AdminHandler(RPCHandler):
     # TODO: Add logging to all handlers
@@ -38,20 +39,20 @@ class AdminHandler(RPCHandler):
         for c in comps:
             computers.append(c.to_dict())
 
-        return RPCResult.result(computers=computers)
+        return computers
 
     def get_computer_tasks(self, account, remote_host, computer_id):
         comp = Computer.get(computer_id)
 
         if comp == None:
-            return RPCResult.not_found('Computer', 'id', computer_id)
+            raise NotFoundFault('Computer with id %s' % (computer_id))
 
         tasks = []
 
         for t in comp.tasks:
             tasks.append(t.to_dict())
         
-        return RPCResult.result(tasks=tasks)
+        return tasks
 
     def get_current_packages(self, account, remote_host, computer_id,
                              package_name):
@@ -59,7 +60,7 @@ class AdminHandler(RPCHandler):
         comp = Computer.get(computer_id)
 
         if comp == None:
-            return RPCResult.not_found('Computer', 'id', computer_id)
+            raise NotFoundFault('Computer with id %s' % (computer_id))
 
         # Wildcard support
         package_name = package_name.replace('*', '%')
@@ -68,14 +69,14 @@ class AdminHandler(RPCHandler):
         for p in packages:
             result.append(p.to_dict())
 
-        return RPCResult.result(packages=result)
+        return result
 
     def get_update_candidates(self, account, remote_host, computer_id,
                               package_name):
         comp = Computer.get(computer_id)
 
         if not comp:
-            return RPCResult.not_found('Computer', 'id', computer_id)
+            raise NotFoundFault('Computer with id %s' % (computer_id))
 
         # Wildcard support
         package_name = package_name.replace('*', '%')
@@ -84,14 +85,14 @@ class AdminHandler(RPCHandler):
         for c in cands:
             result.append(c.to_dict())
 
-        return RPCResult.result(candidates=result)
+        return result
 
     def get_repositories(self, account, remote_host, computer_id, type,
                          uri):
         comp = Computer.get(computer_id)
 
         if not comp:
-            return RPCResult.not_found('Computer', 'id', computer_id)
+            raise NotFoundFault('Computer with id %s' % (computer_id))
 
         # Wildcard support
         uri = uri.replace('*', '%')
@@ -101,23 +102,22 @@ class AdminHandler(RPCHandler):
         for r in repos:
             result.append(r.to_dict())
 
-        return RPCResult.result(repositories=result)
+        return result
 
     def get_account(self, account, remote_host, account_id):
         ac = Account.get(account_id)
         
         if not ac:
-            return RPCResult.not_found('Account', 'id', account_id)
+            raise NotFoundFault('Account with id %s' % (account_id))
 
-        return RPCResult.result(account=ac.to_dict())
+        return ac.to_dict()
 
     def get_account_id_by_name(self, account, remote_host, account_name):
         ac = Account.get_by(name=account_name)
 
         if not ac:
-            return RPCResult.not_found('Account', 'name', account_name)
-
-        return RPCResult.result(account_id=ac.oid)
+            raise NotFoundFault('Account with name %s' % (account_name))
+        return ac.oid
 
     def get_account_ids(self, account, remote_host):
         acs = Account.query.all()
@@ -127,13 +127,22 @@ class AdminHandler(RPCHandler):
         for ac in acs:
             result.append(ac.oid)
 
-        return RPCResult.result(account_ids=result)
+        return result
+
+    def delete_account(self, account, remote_host, account_id):
+        ac = Accoung.get(account_id)
+
+        if not ac:
+            raise NotFoundFault('Account with id %s' % (account_id))
+
+        ac.delete()
+        return True
 
     def set_privilege(self, account, remote_host, account_id, privilege):
         ac = Account.get(account_id)
 
         if not ac:
-            return RPCResult.not_found('Account', account_id)
+            raise NotFoundFault('Account with id %s' % (account_id))
 
         # TODO: do we want some sort of protection against removing/adding
         #       admins?
@@ -142,16 +151,17 @@ class AdminHandler(RPCHandler):
         ac.save()
         ac.flush()
 
-        return RPCResult.result()
+        return True
 
     def sign_csr(self, account, remote_host, account_id):
         ac = Account.get(account_id)
 
         if not ac:
-            return RPCResult.not_found('Account', 'id', account_id)
+            raise NotFoundFault('Account with id %s' % (account_id))
 
         ac.cert = self.cryptoHelper.sign_csr(ac.csr)
         ac.save()
         ac.flush()
 
-        return RPCResult.result()
+        return True
+

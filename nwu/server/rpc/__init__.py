@@ -20,7 +20,7 @@
 
 from gnutls.crypto import X509Certificate
 
-from nwu.common.rpc import RPCError
+from nwu.common.rpc import UnknownMethodFault, AccessDeniedFault
 from nwu.server.db.model import Account
 
 # Lower number means less privileges.
@@ -41,57 +41,6 @@ from nwu.server.db.model import Account
 PRIV_ANONYMOUS = 0x000
 PRIV_AGENT = 0x100
 PRIV_ADMIN = 0x200
-
-class RPCResult:
-    @staticmethod
-    def result(error=False, **kwargs):
-        result = {'error': error}
-        result.update(kwargs)
-        return result
-    
-    @staticmethod
-    def error(identifier, message, **kwargs):
-        if 'error_message' in kwargs:
-            del kwargs['error_message']
-        if 'error_identifier' in kwargs:
-            del kwargs['error_identifier']
-
-        return RPCResult.result(error=True, error_message=message,
-                                error_identifier=identifier, **kwargs)
-
-    @staticmethod
-    def unknown_method(method_name):
-        return RPCResult.error(
-            RPCError.ERR_UNKNOWN_METHOD,
-            'Unknown method: %s' % (method_name),
-            method_name=method_name
-            )
-    
-    @staticmethod
-    def access_denied(method_name):
-        return RPCResult.error(
-            RPCError.ERR_ACCESS_DENIED,
-            'Access to method %s denied.' % (method_name),
-            method_name=method_name
-            )
-    
-    @staticmethod
-    def not_possible(message, identifier, **kwargs):
-        return RPCResult.error(
-            RPCError.ERR_NOT_POSSIBLE,
-            'Operation not possible: %s' % (message),
-            identifier=identifier,
-            **kwargs
-            )
-
-    @staticmethod
-    def not_found(object_type, attribute_name, attribute_value):
-        return RPCResult.error(
-            RPCError.ERR_NOT_FOUND,
-            '%s with %s=%s not found.' % (object_type, attribute_name,
-                                          attribute_value),
-            object_type=object_type, attribute_name=attribute_name,
-            attribute_value=attribute_value)
 
 class RPCHandler:
     def __init__(self, app, required_privilege):
@@ -170,14 +119,14 @@ class RPCDispatcher:
         # All methods are in the form of <handler>.<method>. There are no
         # root-level methods!
         if not '.' in method:
-            return RPCResult.unknown_method(method)
+            raise UnknownMethodFault(method)
 
         # Get the handler name.
         handlerName, methodName = method.split('.', 2)
 
         # Do not allow access to methods starting with an underscore!
         if methodName[0] == '_':
-            return RPCResult.unknown_method(method)
+            raise UnknownMethodFault(method)
 
         # Check if client certificate is present and try getting account
         # information from database.
@@ -192,13 +141,13 @@ class RPCDispatcher:
         params = params_new
 
         if not handlerName in self.handlers:
-            return RPCResult.unknown_method(method)
+            raise UnknownMethodFault(methodName)
 
         # Check if user has privileges to call handler's methods...
         handler = self.handlers[handlerName]
 
         if not handler._has_access(methodName, client_privilege):
-            return RPCResult.access_denied(method)
+            return AccessDeniedFault(methodName)
 
         # First check if the handler has got a _dispatch method.
         # _dispatch should *always* be called instead of the method
@@ -213,9 +162,7 @@ class RPCDispatcher:
 
         # Graceful failing if method is unknown...
         if not func:
-            return RPCResult.unknown_method(method)
+            raise UnknownMethodFault(method)
 
         res = func(*params)
-        # XXX: Check if res is a valid RPCResult.
-
         return res
