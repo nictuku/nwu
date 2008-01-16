@@ -16,7 +16,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # ChangeLog:
+#   2008-01-13   Stephan Peijnik <sp@gnu.org>
+#          * SecureXMLRPCServer is now multithreaded.
+#          * Version 0.3.4
+#  
+#   2008-01-09   Stephan Peijnik <sp@gnu.org>
+#          * Support for gzip compressed XML-RPC.
+#          * ChangeLog cleanup (we needed a few spaces for this to look
+#            good).
+#          * Version 0.3.3
+#
 #   2008-01-08   Stephan Peijnik <sp@gnu.org>
+#           * Pass X509 certificate information down to called method.
 #           * Fixing problems with stale connection (only caused by old 
 #             clients).
 #           * Finally fix unclean socket shutdown in server.
@@ -25,14 +36,17 @@
 #             NOTE: For this to work both the client and the server need
 #                   a valid certificate signed by the same CA!
 #           * Version 0.3.2
+#
 #   2008-01-05  Stephan Peijnik <sp@gnu.org>
 #           * Changed versioning scheme to x.y.z instead of x.y
 #           * Version 0.3.1
 #           * Fix problems with 'anonymous' clients.
 #           * Fix unclean socket shutdown in server (breaks GnuTLS client!).
+#
 #   2008-01-04  Stephan Peijnik <sp@gnu.org>
 #           * Version 0.3
 #           * Added SecureProxy and SecureTransport (client) classes.
+#
 #   2008-01-03  Stephan Peijnik <sp@gnu.org>
 #           * Version 0.2
 #           * Now using PEM file instead of separate key/cert files.
@@ -40,12 +54,6 @@
 #
 #   2007-10-07  Stephan Peijnik <sp@gnu.org>
 #           * Version 0.1, initial release.
-#
-#
-# TODO:
-#  * Inject session.peer_certificate into *EVERY* XML-RPC request
-#    (ie. call to foo(5, 3) becomes foo(session.peer_certificate, 5, 3) or
-#    find another way to do proper authentication.
 
 """A gnutls-enabled XML-RPC Server and Client.
 
@@ -56,6 +64,10 @@ The SecureXMLRPCServer works the same way SimpleXMLRPCServer.SimpleXMLServer
 does, except for instance creation, which requires one additional argument,
 the path to a PEM file (containing a certificate and a private key).
 
+Also, every method is supplied with an additional argument (as first argument),
+being the client's X509 certificate.
+ie. If the client calls foo(1, 5) this will become foo(X509Info, 1, 5).
+
 These files can be created using gnutls' certtool. For more information see
 http://www.gnu.org/software/gnutls/manual/html_node/Invoking-certtool.html.
 
@@ -63,17 +75,47 @@ The SecureTransport and SecureProxy implement the gnutls-enabled client.
 SecureProxy works the same way xmllib.ServerProxy does and SecureTransport
 provides the gnutls-enabled transport to use.
 
+Starting at version 0.3.3 SecureProxy and SecureXMLRPCServer support gzip
+compression of the XML payload. This works transparently and has only one
+consequence: The client tries to compress its first request, if that
+yields an error compression is turned off and the request re-sent. However,
+if the re-sent request also fails compression is turned on again.
+
+
+Compressed vs. uncompressed XMLRPC:
+
+A test was done by calling an unexistant help() method and thus receiving
+a fault. The results can be found below.
+
+Uncompressed:
+
+Request :  98 Bytes
+Response: 321 Bytes
+
+Compressed:
+
+Request :  82 Bytes
+Response: 192 Bytes  
+
+
 License: LGPLv3 or later, see module sourcecode for more information.
 """
 
 import os.path
 import socket
 import sys
+import xmlrpclib
 
 from httplib import HTTP, HTTPConnection, HTTPS_PORT, FakeSocket
-from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+from SimpleXMLRPCServer import SimpleXMLRPCDispatcher
+from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler, Fault
+from SocketServer import ThreadingTCPServer
 from socket import _fileobject
-from xmlrpclib import Transport, ServerProxy
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 try:
     import gnutls
@@ -90,7 +132,41 @@ from gnutls.errors import CertificateSecurityError
 
 __all__ = ['SecureXMLRPCServer', 'SecureRequestHandler', 'SecureProxy',
            'SecureTransport']
-__version__ = '0.3.2'
+__version__ = '0.3.4'
+
+try:
+    import gzip
+    HAVE_gzip = True
+except:
+    HAVE_gzip = False
+
+try:
+    import cStringIO
+    HAVE_cStringIO = True
+except:
+    HAVE_cStringIO = False
+
+if HAVE_gzip and HAVE_cStringIO:
+    HAVE_COMPRESSION = True
+    def gzip_buffer(buffer, compresslevel=6):
+        """ Compress buffer with gzip and return it. """
+        gzipped = cStringIO.StringIO()
+        gzipFile = gzip.GzipFile(mode='wb', compresslevel=compresslevel, 
+                                 fileobj=gzipped)
+        gzipFile.write(buffer)
+        gzipFile.close()
+        return gzipped.getvalue()
+
+    def degzip_buffer(gz_buffer):
+        """ Decompress gzipped data and return it. """
+        gzipped = cStringIO.StringIO()
+        gzipped.write(gz_buffer)
+        gzipped.flush()
+        gzipped.seek(0)
+        gzipFile = gzip.GzipFile(mode='rb', fileobj=gzipped)
+        return gzipFile.read()
+else:
+    HAVE_COMPRESSION = False
 
 class SecureServerConnection(ServerSession):
     """ Extends GnuTLS' ServerSession """
@@ -129,36 +205,129 @@ class SecureRequestHandler(SimpleXMLRPCRequestHandler):
         self.wfile = _fileobject(self.request, 'wb', self.wbufsize)
         self.certificate = self.request.peer_certificate
 
-class SecureXMLRPCServer(SimpleXMLRPCServer):
+    def do_POST(self):
+        """Overrides SimpleXMLRPCRequestHandler's do_POST method.
+
+        This method is heavily based on the code found in the original do_POST
+        method of SimpleXMLRPC's SimpleXMLRPCServer.
+        However, there was a need to re-implement the method to pass
+        an additional argument, the client certificate, down to the
+        server's _marshaled_dispatch method.
+
+        The original code was written by Brian Quinlan (brian@sweetapp.com)
+        and was based on code written by Fredrik Lundh.
+        """
+        gzip_response = False
+
+        # Check that the path is legal
+        if not self.is_rpc_path_valid():
+            self.report_404()
+            return
+
+        try:
+            # Get arguments by reading body of request.
+            # We read this in chunks to avoid straining
+            # socket.read(); around the 10 or 15Mb mark, some platforms
+            # begin to have problems (buf #792570).
+            max_chunk_size = 10*1024*1024
+            size_remaining = int(self.headers["content-length"])
+            L = []
+            while size_remaining:
+                chunk_size = min(size_remaining, max_chunk_size)
+                L.append(self.rfile.read(chunk_size))
+                size_remaining -= len(L[-1])
+            data = ''.join(L)
+
+            # Check for gzipped body.
+            if self.headers.has_key('Content-Encoding') and \
+                    self.headers['Content-Encoding'] == 'gzip':
+                if not HAVE_COMPRESSION:
+                    # Simply raising an exception will cause a 500 response
+                    raise
+
+                # decompress
+                data = degzip_buffer(data)
+            
+            # In previous versions of SimpleXMLRPCServer, _dispatch
+            # could be overriden in this class, instead of in
+            # SimpleXMLRPCDispatcher. To maintain backwards compatibility,
+            # check to see if a subclass implements _dispatch and dispatch
+            # using the method if present (Should not apply for us).
+            #
+            # Two additional arguments (certificate, remote_host) are passed 
+            # to the dispatcher method.
+            remote_host = self.request.socket.getpeername()[0]
+
+            response = self.server._marshaled_dispatch(
+                data, getattr(self, '_dispatch', None), self.certificate,
+                remote_host)
+        except Exception, e:
+            # interal error, report as HTTP server error
+            self.send_response(500)
+            self.end_headers()
+        else:
+            # got a valid XML RPC response
+            self.send_response(200)
+            self.send_header("Content-type", "text/xml")
+            
+            # Check if the client supports gzip
+            if self.headers.has_key('Accept-Encoding') and \
+                    'gzip' in self.headers['Accept-Encoding'] and \
+                    HAVE_COMPRESSION:
+                self.send_header('Content-Encoding', 'gzip')
+                response = gzip_buffer(response)
+
+            self.send_header("Content-length", str(len(response)))
+            self.end_headers()
+
+            self.wfile.write(response)
+            self.wfile.flush()
+            self.connection.shutdown(1)
+
+class SecureXMLRPCServer(SimpleXMLRPCDispatcher, ThreadingTCPServer):
     """Implements a gnutls-enabled XML-RPC server"""
-    def __init__(self, addr, pem_file, ca_cert_file, *args, **kwargs):
+
+    allow_reuse_address = True
+
+    def __init__(self, addr, key_file, cert_file, ca_cert_file, 
+                 allow_none=False, encoding=None, *args, 
+                 **kwargs):
         """Initialize a new instance, passing the bind address and
         the path to a PEM file."""
-        self.__addr = addr
-        self.__pem_file = pem_file
-        self.__ca_cert_file = ca_cert_file
+        self.key_file = key_file
+        self.cert_file = cert_file
+        self.ca_cert_file = ca_cert_file
+        self.logRequests = False
 
-        self.__tls_init()
+        self._tls_init()
 
         if kwargs.has_key('requestHandler'):
             del kwargs['requestHandler']
 
-        SimpleXMLRPCServer.__init__(self, addr, 
-                                    requestHandler=SecureRequestHandler,
-                                    *args, **kwargs)
+        SimpleXMLRPCDispatcher.__init__(self, allow_none, encoding)
+        ThreadingTCPServer.__init__(self, addr, SecureRequestHandler)
 
-    def __tls_init(self):
+        # Just like in SimpleXMLRPCServer we need to set the close-on-exec 
+        # flag
+        if fcntl is not None and hasattr(fcntl, 'FD_CLOEXEC'):
+            flags = fcntl.fcntl(self.fileno(), fcntl.F_GETFD)
+            flags |= fcntl.FD_CLOEXEC
+            fcntl.fcntl(self.fileno(), fcntl.F_SETFD, flags)
+
+    def _tls_init(self):
         """Initialize gnutls.
         
         Creates an X509Credentials instance using the PEM file pased to 
         __init__.
         """
-        if not os.path.exists(self.__pem_file):
-            print '[ERROR] TLS PEM file does not exist: %s' % (self.__pem_file)
+        if not os.path.exists(self.key_file) or \
+                not os.path.exists(self.cert_file):
+            print '[ERROR] Key or certificate file missing.'
             sys.exit(255)
-        cert = X509Certificate(open(self.__pem_file).read())
-        key = X509PrivateKey(open(self.__pem_file).read())
-        ca_cert = X509Certificate(open(self.__ca_cert_file).read())
+
+        cert = X509Certificate(open(self.cert_file).read())
+        key = X509PrivateKey(open(self.key_file).read())
+        ca_cert = X509Certificate(open(self.ca_cert_file).read())
         self.__X509Creds = X509Credentials(cert, key, [ca_cert])
 
     def get_request(self):
@@ -203,6 +372,54 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
             raise socket.error()
 
         return (session, addr)
+
+    def _marshaled_dispatch(self, data, dispatch_method = None, 
+                            certificate=None, remote_host=None):
+        """ Overrides SecureXMLRPCDispatcher's _marshaled_dispatch method.
+
+        This method is heavily based on the code found in the original 
+        _marshaled_dispatch method of SimpleXMLRPC's SimpleXMLRPCDispatcher.   
+
+        However, there was a need to re-implement the method to pass           
+        an additional argument, the client certificate, down to the            
+        server's _dispatch method.                                   
+                                                                               
+        The original code was written by Brian Quinlan (brian@sweetapp.com)    
+        and was based on code written by Fredrik Lundh.   
+        """
+        
+        try:
+            params, method = xmlrpclib.loads(data)
+
+            # inject certificate and remote_host as first two values
+            # into params.
+            # XXX: Is there a cleaner way to do this?
+            params_new = (certificate, remote_host, )
+            params_new += params
+            params = params_new
+
+            # generate response
+            if dispatch_method is not None:
+                response = dispatch_method(method, params)
+            else:
+                response = self._dispatch(method, params)
+            # wrap response in a singleton tuple
+            response = (response,)
+            response = xmlrpclib.dumps(response, methodresponse=1,
+                                       allow_none=self.allow_none, 
+                                       encoding=self.encoding)
+        except Fault, fault:
+            response = xmlrpclib.dumps(fault, allow_none=self.allow_none,
+                                       encoding=self.encoding)
+        except:
+            # report exception back to server
+            response = xmlrpclib.dumps(
+                xmlrpclib.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value)),
+                encoding=self.encoding, allow_none=self.allow_none,
+                )
+
+        return response
+        
 
 ###
 ### Client implementation
@@ -296,15 +513,81 @@ class GNUTLSHTTPS(HTTP):
         self._setup(self._connection_class(host, port, credentials, strict, 
                                            anonymous=anonymous))
 
-class SecureTransport(Transport):
+class SecureTransport(xmlrpclib.Transport):
     """ GnuTLS-enabled Transport for httplib. """
     user_agent = "SecureXMLRPC/%s" % (__version__)
+
+    class GzipParser:
+        def __init__(self, parser):
+            self.gz_buffer = ''
+            self.parser = parser
+
+        def feed(self, data):
+            self.gz_buffer += data
+
+        def close(self):
+            buffer = degzip_buffer(self.gz_buffer)
+            self.parser.feed(buffer)
+            self.parser.close()
 
     def __init__(self, credentials, use_datetime=0, anonymous=False):
         """ Initializes SecureTransport. """
         self.credentials = credentials
         self.anonymous = anonymous
-        Transport.__init__(self, use_datetime)
+        self.disable_gzip = False
+
+        xmlrpclib.Transport.__init__(self, use_datetime)
+
+    def request(self, host, handler, request_body, verbose=0):
+        """ Implements fallback to non-gzip mode in case of an error in
+        gzip mode. 
+
+        If the error was a real one it's going to be reported back.
+        """
+        if not self.disable_gzip and HAVE_COMPRESSION:
+            try:
+                res = xmlrpclib.Transport.request(self, host, handler, 
+                                                  request_body,
+                                                  verbose=verbose)
+                return res
+            except xmlrpclib.ProtocolError:
+                # Fall back to non-gzip mode, re-send request.
+                self.disable_gzip = True
+                return self.request(host, handler, request_body, 
+                                    verbose=verbose)
+
+        try:
+            result = xmlrpclib.Transport.request(self, host, handler, 
+                                                 request_body, verbose=verbose)
+        except xmlrpclib.ProtocolError:
+            # Another error in non-gzip mode? Enable compression again!
+            if HAVE_COMPRESSION:
+                self.disable_gzip = False
+            raise
+
+        return result
+
+    def getparser(self):
+        """ Overrides xmlrpclib.Transport.getparser().
+
+        This method injects the GzipParser if gzip is enabled.
+        """
+        parser, unmarshaller = xmlrpclib.Transport.getparser(self)
+        if not self.disable_gzip and HAVE_COMPRESSION:
+            parser = self.GzipParser(parser)
+        return parser, unmarshaller
+
+    def send_content(self, connection, request_body):
+        """ Sends the content and gzip-compresses it if possible """
+        # Always tell the server we accept gzipped responses.
+        if HAVE_COMPRESSION:
+            connection.putheader('Accept-Encoding', 'gzip')
+
+        if not self.disable_gzip and HAVE_COMPRESSION:
+            connection.putheader('Content-Encoding', 'gzip')
+            request_body = gzip_buffer(request_body)
+
+        return xmlrpclib.Transport.send_content(self, connection, request_body)
 
     def make_connection(self, host):
         """ Creates a new (TLS) connection to the given host. """
@@ -312,7 +595,7 @@ class SecureTransport(Transport):
         return GNUTLSHTTPS(host, None, self.credentials, 
                            anonymous=self.anonymous)
 
-class SecureProxy(ServerProxy):
+class SecureProxy(xmlrpclib.ServerProxy):
     """ Overrides xmlrpclib.ServerProxy. """
     def __init__(self, uri, pem_file=None, key_file=None, cert_file=None,
                  ca_cert_file=None, encoding=None, 
@@ -396,5 +679,5 @@ class SecureProxy(ServerProxy):
         t = SecureTransport(credentials=self.credentials, 
                             use_datetime=use_datetime, 
                             anonymous=self.anonymous)
-        ServerProxy.__init__(self, uri, t, encoding, verbose, allow_none, 
-                             use_datetime)
+        xmlrpclib.ServerProxy.__init__(self, uri, t, encoding, verbose, 
+                                       allow_none, use_datetime)

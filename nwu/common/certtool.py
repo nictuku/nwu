@@ -112,7 +112,7 @@ tmp_info=tmp_output.split(' ', 3)
 # tmp_info should now contain: ['certtool', '(GnuTLS)', '<version>'].
 # We obviously need to validate that.
 
-if tmp_info[0] != 'certtool' or tmp_info[1] != '(GnuTLS)':
+if not tmp_info[0].endswith('certtool') or not tmp_info[1].startswith('(GnuTLS'):
     print '[ERROR] certtool seems not to be GnuTLS\' certtool binary.'
     sys.exit(255)
 
@@ -128,7 +128,7 @@ def __invoke_ct(command):
 
 def __invoke_ct_simple(command):
     """ Invokes certtool but only returns its output (to stdout only!) """
-    outfp, infp, errfp = __invoke(command)
+    outfp, infp, errfp = __invoke_ct(command)
     data = infp.read()
     infp.close()
     errfp.close()
@@ -194,11 +194,11 @@ def generate_certificate_from_privkey(caPrivKey, caCert, privKey, template=[]):
         templateFile.write('%s\n' % (i))
     templateFile.flush()
 
-    result = __invoke_simple('-c --load-ca-privkey %s '
-                             '--load-ca-certificate %s '
-                             '--load-privkey %s --template %s' 
-                             % (caPrivKeyFile.name, caCertFile.name,
-                                privKeyFile.name, templateFile.name))
+    result = __invoke_ct_simple('-c --load-ca-privkey %s '
+                                '--load-ca-certificate %s '
+                                '--load-privkey %s --template %s' 
+                                % (caPrivKeyFile.name, caCertFile.name,
+                                   privKeyFile.name, templateFile.name))
 
     caPrivKeyFile.close()
     caCertFile.close()
@@ -219,10 +219,10 @@ def generate_certificate_from_csr(caPrivKey, caCert, csr, template=[]):
     templateFile.flush()
 
     result = __invoke_ct_simple('-c --load-ca-privkey %s '
-                             '--load-ca-certificate %s '
-                             '--load-request %s --template %s' % 
-                             (caPrivKeyFile.name, csrFile.name,
-                              templateFile.name))
+                                '--load-ca-certificate %s '
+                                '--load-request %s --template %s' % 
+                                (caPrivKeyFile.name, csrFile.name,
+                                 templateFile.name))
 
     caPrivKeyFile.close()
     caCertFile.close()

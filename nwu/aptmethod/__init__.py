@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
@@ -17,9 +17,3 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
-
-
-from nwu.server.app import ServerApp
-
-app = ServerApp()
-app.main()

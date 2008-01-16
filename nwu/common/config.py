@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2008 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
 #
 #    This file is part of NWU.
 #
@@ -20,21 +20,24 @@
 
 from ConfigParser import SafeConfigParser
 import sys
+from os import path
 
 class Config(SafeConfigParser):
     def __init__(self, filename):
-        self.__filename = filename
-        self.__fp = None
+        self.filename = path.expanduser(filename)
+        self.fp = None
         SafeConfigParser.__init__(self)
 
         self.read()
 
     def read(self):
         try:
-            self.__fp = open(self.__filename, 'r')
-            self.readfp(self.__fp)
-            self.__fp.close()
+            self.fp = open(self.filename, 'r')
+            self.readfp(self.fp)
+            self.fp.close()
         except IOError, e:
+            # XXX: Do we really want to print this warning? If so, is the 
+            #      formatting okay?
             print '[WARNING] %s' % (e)
             print '          No config file found; using built-in default settings!'
 
