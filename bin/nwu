@@ -22,19 +22,20 @@
 """
 
 import sys
-from nwu.server.cli import Commands
-from nwu.server.config import read_config
+from nwu.server.cli import Commands, show_help
+from nwu.common.config import Config
 
 def main():
     # TODO: make this path configurable
-    config = read_config('/etc/nwu/server.conf')
+    config = Config('/etc/nwu/server.conf')
     nwu_cli = Commands(config)
     if len(sys.argv) == 1:
-        nwu_cli.usage()
+        show_help()
     command = 'cmd_' + sys.argv[1]
     if not hasattr(nwu_cli, command):
-        nwu_cli.usage()
+        nwu_cli.show_help()
     run_command = getattr(nwu_cli, command)
+    # TODO: check if args "is_safe()"
     output = run_command(*sys.argv[2:])
     if output:
         print output
