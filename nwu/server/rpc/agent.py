@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2008 Stephan Peijnik (yves@cetico.org)
+#   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
 #
 #    This file is part of NWU.
 #
