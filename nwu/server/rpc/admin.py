@@ -136,6 +136,7 @@ class AdminHandler(RPCHandler):
             raise NotFoundFault('Account with id %s' % (account_id))
 
         ac.delete()
+        ac.flush()
         return True
 
     def set_privilege(self, account, remote_host, account_id, privilege):

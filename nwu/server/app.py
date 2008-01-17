@@ -40,6 +40,7 @@ from nwu.server.db.model import db_bind, create_tables
 from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS, PRIV_ADMIN
 from nwu.server.rpc.anonymous import AnonymousHandler
 from nwu.server.rpc.admin import AdminHandler
+from nwu.server.rpc.agent import AgentHandler
 
 class ServerRootCommand(Command):
     def execute(self, app, args, cmdName=None):
@@ -231,6 +232,8 @@ class Server(SecureXMLRPCServer):
                                          PRIV_ANONYMOUS)
         self.dispatcher.register_handler('admin', AdminHandler(app),
                                          PRIV_ADMIN)
+        self.dispatcher.register_handler('agent', AgentHandler(app),
+                                         PRIV_AGENT)
 
 class ServerApp(Application):
     # DEFAULT SETTINGS
@@ -385,7 +388,7 @@ class ServerApp(Application):
         sys.stdout.flush()
         sys.stderr.flush()
         # Credits:
-        # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012
+        # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012 
 
         try:
             pid = os.fork()
