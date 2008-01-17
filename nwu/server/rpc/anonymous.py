@@ -26,17 +26,25 @@ class AnonymousHandler(RPCHandler):
     def __init__(self, app):
         RPCHandler.__init__(self, app, PRIV_ANONYMOUS)
         self.cacert_data = open(app.ca_cert, 'r').read()
+        self.servercert_data = open(app.server_crt, 'r').read()
     
     def get_my_privileges(self, account, remote_host):
+        """ Return privileges held by client. """
         priv = 0
         if account:
             priv = account.privileges
         return priv
 
     def get_ca_certificate(self, account, remote_host):
+        """ Get CA certificate. """
         return self.cacert_data
 
+    def get_server_certificate(self, account, remote_host):
+        """ Get server certificate. """
+        return self.servercert_data
+
     def request_csr_signing(self, account, remote_host, name, csr):
+        """ Request signing of a CSR. """
         # TODO: Create some kind of block list to protect us
         #       from spamming (use remote_host).
 
@@ -58,6 +66,7 @@ class AnonymousHandler(RPCHandler):
         return ac.oid
 
     def get_certificate(self, account, remote_host, account_id):
+        """ Get the certificate of a given account. """
         # Try getting account.
         ac = Account.get(account_id)
         
