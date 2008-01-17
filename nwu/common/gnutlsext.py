@@ -24,12 +24,14 @@ Python-GnuTLS extensions.
 Adds support for checking TLS WWW Server and Client OIDs.
 """
 
+from ctypes import *
+
 from gnutls import crypto
-from gnutls.library.constants import GNUTLS_KP_TLS_WWW_SERVER
-from gnutls.library.constants import GNUTLS_KP_TLS_WWW_CLIENT
-from gnutls.library.functions import gnutls_x509_crt_get_key_purpose_oid
+from gnutls.library.constants import *
+from gnutls.library.functions import *
+from gnutls.library.types import *
+from gnutls.validators import method_args, function_args, one_of
 from gnutls.errors import GNUTLSError
-from ctypes import c_size_t, create_string_buffer, c_ulong, byref
 
 class X509Certificate(crypto.X509Certificate):
     @property
@@ -62,3 +64,28 @@ class X509Certificate(crypto.X509Certificate):
             i = i + 1
 
         return oids
+
+class X509PrivateKey(crypto.X509PrivateKey):
+    @staticmethod
+    @function_args(int, one_of(GNUTLS_PK_RSA, GNUTLS_PK_DSA))
+    def generate(bits=1024, type=GNUTLS_PK_RSA):
+        """ Generate a private key. """
+        k = gnutls_x509_privkey_t()
+
+        gnutls_x509_privkey_init(k)
+        gnutls_x509_privkey_generate(k, type, bits, 0)
+
+        # XXX: Evil workaround.
+        size = c_size_t(10*1024)
+        buffer = create_string_buffer(size.value)
+        gnutls_x509_privkey_export(k, GNUTLS_X509_FMT_PEM, 
+                                   cast(byref(buffer), c_void_p), byref(size))
+        return X509PrivateKey(buffer.value)
+
+    def export(self):
+        size = c_size_t(10*1024)
+        buffer = create_string_buffer(size.value)
+        gnutls_x509_privkey_export(self._c_object, GNUTLS_X509_FMT_PEM, 
+                                   cast(byref(buffer), c_void_p), byref(size))
+
+        return buffer.value
