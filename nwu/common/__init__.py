@@ -19,6 +19,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
+VERSION='0.1.7-dev'
+
 def is_safe(str, http=False):
     # Moved here from nwu.server.cli/nwu.
     # From Byron Ellacot's message in the mod_python list     

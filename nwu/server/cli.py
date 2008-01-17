@@ -24,8 +24,7 @@ from nwu.server.db.model import db_bind
 from elixir import session, metadata, setup_all 
 
 from nwu.common.config import Config
-
-VERSION = '0.1.7'
+from nwu.common import VERSION
 
 def show_help():
     print \

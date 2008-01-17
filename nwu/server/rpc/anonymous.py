@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#   Copyright (C) 2008 Stephan Peijnik (yves@cetico.org)
+#   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
+#   Copyright (C) 2008 Yves Junqueira (yves@cetico.org) 
 #
 #    This file is part of NWU.
 #
@@ -18,6 +19,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
+from nwu.common import VERSION
 from nwu.common.rpc import NotFoundFault, NotPossibleFault
 from nwu.server.db.model import Account
 from nwu.server.rpc import RPCHandler, PRIV_ANONYMOUS
@@ -27,7 +29,27 @@ class AnonymousHandler(RPCHandler):
         RPCHandler.__init__(self, app, PRIV_ANONYMOUS)
         self.cacert_data = open(app.ca_cert, 'r').read()
         self.servercert_data = open(app.server_crt, 'r').read()
+        self.log = app.log
     
+    def check_protocol_version(self, client_version):
+        """Requests the current protocol version implemented by the server.
+        
+        This method should be used by the client to check if the version of 
+        its protocol matches the one implemented at the server. If they don't 
+        match, 'nwu-agent' should run a "self update".
+
+        Also, the client informs the current version to the server, so that
+        information can be logged and 'stale' clients can be detected.
+        """
+
+        if client_version == VERSION:
+            self.log.debug("Client version matches server version: %s" \
+                % client_version)
+        else:
+            self.log.warn("Version MISMATCH: %s (server), %s (client)"\
+                % (VERSION, client_version)
+        return VERSION
+
     def get_my_privileges(self, account, remote_host):
         """ Return privileges held by client. """
         priv = 0
@@ -77,4 +99,3 @@ class AnonymousHandler(RPCHandler):
             raise NotPossibleFault('No certificate present for account.')
 
         return ac.cert
-        
