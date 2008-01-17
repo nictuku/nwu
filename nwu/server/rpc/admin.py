@@ -28,6 +28,9 @@ class AdminHandler(RPCHandler):
         self.cryptoHelper = app.cryptoHelper
 
     def get_computer_info(self, account, remote_host, computer_id):
+        """ Get computer information for given computer or all computers
+        if computer_id is None.
+        """
         computers = []
 
         # Get info for all computers.
@@ -42,6 +45,7 @@ class AdminHandler(RPCHandler):
         return computers
 
     def get_computer_tasks(self, account, remote_host, computer_id):
+        """ Get all tasks for given computer. """
         comp = Computer.get(computer_id)
 
         if comp == None:
@@ -56,7 +60,9 @@ class AdminHandler(RPCHandler):
 
     def get_current_packages(self, account, remote_host, computer_id,
                              package_name):
-        
+        """ Get current packages with package name (wildmask) for given
+        computer.
+        """
         comp = Computer.get(computer_id)
 
         if comp == None:
@@ -73,6 +79,9 @@ class AdminHandler(RPCHandler):
 
     def get_update_candidates(self, account, remote_host, computer_id,
                               package_name):
+        """ Get update candidates with given package name (wildmask)
+        for given computer.
+        """
         comp = Computer.get(computer_id)
 
         if not comp:
@@ -89,6 +98,9 @@ class AdminHandler(RPCHandler):
 
     def get_repositories(self, account, remote_host, computer_id, type,
                          uri):
+        """ Get repositories of given type, with given uri (wildmask)
+        of given computer.
+        """
         comp = Computer.get(computer_id)
 
         if not comp:
@@ -105,6 +117,7 @@ class AdminHandler(RPCHandler):
         return result
 
     def get_account(self, account, remote_host, account_id):
+        """ Get account information for given account. """
         ac = Account.get(account_id)
         
         if not ac:
@@ -113,6 +126,7 @@ class AdminHandler(RPCHandler):
         return ac.to_dict()
 
     def get_account_id_by_name(self, account, remote_host, account_name):
+        """ Get account id for given account name. """
         ac = Account.get_by(name=account_name)
 
         if not ac:
@@ -120,6 +134,7 @@ class AdminHandler(RPCHandler):
         return ac.oid
 
     def get_account_ids(self, account, remote_host):
+        """ Get all account ids. """
         acs = Account.query.all()
 
         result = []
@@ -130,6 +145,9 @@ class AdminHandler(RPCHandler):
         return result
 
     def delete_account(self, account, remote_host, account_id):
+        """ Delete account """
+        # XXX: We might want to consider deactivating accounts instead
+        #      of actually deleting them from the database.
         ac = Accoung.get(account_id)
 
         if not ac:
@@ -140,6 +158,7 @@ class AdminHandler(RPCHandler):
         return True
 
     def set_privilege(self, account, remote_host, account_id, privilege):
+        """ Set privilege on an account. """
         ac = Account.get(account_id)
 
         if not ac:
@@ -154,7 +173,17 @@ class AdminHandler(RPCHandler):
 
         return True
 
+    def get_csr(self, account, remote_host, account_id):
+        """ Get CSR for specified account. """
+        ac = Account.get(account_id)
+
+        if not ac:
+            raise NotFoundFault('Account with id %s' % (account_id))
+        
+        return ac.csr
+
     def sign_csr(self, account, remote_host, account_id):
+        """ Create certificate from CSR """
         ac = Account.get(account_id)
 
         if not ac:
@@ -166,3 +195,15 @@ class AdminHandler(RPCHandler):
 
         return True
 
+    def add_task(self, account, remote_host, computer_id, task_name,
+                 task_details):
+        """ Add new task for computer. """
+        
+        c = Computer.get(computer_id)
+        
+        if not c:
+            raise NotFoundFault('Computer with id %s' % (computer_id))
+
+        t = Task(computer=c, action=task_name, details=task_details)
+        t.save()
+        t.flush()
