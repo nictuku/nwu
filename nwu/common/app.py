@@ -25,13 +25,14 @@ from nwu.common.config import Config
 class Option:
     """ Command line option """
     def __init__(self, longName, help, shortName=None, argument=False,
-                 default=None):
+                 default=None,validValues=None):
         self.longName = longName
         self.shortName = shortName
         self.argument = argument
         self.help = help
         self.present = False
         self.value = default
+        self.validValues = validValues
 
 class Command:
     """ Command base class.
@@ -92,10 +93,10 @@ class Command:
         return cmd.execute_command(app, args)
 
     def register_option(self, longName, help, shortName=None, argument=False,
-                        default=None):
+                        default=None, validValues=None):
         """ Registers a command line option. """
         self.options[longName] = Option(longName, help, shortName, argument,
-                                        default=default)
+                                        default=default, validValues=validValues)
 
     def find_option(self, name, short=False):
         """ Used internally """
@@ -177,6 +178,12 @@ class Command:
                         if opt.argument and not value:
                             return self.show_help(app, '%s option requires ' \
                                                   'a value.' % (name))
+
+                        if opt.validValues and value not in opt.validValues:
+                            return self.show_help(app, 
+                                'Invalid value specified for %s. ' \
+                                'Valid arguments:\n %s' % (name, 
+                                    ", ".join(opt.validValues)))
                         opt.value = value
             else:
                 unhandled_args.append(arg)

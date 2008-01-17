@@ -270,7 +270,9 @@ class ServerApp(Application):
         optreg('initialize', 'Initialize the server environment (database) '
                ' and exit.', 'i')
         optreg('loglevel', 'Set verbosity.', 'l', argument=True,
-               default=ServerApp.DEFAULT_LOGLEVEL)
+               default=ServerApp.DEFAULT_LOGLEVEL,
+               validValues=['DEBUG', 'INFO', 'WARNING', 'WARN','ERROR', 
+               'FATAL'])
         optreg('user', 'Set username to run server as. This option has no '
                'effect if server is started in foreground.', 'u', 
                argument=True, default=ServerApp.DEFAULT_USER)
