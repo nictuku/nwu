@@ -38,6 +38,7 @@ from nwu.common.SecureXMLRPC import SecureXMLRPCServer
 
 from nwu.server.db.model import db_bind, create_tables
 from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS, PRIV_ADMIN
+from nwu.server.rpc import PRIV_AGENT 
 from nwu.server.rpc.anonymous import AnonymousHandler
 from nwu.server.rpc.admin import AdminHandler
 from nwu.server.rpc.agent import AgentHandler
@@ -96,9 +97,17 @@ class CryptoHelper:
         try:
             os.chmod(self.app.ca_serial, stat.S_IWUSR)
         except OSError:
-            # file not found
+            # File not found
             pass
-        fp = open(self.app.ca_serial, 'w')
+
+        try:
+            fp = open(self.app.ca_serial, 'w')
+        except IOError, e:
+             message = 'Could not write to %s: %s' % (self.app.ca_serial, 
+                e.strerror)
+             self.log.fatal(message)
+             sys.exit(1)
+
         fp.write('1')
         fp.close()
         # IMPORTANT: Fix file permissions on ca_serial file.
