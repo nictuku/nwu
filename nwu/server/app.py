@@ -40,6 +40,7 @@ from nwu.server.db.model import db_bind, create_tables
 from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS, PRIV_ADMIN
 from nwu.server.rpc.anonymous import AnonymousHandler
 from nwu.server.rpc.admin import AdminHandler
+from nwu.server.rpc.agent import AgentHandler
 
 class ServerRootCommand(Command):
     def execute(self, app, args, cmdName=None):
@@ -227,6 +228,8 @@ class Server(SecureXMLRPCServer):
                                          PRIV_ANONYMOUS)
         self.dispatcher.register_handler('admin', AdminHandler(app),
                                          PRIV_ADMIN)
+        self.dispatcher.register_handler('agent', AgentHandler(app),
+                                         PRIV_AGENT)
 
 class ServerApp(Application):
     # DEFAULT SETTINGS
@@ -270,7 +273,9 @@ class ServerApp(Application):
         optreg('initialize', 'Initialize the server environment (database) '
                ' and exit.', 'i')
         optreg('loglevel', 'Set verbosity.', 'l', argument=True,
-               default=ServerApp.DEFAULT_LOGLEVEL)
+               default=ServerApp.DEFAULT_LOGLEVEL,
+               validValues=['DEBUG', 'INFO', 'WARNING', 'WARN','ERROR', 
+               'FATAL'])
         optreg('user', 'Set username to run server as. This option has no '
                'effect if server is started in foreground.', 'u', 
                argument=True, default=ServerApp.DEFAULT_USER)

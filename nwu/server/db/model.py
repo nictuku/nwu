@@ -38,12 +38,11 @@ class TablesVersion(Entity):
     
     name = Field(String(255))
     version = Field(Integer)
-    uniq = Field(String(32))
+    belongs_to('computer', of_kind='Computer', inverse='tables_version')
 
 class Computer(Entity):
     using_options(tablename='computer')
 
-    uniq = Field(String(32),unique=True)
     hostname = Field(String(255))
     os_name = Field(String(255))
     os_version = Field(String(255))
@@ -52,6 +51,7 @@ class Computer(Entity):
     has_many('update_candidates', of_kind='UpdateCandidates',inverse='computer')
     has_many('repositories', of_kind='Repositories',inverse='computer')
     has_many('tasks', of_kind='Tasks')
+    has_many('tables_version', of_kind='TablesVersion', inverse='computer')
 
     belongs_to('account', of_kind='Account', required=False)
 
@@ -94,6 +94,7 @@ class UpdateCandidates(Entity):
 #    class sqlmeta:
 #        defaultOrder = 'name'
 
+# XXX: Should we rename this to Repository?
 class Repositories(Entity):
     """APT repositories table.
     Example:
@@ -162,6 +163,21 @@ def db_bind(connection_string, rebind=False):
         setup_all()
         return True
     return False
+
+def delete_all(object_list):
+    """ Delete all database objects in a given list. """
+    if not object_list:
+        return
+
+    if type(object_list) != list:
+        raise Exception('object_list is not a list.')
+
+    for obj in object_list:
+        try:
+            obj.delete()
+            obj.flush()
+        except:
+            continue
 
 def create_tables():
     """Creates required tables in the database.

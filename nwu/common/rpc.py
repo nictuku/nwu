@@ -26,7 +26,7 @@ from xmlrpclib import Fault, _Method
 from nwu.common.SecureXMLRPC import SecureProxy
 
 __all__ = ['RPCFault', 'RPCProxy', 'UnknownMethodFault', 'AccessDeniedFault',
-           'NotPossibleFault', 'NotFoundFault']
+           'NotPossibleFault', 'NotFoundFault', 'InvalidParamsFault']
 
 class RPCFault:
     """ RPC error codes """
@@ -35,6 +35,7 @@ class RPCFault:
     ACCESS_DENIED = 3
     NOT_POSSIBLE = 4
     NOT_FOUND = 5
+    INVALID_PARAMS = 6
     
     # Table for reverse-lookups.
     # This allows us to re-generate the original faults (correct class)
@@ -63,12 +64,12 @@ class RPCFault:
     
 
 class UnknownMethodFault(Fault):
-    def __init__(self, methodName):
-        Fault.__init__(self, RPCFault.UNKNOWN_METHOD, methodName)
+    def __init__(self, method_name):
+        Fault.__init__(self, RPCFault.UNKNOWN_METHOD, method_name)
 
 class AccessDeniedFault(Fault):
-    def __init__(self, methodName):
-        Fault.__init__(self, RPCFault.ACCESS_DENIED, methodName)
+    def __init__(self, method_name):
+        Fault.__init__(self, RPCFault.ACCESS_DENIED, method_name)
 
 class NotPossibleFault(Fault):
     def __init__(self, message):
@@ -77,6 +78,10 @@ class NotPossibleFault(Fault):
 class NotFoundFault(Fault):
     def __init__(self, message):
         Fault.__init__(self, RPCFault.NOT_FOUND, message)
+
+class InvalidParamsFault(Fault):
+    def __init__(self, method_name):
+        Fault.__init__(self, RPCFault.INVALID_PARAMS, method_name)
 
 class RPCProxy(SecureProxy):
     """ Override SecureProxy to provide Fault translation. """
