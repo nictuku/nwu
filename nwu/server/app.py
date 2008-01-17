@@ -389,6 +389,7 @@ class ServerApp(Application):
         sys.stderr.flush()
         # Credits:
         # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012 
+
         try:
             pid = os.fork()
             if pid > 0:
