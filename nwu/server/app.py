@@ -93,7 +93,11 @@ class CryptoHelper:
 
     def initCrypto(self):
         # step 0: reset/create ca_serial file
-        os.chmod(self.app.ca_serial, stat.S_IWUSR)
+        try:
+            os.chmod(self.app.ca_serial, stat.S_IWUSR)
+        except OSError:
+            # file not found
+            pass
         fp = open(self.app.ca_serial, 'w')
         fp.write('1')
         fp.close()
@@ -383,7 +387,8 @@ class ServerApp(Application):
     def daemonize(self):
         sys.stdout.flush()
         sys.stderr.flush()
-
+        # Credits:
+        # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012 
         try:
             pid = os.fork()
             if pid > 0:
@@ -393,12 +398,13 @@ class ServerApp(Application):
                                                              e.strerror)
             sys.exit(1)
 
+        # avoid preventing unmounting
         os.chdir('/')
         os.setsid()
         os.umask(0)
 
-        errorlog = file(self.errorLog, 'a+')
-        stderr_old = file(ERRORLOG, 'a+')
+        errorlog = file(self.errorLogPath, 'a+')
+        stderr_old = file(self.errorLogPath, 'a+')
 
         os.dup2(sys.stderr.fileno(), stderr_old.fileno())
         os.dup2(errorlog.fileno(), sys.stdout.fileno())
@@ -412,7 +418,7 @@ class ServerApp(Application):
                 self.write_pidfile()
             sys.exit(0)
         except OSError, e:
-            print >>stderr_old, 'late fork failed: %s (%d)' % (e.errno,
+            print >> stderr_old, 'late fork failed: %s (%d)' % (e.errno,
                                                                e.strerror)
             sys.exit(1)
     
