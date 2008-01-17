@@ -25,7 +25,7 @@ from nwu.common.config import Config
 class Option:
     """ Command line option """
     def __init__(self, longName, help, shortName=None, argument=False,
-                 default=None,validValues=None):
+                 default=None, validValues=None):
         self.longName = longName
         self.shortName = shortName
         self.argument = argument
@@ -211,6 +211,10 @@ class Command:
                 for w in words:
                     if (len(s) + len(w) + 1) <= 79:
                         s += ' ' + w
+                        if w[-1] == '\n':
+                            # Handle newlines in message.
+                            print s[:-1]
+                            s = ' '
                     else:
                         print s
                         s = '  ' + w
