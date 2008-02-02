@@ -19,11 +19,13 @@
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 from ConfigParser import SafeConfigParser
+import logging
 import sys
 from os import path
 
 class Config(SafeConfigParser):
     def __init__(self, filename):
+        self.log = logging.getLogger()
         self.filename = path.expanduser(filename)
         self.fp = None
         SafeConfigParser.__init__(self)
@@ -38,9 +40,8 @@ class Config(SafeConfigParser):
         except IOError, e:
             # XXX: Do we really want to print this warning? If so, is the 
             #      formatting okay?
-            print '[WARNING] %s' % (e)
-            print '          No config file found; using built-in default settings!'
-
+            self.log.info('No config file found; using built-in default '\
+                              'settings.')
     def get(self, section, option, default=''):
         if not self.has_section(section) \
                 or not self.has_option(section, option):

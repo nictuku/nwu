@@ -24,15 +24,15 @@ from nwu.common.config import Config
 
 class Option:
     """ Command line option """
-    def __init__(self, longName, help, shortName=None, argument=False,
-                 default=None,validValues=None):
-        self.longName = longName
-        self.shortName = shortName
+    def __init__(self, long_name, help, short_name=None, argument=False,
+                 default=None, valid_values=None):
+        self.long_name = long_name
+        self.short_name = short_name
         self.argument = argument
         self.help = help
         self.present = False
         self.value = default
-        self.validValues = validValues
+        self.valid_values = valid_values
 
 class Command:
     """ Command base class.
@@ -63,40 +63,41 @@ class Command:
         and calls execute() in turn.
         """
         unhandled_args = self.parse_options(app, args)
-        cmdName = None
+        cmd_name = None
 
         if unhandled_args:
             for a in unhandled_args:
                 if a[0] != '-':
-                    cmdName = a
+                    cmd_name = a
                     unhandled_args.remove(a)
                     break
 
-        if cmdName == 'help':
+        if cmd_name == 'help':
             return self.show_help(app)
 
-        return self.execute(app, unhandled_args, cmdName)
+        return self.execute(app, unhandled_args, cmd_name)
 
-    def execute(self, app, args, cmdName=None):
+    def execute(self, app, args, cmd_name=None):
         """ Command code.
 
         This method can be overridden to provide custom behaviour.
         It usually contains the implementation of the command.
         """
-        if not cmdName:
+        if not cmd_name:
             return self.show_help(app, 'No command supplied.')
 
-        if not cmdName in self.commands:
-            return self.show_help(app, 'Unknown command: %s' % (cmdName))
+        if not cmd_name in self.commands:
+            return self.show_help(app, 'Unknown command: %s' % (cmd_name))
 
-        cmd = self.commands[cmdName]
+        cmd = self.commands[cmd_name]
         return cmd.execute_command(app, args)
 
-    def register_option(self, longName, help, shortName=None, argument=False,
-                        default=None, validValues=None):
+    def register_option(self, long_name, help, short_name=None, argument=False,
+                        default=None, valid_values=None):
         """ Registers a command line option. """
-        self.options[longName] = Option(longName, help, shortName, argument,
-                                        default=default, validValues=validValues)
+        self.options[long_name] = Option(long_name, help, short_name, argument,
+                                         default=default, 
+                                         valid_values=valid_values)
 
     def find_option(self, name, short=False):
         """ Used internally """
@@ -106,9 +107,9 @@ class Command:
             else:
                 return None
 
-        for optName in self.options:
-            o = self.options[optName]
-            if o.shortName == name:
+        for opt_name in self.options:
+            o = self.options[opt_name]
+            if o.short_name == name:
                 return o
         return None
 
@@ -179,11 +180,11 @@ class Command:
                             return self.show_help(app, '%s option requires ' \
                                                   'a value.' % (name))
 
-                        if opt.validValues and value not in opt.validValues:
+                        if opt.valid_values and value not in opt.valid_values:
                             return self.show_help(app, 
                                 'Invalid value specified for %s. ' \
                                 'Valid arguments:\n %s' % (name, 
-                                    ", ".join(opt.validValues)))
+                                    ", ".join(opt.valid_values)))
                         opt.value = value
             else:
                 unhandled_args.append(arg)
@@ -196,8 +197,8 @@ class Command:
             return ''
 
         if self.parent and self.parent.get_name() != '':
-            parName = self.parent.get_name()
-            return '%s %s' % (parName, self.name)
+            par_name = self.parent.get_name()
+            return '%s %s' % (par_name, self.name)
         return self.name
 
     def show_help(self, app, message=None):
@@ -211,6 +212,10 @@ class Command:
                 for w in words:
                     if (len(s) + len(w) + 1) <= 79:
                         s += ' ' + w
+                        if w[-1] == '\n':
+                            # Handle newlines in message.
+                            print s[:-1]
+                            s = ' '
                     else:
                         print s
                         s = '  ' + w
@@ -218,47 +223,47 @@ class Command:
             else:
                 print '* %s\n' % (message)
         
-        myName = self.get_name()
-        if not myName:
-            myName = app.binName
+        my_name = self.get_name()
+        if not my_name:
+            my_name = app.bin_name
 
-        print 'Help for command %s:\n' % (myName)
+        print 'Help for command %s:\n' % (my_name)
 
         if len(self.options) > 0:
             # find longest option name
-            maxLength = 0
-            for oName in self.options:
-                o = self.options[oName]
+            max_length = 0
+            for opt_name in self.options:
+                o = self.options[opt_name]
 
-                l = len(o.longName) + 2
+                l = len(o.long_name) + 2
                 if o.argument:
                     # len('value')
                     l += 6
-                maxLength = max(l, maxLength)
+                max_length = max(l, max_length)
             # len('-x,')
-            maxLength += 3
+            max_length += 3
 
             # needed for good-looking indentation
-            def print_opt(maxLength, opt):
+            def print_opt(max_length, opt):
                 s = ''
-                if opt.shortName:
-                    s += '-%s,' % (opt.shortName)
+                if opt.short_name:
+                    s += '-%s,' % (opt.short_name)
                 else:
                     s += '   '
-                s += '--%s' % (opt.longName)
+                s += '--%s' % (opt.long_name)
 
                 if opt.argument:
                     s+= '=value'
 
-                for i in range(len(s), maxLength):
+                for i in range(len(s), max_length):
                     s += ' '
                 s += '  '
                 base_indent = len(s)
-                helpTxt = opt.help
+                help_txt = opt.help
                 if (len(s) + len(opt.help)) > 79:
                     s = s[:-1]
 
-                    words = helpTxt.split(' ')
+                    words = help_txt.split(' ')
                     for w in words:
                         if (len(s) + len(w) + 1) <= 79:
                             s += ' ' + w
@@ -270,29 +275,29 @@ class Command:
                             s += w
                     print s
                 else:
-                    print '%s%s' % (s, helpTxt)
+                    print '%s%s' % (s, help_txt)
 
             print 'Following options are available: '
-            for oName in self.options:
-                print_opt(maxLength, self.options[oName])
+            for opt_name in self.options:
+                print_opt(max_length, self.options[opt_name])
             print ''
 
         if len(self.commands) > 0:
             print 'Following commands are available (%s <command>):\n' \
-                % (myName)
+                % (my_name)
             for c in self.commands:
                 print c
             print ''
             print 'More information on every command is available using %s ' \
-                '<command> help' % (myName)
+                '<command> help' % (my_name)
 
         sys.exit(255)
 
 class Application:
     """ Application base class """
     options = []
-    def __init__(self, args=sys.argv[1:], binName=sys.argv[0], 
-                 rootCommandClass=Command):
+    def __init__(self, args=sys.argv[1:], bin_name=sys.argv[0], 
+                 root_command_class=Command):
         """ Initializes the application.
 
         This method should be overridden by child-classes to add 
@@ -302,10 +307,10 @@ class Application:
         with custom commandline options.
         """
         self.args = args
-        self.binName = binName
+        self.bin_name = bin_name
         self.config = None
-        self.configPath = None
-        self.rootCommand = rootCommandClass()
+        self.config_file_path = None
+        self.root_command = root_command_class()
 
     def read_config(self):
         """ Reads the config file found at path.
@@ -313,15 +318,15 @@ class Application:
         self.configPath must have been set by the application before in order
         for this to work.
         """
-        self.config = Config(self.configPath)
+        self.config = Config(self.config_file_path)
 
     def main(self):
         """ Runs the application.
 
-        This method uses self.rootCommand to call the correct command.
+        This method uses self.root_command to call the correct command.
         """
-        self.rootCommand.execute_command(self, self.args)
+        self.root_command.execute_command(self, self.args)
 
     def usage_header(self):
         """Returns the header to display before command help."""
-        return '%s help' % (self.binName)
+        return '%s help' % (self.bin_name)

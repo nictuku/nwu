@@ -20,8 +20,10 @@
 
 from gnutls.crypto import X509Certificate
 
-from nwu.common.rpc import UnknownMethodFault, AccessDeniedFault
+from nwu.common.rpc import UnknownMethodFault, AccessDeniedFault, InternalFault
 from nwu.server.db.model import Account
+
+from xmlrpclib import Fault
 
 # Lower number means less privileges.
 # 
@@ -45,6 +47,7 @@ PRIV_ADMIN = 0x200
 class RPCHandler:
     def __init__(self, app, required_privilege):
         self.app = app
+        self.log = app.log
         self.required_privilege = required_privilege
 
     def _has_access(self, methodName, held_privilege):
@@ -155,7 +158,13 @@ class RPCDispatcher:
         func = getattr(handler, '_dispatch', None)
 
         if func:
-            return handler._dispatch(account_info, methodName, params)
+            try:
+                return handler._dispatch(account_info, methodName, params)
+            except Fault:
+                raise
+            except Exception, e:
+                self.log.error('Internal fault: %s' % (e))
+                raise InternalFault()
 
         # Let's find the method to call...
         func = getattr(handler, methodName, None)
@@ -164,5 +173,12 @@ class RPCDispatcher:
         if not func:
             raise UnknownMethodFault(method)
 
-        res = func(*params)
+        try:
+            res = func(*params)
+        except Fault:
+            raise
+        except Exception, e:
+            self.log.error('Internal fault: %s' % (e))
+            raise InternalFault()
+
         return res

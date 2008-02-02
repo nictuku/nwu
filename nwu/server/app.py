@@ -38,24 +38,25 @@ from nwu.common.SecureXMLRPC import SecureXMLRPCServer
 
 from nwu.server.db.model import db_bind, create_tables
 from nwu.server.rpc import RPCDispatcher, PRIV_ANONYMOUS, PRIV_ADMIN
+from nwu.server.rpc import PRIV_AGENT 
 from nwu.server.rpc.anonymous import AnonymousHandler
 from nwu.server.rpc.admin import AdminHandler
 from nwu.server.rpc.agent import AgentHandler
 
 class ServerRootCommand(Command):
-    def execute(self, app, args, cmdName=None):
-        if len(args) > 0 or cmdName:
-            if cmdName:
-                arg = cmdName
+    def execute(self, app, args, cmd_name=None):
+        if len(args) > 0 or cmd_name:
+            if cmd_name:
+                arg = cmd_name
             else:
                 arg = args[0]
                 
             self.show_help(app, message='Unknown option: %s' % (arg))
             app.exit(255)
 
-        app.errorLogPath = self.option_get_value('errorlog')
-        app.pidFilePath = self.option_get_value('pidfile')
-        app.configPath = self.option_get_value('configfile')
+        app.error_log_path = self.option_get_value('errorlog')
+        app.pid_file_path = self.option_get_value('pidfile')
+        app.config_file_path = self.option_get_value('configfile')
 
         # First thing to do is initializing logging.
         app.init_logging(not self.option_is_set('foreground'))
@@ -91,14 +92,22 @@ class CryptoHelper:
         self.admin_cert = app.config_path(app.config.get(\
                 'crypto', 'admincert', app.DEFAULT_ADMIN_CERT))
 
-    def initCrypto(self):
+    def init_crypto(self):
         # step 0: reset/create ca_serial file
         try:
             os.chmod(self.app.ca_serial, stat.S_IWUSR)
         except OSError:
-            # file not found
+            # File not found
             pass
-        fp = open(self.app.ca_serial, 'w')
+
+        try:
+            fp = open(self.app.ca_serial, 'w')
+        except IOError, e:
+             message = 'Could not write to %s: %s' % (self.app.ca_serial, 
+                e.strerror)
+             self.log.fatal(message)
+             sys.exit(1)
+
         fp.write('1')
         fp.close()
         # IMPORTANT: Fix file permissions on ca_serial file.
@@ -256,16 +265,16 @@ class ServerApp(Application):
     DEFAULT_SERVER_HOST = 'localhost'
     DEFAULT_SERVER_PORT = 8088
 
-    def __init__(self, args=sys.argv[1:], binName=sys.argv[0]):
-        Application.__init__(self, args, binName, 
-                             rootCommandClass=ServerRootCommand)
+    def __init__(self, args=sys.argv[1:], bin_name=sys.argv[0]):
+        Application.__init__(self, args, bin_name, 
+                             root_command_class=ServerRootCommand)
 
         self.log = logging.getLogger()
 
-        self.pidFilePath = None
-        self.errorLogPath = None
+        self.pid_file_path = None
+        self.error_log_path = None
 
-        optreg = self.rootCommand.register_option
+        optreg = self.root_command.register_option
 
         optreg('configfile', 'Specify the config file to read options from.',
                'c', argument=True, default=ServerApp.DEFAULT_CONFIG)
@@ -278,7 +287,7 @@ class ServerApp(Application):
                ' and exit.', 'i')
         optreg('loglevel', 'Set verbosity.', 'l', argument=True,
                default=ServerApp.DEFAULT_LOGLEVEL,
-               validValues=['DEBUG', 'INFO', 'WARNING', 'WARN','ERROR', 
+               valid_values=['DEBUG', 'INFO', 'WARNING', 'WARN','ERROR', 
                'FATAL'])
         optreg('user', 'Set username to run server as. This option has no '
                'effect if server is started in foreground.', 'u', 
@@ -320,7 +329,7 @@ class ServerApp(Application):
             os.chmod(dbfile, stat.S_IRUSR|stat.S_IWUSR)
 
         # After DB initialization we have to do crypto initialization.
-        if not force or not self.rootCommand.option_is_set('foreground'):
+        if not force or not self.root_command.option_is_set('foreground'):
             self.log.info('Crypto initialization is only done if --force-init '
                           'and --foreground are present.')
             self.log.info('If crypto is (re-)initialized all clients will have'
@@ -329,7 +338,7 @@ class ServerApp(Application):
             self.log.info('Crypto initialization is starting.')
             self.init_crypto(fail=False)
         
-            self.cryptoHelper.initCrypto()
+            self.cryptoHelper.init_crypto()
 
         self.exit(0)
 
@@ -355,12 +364,12 @@ class ServerApp(Application):
 
         # Check file permissions of sqlite database file.
         if db_type == 'sqlite':
-            self.check_file_security(db_database, allowGroup=True)
+            self.check_file_security(db_database, allow_group=True)
 
         db_bind(self.db_connstring)
 
     def drop_privileges(self):
-        user = self.rootCommand.option_get_value('user')
+        user = self.root_command.option_get_value('user')
         data = pwd.getpwnam(user)
         pw_uid = data[2]
         pw_gid = data[3]
@@ -377,7 +386,7 @@ class ServerApp(Application):
 
     def write_pidfile(self, pid):
         try:
-            fp = open(self.pidFile, 'w')
+            fp = open(self.pid_file_path, 'w')
             fp.write(pid)
             fp.close()
         except IOError, e:
@@ -396,7 +405,7 @@ class ServerApp(Application):
                 sys.exit(0)
         except OSError, e:
             print >>sys.stderr, 'Early forking failed: %s (%d)' % (e.errno, 
-                                                             e.strerror)
+                                                                   e.strerror)
             sys.exit(1)
 
         # avoid preventing unmounting
@@ -404,8 +413,8 @@ class ServerApp(Application):
         os.setsid()
         os.umask(0)
 
-        errorlog = file(self.errorLogPath, 'a+')
-        stderr_old = file(self.errorLogPath, 'a+')
+        errorlog = file(self.error_log_path, 'a+')
+        stderr_old = file(self.error_log_path, 'a+')
 
         os.dup2(sys.stderr.fileno(), stderr_old.fileno())
         os.dup2(errorlog.fileno(), sys.stdout.fileno())
@@ -442,7 +451,7 @@ class ServerApp(Application):
                                           '%(message)s')
         hdlr.setFormatter(formatter)
         self.log.addHandler(hdlr)
-        loglevel = self.rootCommand.option_get_value('loglevel')
+        loglevel = self.root_command.option_get_value('loglevel')
         self.log.setLevel(eval('logging.' + loglevel))
 
     def init_server(self):
@@ -450,7 +459,7 @@ class ServerApp(Application):
                                ServerApp.DEFAULT_SERVER_HOST)
 
         port = self.config.get('webservice', 'port',
-                                   ServerApp.DEFAULT_SERVER_PORT)
+                               ServerApp.DEFAULT_SERVER_PORT)
         try:
             port = int(port)
         except ValueError:
@@ -486,7 +495,7 @@ class ServerApp(Application):
         cert = X509Certificate(fp.read())
         fp.close()
     
-    def check_file_security(self, path, allowGroup=False):
+    def check_file_security(self, path, allow_group=False):
         ''' Checks whether a file's permissions are secure. '''
         try:
             statres = os.stat(path)
@@ -495,7 +504,7 @@ class ServerApp(Application):
 
         mode = statres[stat.ST_MODE]
 
-        if not allowGroup:
+        if not allow_group:
             if (mode & stat.S_IRGRP) > 0 or (mode & stat.S_IWGRP) > 0 or \
                     (mode & stat.S_IXGRP) > 0:
                 raise Exception('Security violation: %s is group-accessible.' 
@@ -533,7 +542,7 @@ class ServerApp(Application):
             self.server_key = self.config_path(self.config.get(\
                     'crypto', 'serverkey', ServerApp.DEFAULT_SERVER_KEY))
 
-            self.cryptoHelper = CryptoHelper(self)
+            self.crypto_helper = CryptoHelper(self)
 
             # Check file permissions on all keys.
             if os.path.exists(self.ca_key):

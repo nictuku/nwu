@@ -36,6 +36,7 @@ class RPCFault:
     NOT_POSSIBLE = 4
     NOT_FOUND = 5
     INVALID_PARAMS = 6
+    INTERNAL_FAULT = 7
     
     # Table for reverse-lookups.
     # This allows us to re-generate the original faults (correct class)
@@ -46,7 +47,7 @@ class RPCFault:
     @staticmethod 
     def translate_fault(generic_fault):
         """ Translate generic fault to specific RPC fault (using faultCode) """
-        faultClass = None
+        fault_class = None
 
         if generic_fault.faultCode > 1:
             idx = generic_fault.faultCode - 1
@@ -83,6 +84,10 @@ class InvalidParamsFault(Fault):
     def __init__(self, method_name):
         Fault.__init__(self, RPCFault.INVALID_PARAMS, method_name)
 
+class InternalFault(Fault):
+    def __init__(self):
+        Fault.__init__(self, RPCFault.INTERNAL_FAULT, 'Internal error.')
+
 class RPCProxy(SecureProxy):
     """ Override SecureProxy to provide Fault translation. """
 
@@ -91,7 +96,8 @@ class RPCProxy(SecureProxy):
 
     def __request(self, methodname, params):
         try:
-            self._ServerProxy__request(methodname, params)
+            # XXX: Using _ServerProxy__request is an evil workaround.
+            return self._ServerProxy__request(methodname, params)
         except Fault, f:
             # Try to translate the fault.
             RPCFault.translate_fault(f)

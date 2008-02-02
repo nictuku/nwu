@@ -85,6 +85,12 @@ class Scheduler(Thread):
         self.taskLock.release()
         return True
 
+    def remove_all_tasks(self):
+        """ Removes all tasks from the scheduler """
+        self.taskLock.acquire()
+        self.tasks = []
+        self.taskLock.release()
+
     def remove_task(self, task):
         """ Remove a task from the scheduler """
         if self.exitEvent.isSet():
@@ -125,4 +131,6 @@ class Scheduler(Thread):
 
             self.exitEvent.wait(0.1)
         
+        # Need to clear event in case of later scheduler re-initialization.
+        self.exitEvent.clear()
         
