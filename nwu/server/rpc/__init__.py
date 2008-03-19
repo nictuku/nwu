@@ -24,6 +24,7 @@ from nwu.common.rpc import UnknownMethodFault, AccessDeniedFault, InternalFault
 from nwu.server.db.model import Account
 
 from xmlrpclib import Fault
+from traceback import format_exc
 
 # Lower number means less privileges.
 # 
@@ -88,6 +89,12 @@ class RPCDispatcher:
         
     def register_handler(self, name, handler, privileges=None):
         self.handlers[name] = handler
+
+    def handle_internal_fault(self, fault):
+        self.log.error("Internal fault: %s" % (fault))
+        self.log.debug(format_exc())
+        # No need to tell the client what exactly is wrong on our side.
+        raise InternalFault()
 
     def get_account_info(self, certificate):
         try:
@@ -163,8 +170,7 @@ class RPCDispatcher:
             except Fault:
                 raise
             except Exception, e:
-                self.log.error('Internal fault: %s' % (e))
-                raise InternalFault()
+                self.handle_internal_fault(e)
 
         # Let's find the method to call...
         func = getattr(handler, methodName, None)
@@ -178,7 +184,6 @@ class RPCDispatcher:
         except Fault:
             raise
         except Exception, e:
-            self.log.error('Internal fault: %s' % (e))
-            raise InternalFault()
+            self.handle_internal_fault(e)
 
         return res

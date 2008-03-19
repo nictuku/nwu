@@ -60,6 +60,7 @@ class Scheduler(Thread):
         Thread.__init__(self)
         self.setName(name)
         self.app = app
+        self.log = app.log
         self.tasks = []
         self.taskLock = Lock()
         self.exitEvent = Event()
@@ -74,6 +75,7 @@ class Scheduler(Thread):
 
     def stop(self):
         """ Stop the Scheduler. """
+        self.log.debug("scheduler: stopped.")
         self.exitEvent.set()
 
     def add_task(self, task):
@@ -83,6 +85,7 @@ class Scheduler(Thread):
         self.taskLock.acquire()
         self.tasks.append(task)
         self.taskLock.release()
+        self.log.debug("scheduler: task added: %s" % (task.name))
         return True
 
     def remove_all_tasks(self):
@@ -90,6 +93,7 @@ class Scheduler(Thread):
         self.taskLock.acquire()
         self.tasks = []
         self.taskLock.release()
+        self.log.debug("scheduler: all tasks removed.")
 
     def remove_task(self, task):
         """ Remove a task from the scheduler """
@@ -98,12 +102,14 @@ class Scheduler(Thread):
         self.taskLock.acquire()
         self.tasks.remove(task)
         self.taskLock.release()
+        self.log.debug("scheduler: task removed: %s" % (task.name))
         return True
 
     def run(self):
         """ Thread main loop. """
         self.init_thread()
 
+        self.log.debug("scheduler: main loop started.")
         while not self.exitEvent.isSet():
             exec_tasks = []
             
@@ -113,13 +119,13 @@ class Scheduler(Thread):
                 if ac.exec_time <= int(time()):
                     exec_tasks.append(ac)
             self.taskLock.release()
-
+            
             for ac in exec_tasks:
                 try:
+                    self.log.debug("scheduler: executing task %s" % (ac))
                     ac.execute()
                 except Exception, e:
-                    # TODO: Log this rather than printing it
-                    print 'Task %s raised exception: %s' % (ac.name, e)
+                    self.log.warning("scheduler: task %s raised exception: %s" % (ac.name, e))
                 if ac.type == Task.TYPE_RECURRING:
                     ac.exec_time = int(time()) + ac.interval
 

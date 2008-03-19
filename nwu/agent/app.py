@@ -27,20 +27,23 @@ import sys
 
 from nwu.common import certtool
 from nwu.common.app import Application, Command
-from nwu.common.rpc import RPCProxy, NotPossibleFault, NotFoundFault
+from nwu.common.rpc import RPCProxy, NotPossibleFault, NotFoundFault, Fault
 from nwu.common.rpc import UnknownMethodFault
 from nwu.common.scheduler import Scheduler, RecurringTask
+from nwu.common.gnutlsext import X509Certificate, X509PrivateKey
 
 class AgentCertFetcherTask(RecurringTask):
     def __init__(self, app):
         self.proxy = app.proxy
         self.app = app
+        self.log = app.log
         RecurringTask.__init__(self, 'CertFetcher', app.poll_interval)
 
     def execute(self):
         """ Try to fetch our client certificate from the server. """
         try:
-            cert = self.proxy.anon.get_certificate(app.account_id)
+            self.log.debug("Trying to fetch certificate for account id %s." % (self.app.account_id))
+            cert = self.proxy.anon.get_certificate(self.app.account_id)
         except NotFoundFault:
             self.log.error('Account with ID %d not found at server.' \
                           % (app.account_id))
@@ -53,11 +56,13 @@ class AgentCertFetcherTask(RecurringTask):
             sys.exit(1)
         
         if cert:
-            app.scheduler.stop()
-            app.scheduler.remove_all_tasks()
-            app.save_cert(cert)
-            app.reinit_proxy()
-            app.run()
+            self.app.scheduler.stop()
+            self.app.scheduler.remove_all_tasks()
+            self.app.save_certificate(cert)
+            self.app.reinit_proxy()
+            self.app.run()
+            return True
+        return False
 
 class AgentRootCommand(Command):
     def execute(self, app, args, cmd_name=None):
@@ -71,9 +76,9 @@ class AgentRootCommand(Command):
             app.exit(255)
 
         if self.option_is_set('configbase'):
-            app.config_base = self.option_get_value('configbase')
+            app.config_base = os.path.expanduser(self.option_get_value('configbase'))
 
-        app.config_file_path = self.option_get_value('configfile')
+        app.config_file_path = os.path.expanduser(self.option_get_value('configfile'))
         
         app.init_logging(not self.option_is_set('foreground'))
 
@@ -82,7 +87,7 @@ class AgentRootCommand(Command):
         app.server_uri = app.config.get('connection', 'server_uri', 
                                         app.DEFAULT_SERVER_URI)
 
-        app.proxy = RPCProxy(app.server_uri)
+        app.proxy = RPCProxy(app.server_uri, allow_none=True)
 
         app.ca_cert_path = app.config.get('crypto', 'cacert', 
                                           app.config_path(app.DEFAULT_CA_CERT))
@@ -91,7 +96,11 @@ class AgentRootCommand(Command):
         app.client_key_path = app.config.get(
             'crypto', 'key', app.config_path(app.DEFAULT_CLIENT_KEY))
         app.account_id = app.config.get(
-            'agent', 'accountid', None)
+            'agent', 'account_id', None)
+        
+        if app.account_id != None:
+            app.account_id = int(app.account_id)
+        
         app.poll_interval = app.config.get(
             'agent', 'pollinterval', app.DEFAULT_POLLINTERVAL)
 
@@ -100,6 +109,8 @@ class AgentRootCommand(Command):
 
         if not self.option_is_set('foreground'):
             app.daemonize()
+        
+        app.run()
 
 class AgentApp(Application):
     # DEFAULT SETTINGS
@@ -117,6 +128,10 @@ class AgentApp(Application):
     def __init__(self, args=sys.argv[1:], bin_name=sys.argv[0]):
         self.foreground = False
         self.config_base = AgentApp.DEFAULT_CONFIG_BASE
+        self.client_key = None
+        self.client_cert = None
+        self.server_uri = None
+        
         Application.__init__(self, args, bin_name,
                              root_command_class=AgentRootCommand)
         self.log = logging.getLogger()
@@ -187,10 +202,10 @@ class AgentApp(Application):
         # Both the CA certificate and the client key are mandatory
         try:
             ca_cert_data = open(self.ca_cert_path, 'r').read()
-            self.client_key_data = open(self.client_key_path, 'r').read()
+            client_key_data = open(self.client_key_path, 'r').read()
             self.ca_cert = X509Certificate(ca_cert_data)
-            self.client_key = X509PrivateKey(client_key)
-        except:
+            self.client_key = X509PrivateKey(client_key_data)
+        except Exception, e:
             # We need to catch all exceptions here, including GnuTLS ones.
             self.log.error('Client not initialized yet: %s' % (e))
             sys.exit(1)
@@ -210,7 +225,7 @@ class AgentApp(Application):
     def init_logging(self, daemon=False):
         if daemon:
             try: 
-                formatter = logging.Formatter('nwu-server[%(process)d] '
+                formatter = logging.Formatter('nwu-agent[%(process)d] '
                                                '%(levelname)s %(message)s')
                 hdlr = logging.handlers.SysLogHandler(
                     '/dev/log',
@@ -234,14 +249,21 @@ class AgentApp(Application):
         self.scheduler = Scheduler(self)
         # Check if we do have a valid certificate
         if not self.client_cert:
-            self.scheduler.add_task(AgentCertFetcherTask(self))
+            cert_fetcher = AgentCertFetcherTask(self)
+            self.log.info("Executing certificate fetcher.")
+            if not cert_fetcher.execute():
+                self.log.info("No certificate received, scheduling fetcher task.")
+                self.scheduler.add_task(AgentCertFetcherTask(self))
+            else:
+                self.log.info("Certificate received.")
         else:
             # XXX: Place all tasks the client should do right here.
             self.scheduler.add_task(AgentPackageSyncTask(self))
 
         self.log.info('Scheduler started.')
-        s.start()
-        s.join()
+        # There is no need to run the scheduler in a separate thread here.
+        # That's why we can safely call self.scheduler.run().
+        self.scheduler.run()
         self.log.info('Scheduler stopped.')
 
     def initialize(self, force=False):
@@ -321,9 +343,11 @@ class AgentApp(Application):
 
     def reinit_proxy(self):
         self.init_crypto()
-        self.proxy = RPCProxy(key_file=self.client_key_path,
+        self.proxy = RPCProxy(self.server_uri,
+                              key_file=self.client_key_path,
                               cert_file=self.client_cert_path,
-                              ca_cert_file=self.ca_cert_path)
+                              ca_cert_file=self.ca_cert_path,
+                              allow_none=True)
         self.log.info('Proxy re-initialized.')
 
     def config_path(self, file):

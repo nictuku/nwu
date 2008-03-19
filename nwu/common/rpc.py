@@ -22,11 +22,13 @@
 This module contains shared code used by both the RPC server and client.
 """
 
-from xmlrpclib import Fault, _Method
+from xmlrpclib import Fault as xmlrpcFault, _Method
 from nwu.common.SecureXMLRPC import SecureProxy
 
 __all__ = ['RPCFault', 'RPCProxy', 'UnknownMethodFault', 'AccessDeniedFault',
            'NotPossibleFault', 'NotFoundFault', 'InvalidParamsFault']
+
+Fault = xmlrpcFault
 
 class RPCFault:
     """ RPC error codes """
@@ -42,7 +44,7 @@ class RPCFault:
     # This allows us to re-generate the original faults (correct class)
     # in clients.
     LOOKUP_TABLE = ['Fault', 'UnknownMethodFault', 'AccessDeniedFault',
-                    'NotPossibleFault', 'NotFoundFault']
+                    'NotPossibleFault', 'NotFoundFault', 'InvalidParamsFault']
 
     @staticmethod 
     def translate_fault(generic_fault):
@@ -83,14 +85,13 @@ class NotFoundFault(Fault):
 class InvalidParamsFault(Fault):
     def __init__(self, method_name):
         Fault.__init__(self, RPCFault.INVALID_PARAMS, method_name)
-
+    
 class InternalFault(Fault):
     def __init__(self):
         Fault.__init__(self, RPCFault.INTERNAL_FAULT, 'Internal error.')
 
 class RPCProxy(SecureProxy):
     """ Override SecureProxy to provide Fault translation. """
-
     def __getattr__(self, name):
         return _Method(self.__request, name)
 

@@ -18,7 +18,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
-from nwu.common.rpc import NotFoundFault, NotPossibleFault
+from nwu.common.rpc import NotFoundFault, NotPossibleFault, InvalidParamsFault
 from nwu.server.db.model import Account
 from nwu.server.rpc import RPCHandler, PRIV_ANONYMOUS
 
@@ -65,11 +65,15 @@ class AnonymousHandler(RPCHandler):
         ac.save()
         ac.flush()
 
-        self.log.info('Created account %s (%d).' % (ac.name, ac.oid))
+        self.log.info('Created account %s (%d).' % (ac.name, ac.id))
         return ac.oid
 
     def get_certificate(self, account, remote_host, account_id):
         """ Get the certificate of a given account. """
+        
+        if type(account_id) != int:
+            raise InvalidParamsFault("anon.get_certificate")
+        
         # Try getting account.
         ac = Account.get(account_id)
         
@@ -78,6 +82,6 @@ class AnonymousHandler(RPCHandler):
 
         if not ac.cert:
             raise NotPossibleFault('No certificate present for account.')
-
+        
         return ac.cert
         

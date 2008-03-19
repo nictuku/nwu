@@ -93,6 +93,7 @@ class CryptoHelper:
                 'crypto', 'admincert', app.DEFAULT_ADMIN_CERT))
 
     def init_crypto(self):
+        self.log.debug("INIT: crypto")
         # step 0: reset/create ca_serial file
         try:
             os.chmod(self.app.ca_serial, stat.S_IWUSR)
@@ -343,6 +344,7 @@ class ServerApp(Application):
         self.exit(0)
 
     def init_db(self):
+        self.log.debug("INIT: database.")
         # get settings from config file
         db_type = self.config.get('database', 'type',
                                  ServerApp.DEFAULT_DB_TYPE)
@@ -367,6 +369,7 @@ class ServerApp(Application):
             self.check_file_security(db_database, allow_group=True)
 
         db_bind(self.db_connstring)
+        self.log.debug("INIT: database -> OK")
 
     def drop_privileges(self):
         user = self.root_command.option_get_value('user')
