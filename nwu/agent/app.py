@@ -41,16 +41,17 @@ class AgentCertFetcherTask(RecurringTask):
 
     def execute(self):
         """ Try to fetch our client certificate from the server. """
+        cert = None
         try:
             self.log.debug("Trying to fetch certificate for account id %s." % (self.app.account_id))
             cert = self.proxy.anon.get_certificate(self.app.account_id)
-        except NotFoundFault:
+        except NotFoundFault, f:
             self.log.error('Account with ID %d not found at server.' \
                           % (app.account_id))
             sys.exit(1)
-        except NotPossibleFault:
+        except NotPossibleFault, f:
             # Account not yet present
-            self.log.info('No certificate present on server yet')
+            self.log.info('No certificate present on server yet.')
         except Fault, f:
             self.log.error('Unhandled fault: %s' % (f))
             sys.exit(1)
@@ -66,6 +67,8 @@ class AgentCertFetcherTask(RecurringTask):
 
 class AgentRootCommand(Command):
     def execute(self, app, args, cmd_name=None):
+        self.log = app.log
+
         if len(args) > 0 or cmd_name:
             if cmd_name:
                 arg = cmd_name
@@ -87,7 +90,7 @@ class AgentRootCommand(Command):
         app.server_uri = app.config.get('connection', 'server_uri', 
                                         app.DEFAULT_SERVER_URI)
 
-        app.proxy = RPCProxy(app.server_uri, allow_none=True)
+        app.proxy = RPCProxy(app.server_uri)
 
         app.ca_cert_path = app.config.get('crypto', 'cacert', 
                                           app.config_path(app.DEFAULT_CA_CERT))
@@ -96,16 +99,24 @@ class AgentRootCommand(Command):
         app.client_key_path = app.config.get(
             'crypto', 'key', app.config_path(app.DEFAULT_CLIENT_KEY))
         app.account_id = app.config.get(
-            'agent', 'account_id', None)
+            'agent', 'id', None)
         
-        if app.account_id != None:
-            app.account_id = int(app.account_id)
-        
+        if app.account_id:
+            try:
+                app.account_id = int(app.account_id)
+            except:
+                self.log.fatal('Account ID could not be converted to integer: %s' % (app.account_id))
+                sys.exit(255)
+
         app.poll_interval = app.config.get(
             'agent', 'pollinterval', app.DEFAULT_POLLINTERVAL)
 
         if self.option_is_set('initialize'):
             app.initialize()
+
+        if not app.account_id:
+            self.log.fatal('Agent not initialized yet.')
+            sys.exit(255)
 
         if not self.option_is_set('foreground'):
             app.daemonize()
@@ -122,7 +133,7 @@ class AgentApp(Application):
     DEFAULT_PIDFILE = '/var/run/nwu/nwu-agent.pid'
     DEFAULT_LOGLEVEL = 'INFO'
     DEFAULT_ERRORLOG = '/dev/null'
-    DEFAULT_POLLINTERVAL = 60
+    DEFAULT_POLLINTERVAL = 30
     DEFAULT_SERVER_URI = 'https://localhost:8088'
 
     def __init__(self, args=sys.argv[1:], bin_name=sys.argv[0]):
@@ -269,35 +280,55 @@ class AgentApp(Application):
     def initialize(self, force=False):
         """ Initialize agent configuration """
         # step 0: Download CA certificate from server.
-        # XXX: Add error handling for non-nwu Faults.
-        cacert = self.proxy.anon.get_ca_certificate()
-        self.log.debug('Received CA certificate from server.')
-        if not cacert:
-            self.log.error('Received CA certificate with None-value.')
-            sys.exit(1)
-        try:
-            ca_cert_path = self.config_path(self.ca_cert_path)
-            if os.path.exists(ca_cert_path):
-                os.chmod(ca_cert_path, stat.S_IWUSR)
-            fp = open(ca_cert_path, 'w')
-            fp.write(cacert)
-            fp.close()
-            os.chmod(ca_cert_path, stat.S_IRUSR)
-        except IOError, e:
-            self.log.error('Initialization failed: %s' % (e))
-            sys.exit(255)
+        # XXX: Check if certificate in self.ca_cert_path is valid
+        #
+        # Do not download certificate if one is already present and force is False
+        if force or not os.path.exists(self.config_path(self.ca_cert_path)):
+            try:
+                cacert = self.proxy.anon.get_ca_certificate()
+            except Fault, f:
+                self.log.fatal('Unhandled fault: %s' % (f))
+                sys.exit(255)
+
+            self.log.debug('Received CA certificate from server.')
+
+            if not cacert:
+                self.log.error('Received CA certificate with None-value.')
+                sys.exit(1)
+
+            try:
+                ca_cert_path = self.config_path(self.ca_cert_path)
+                self.log.debug('Writing CA certificate to %s.' % (ca_cert_path))
+                if os.path.exists(ca_cert_path):
+                    os.chmod(ca_cert_path, stat.S_IWUSR)
+                fp = open(ca_cert_path, 'w')
+                fp.write(cacert)
+                fp.close()
+                os.chmod(ca_cert_path, stat.S_IRUSR)
+
+                self.log.debug('CA certificate written.')
+            except IOError, e:
+                self.log.error('Initialization failed: %s' % (e))
+                sys.exit(255)
 
         # step 1: Generate private key.
-        self.log.info('Generating private key. This could take some time.')
-        key = certtool.generate_privkey()
-        try:
-            fp = open(self.config_path(self.client_key_path), 'w')
-            fp.write(key)
-            fp.close()
-            os.chmod(self.config_path(self.client_key_path), stat.S_IRUSR)
-        except IOError, e:
-            self.log.error('Initialization failed: %s' % (e))
-            sys.exit(255)
+        # Do not generate private key if key is present and force is False
+        #
+        # XXX: Check if data in self.client_key_path is valid.
+        if force or not os.path.exists(self.config_path(self.client_key_path)):
+            self.log.info('Generating private key. This could take some time.')
+            key = certtool.generate_privkey()
+            try:
+                fp = open(self.config_path(self.client_key_path), 'w')
+                fp.write(key)
+                fp.close()
+                os.chmod(self.config_path(self.client_key_path), stat.S_IRUSR)
+            except IOError, e:
+                self.log.error('Initialization failed: %s' % (e))
+                sys.exit(255)
+        else:
+            key = open(self.config_path(self.client_key_path), 'r').read()
+            self.log.info('Not generating new private key; using existing one.')
 
         # step 2: Ask server to sign CSR.
         hostname = socket.gethostname()
@@ -307,19 +338,23 @@ class AgentApp(Application):
 
         # XXX: Ask user if input is correct, just like in 
         #      nwu.server.app.CryptoHelper.
+        # XXX: Use nwu.common.gnutlsext instead of certtool.
         csr = certtool.generate_csr(key, country, org, hostname)
 
         # step 3: Send CSR to server.
         try:
             account_id = self.proxy.anon.request_csr_signing(hostname, csr)
         except NotPossibleFault, e:
-            print 'The server reported an error: %s' % (e)
+            self.log.error('The server reported an error: %s' % (e))
+            sys.exit(255)
+        except Fault, f:
+            self.log.fatal('Unhandled fault: %s' % (f))
             sys.exit(255)
         
         self.log.info('Sent CSR to server for signing.')
-        self.log.debug('Received our account ID: %d' % (account_id))
+        self.log.debug('Received our account ID: %s' % (account_id))
 
-        self.config.set('account', 'id', str(account_id))
+        self.config.set('agent', 'id', str(account_id))
 
         try:
             fp = open(self.config_file_path, 'w')
@@ -329,6 +364,7 @@ class AgentApp(Application):
             self.log.error('Could not save config file: %s' % (e))
             sys.exit(1)
 
+        self.log.info('Finished initialization sequence.')
         sys.exit(0)
     
     def save_certificate(self, cert):
@@ -346,8 +382,7 @@ class AgentApp(Application):
         self.proxy = RPCProxy(self.server_uri,
                               key_file=self.client_key_path,
                               cert_file=self.client_cert_path,
-                              ca_cert_file=self.ca_cert_path,
-                              allow_none=True)
+                              ca_cert_file=self.ca_cert_path)
         self.log.info('Proxy re-initialized.')
 
     def config_path(self, file):

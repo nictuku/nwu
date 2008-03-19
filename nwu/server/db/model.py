@@ -2,25 +2,27 @@
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
+
 
 """Defines the nwu database scheme, tables and operations.
 """
 import sys
-import hmac
 import logging
 # FIXME: wildcard imports should not be used
 from elixir import *
@@ -61,8 +63,8 @@ class Computer(Entity):
     def to_dict(self):
         account_id = 0
         if self.account:
-            account_id = self.account.oid
-        return {'id': self.oid, 'hostname': self.hostname, 
+            account_id = self.account.id
+        return {'id': self.id, 'hostname': self.hostname, 
                 'os_name': self.os_name, 'os_version': self.os_version,
                 'account_id': account_id}
 
@@ -73,7 +75,7 @@ class CurrentPackages(Entity):
     version = Field(String(30))
     
     def to_dict(self):
-        return {'id': self.oid, 'name': self.name, 'version': self.version}
+        return {'id': self.id, 'name': self.name, 'version': self.version}
 
     belongs_to('computer', of_kind='Computer', inverse='current_packages')
 #    class sqlmeta:
@@ -86,7 +88,7 @@ class UpdateCandidates(Entity):
     version = Field(String(30))
 
     def to_dict(self):
-        return {'id': self.oid, 'name': self.name, 'version': self.version}
+        return {'id': self.id, 'name': self.name, 'version': self.version}
 
     belongs_to('computer', of_kind='Computer', inverse='update_candidates')
 
@@ -113,7 +115,7 @@ class Repositories(Entity):
     components = Field(String) # space separated list of components
 
     def to_dict(self):
-        return {'id': self.oid, 'filename': self.filename, 'type': self.type,
+        return {'id': self.id, 'filename': self.filename, 'type': self.type,
                 'uri': self.uri, 'distribution': self.distribution,
                 'components': self.components}
 
@@ -126,15 +128,16 @@ class Tasks(Entity):
     details = Field(String)
 
     def to_dict(self):
-        return {'id': self.oid, 'action': self.action, 
+        return {'id': self.id, 'action': self.action, 
                 'details': self.details }
 
     belongs_to('computer', of_kind='Computer', inverse='tasks')
 
 class Account(Entity):
     using_options(tablename='account')
-    
-    name = Field(String(255), unique=True)
+    # Account name is not unique anymore and should not be used to identify
+    # an account.
+    name = Field(String(255))
     csr = Field(String, unique=True)
     cert_serial_number = Field(Integer, default=-1)
     cert = Field(String, default=None)
@@ -145,9 +148,9 @@ class Account(Entity):
     def to_dict(self):
         computer_id = 0
         if self.computer:
-            computer_id = self.computer.oid
+            computer_id = self.computer.id
 
-        return {'id': self.oid, 'name': self.name, 'csr': self.csr,
+        return {'id': self.id, 'name': self.name, 'csr': self.csr,
                 'cert_serial_number': self.cert_serial_number,
                 'cert': self.cert, 'privileges': self.privileges,
                 'computer_id': computer_id}

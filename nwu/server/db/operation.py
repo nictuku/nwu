@@ -1,32 +1,34 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #   Copyright (C) 2006 Yves Junqueira (yves@cetico.org)
+#   Copyright (C) 2008 Stephan Peijnik (sp@gnu.org)
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#    This file is part of NWU.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+#    NWU is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#    NWU is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with NWU.  If not, see <http://www.gnu.org/licenses/>.
 
 """Defines the nwu database scheme, tables and operations.
 """
 import sys
-import hmac
 import logging
 import md5
 
 from nwu.server.db.model import *
 
 class Local:
+    @staticmethod
     def update_tbl_version(tbl, comp_uniq): 
         """Remember version of clients metadata to enforce data
         syncronization."""
@@ -56,31 +58,4 @@ class Local:
         updated = TablesVersion(name=tbl,version=cksum,uniq=comp_uniq)
         return updated.version
 
-    def check_token(uniq, token):
-        """Checks if the specified token was generated using the stored
-        computer password.
-        """
-        check_t = Computer.get_by(uniq=uniq)
-
-        password = ''
-
-        if not check_t:
-            # No computer with that specified uniq id was found.
-            log.debug("check_token: no computer with that uniq found")
-            return False
-        else:
-            password = check_t.password
-
-        valid_token = hmac.new(password, uniq).hexdigest()
-
-        if valid_token == token:
-            # Yeah, this is a valid token!
-            log.debug("check_token: token authenticated")
-            return True
-        else:
-            log.debug("check_token: Invalid token specified")
-            return False
-
-    check_token=staticmethod(check_token)
-    update_tbl_version=staticmethod(update_tbl_version)
 

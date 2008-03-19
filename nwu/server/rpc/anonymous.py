@@ -48,6 +48,7 @@ class AnonymousHandler(RPCHandler):
         #       from spamming (use remote_host).
         
         self.app.log.debug('CSR received from %s (%s).' % (remote_host, name))
+
         # Check if CSR is already present in database.
         ac = Account.query.filter_by(csr=csr)
 
@@ -55,18 +56,12 @@ class AnonymousHandler(RPCHandler):
             self.app.log.debug('CSR already present in DB.')
             raise NotPossibleFault('CSR already present in DB.')
 
-        # Now check if the account name is already taken.
-        ac = Account.query.filter_by(name=name)
-        if ac.count() > 0:
-            self.app.log.debug('Account name already taken: %s' % (name))
-            raise NotPossibleFault('Account name already taken.')
-
         ac = Account(name=name, csr=csr, privileges=PRIV_ANONYMOUS)
         ac.save()
         ac.flush()
 
         self.log.info('Created account %s (%d).' % (ac.name, ac.id))
-        return ac.oid
+        return ac.id
 
     def get_certificate(self, account, remote_host, account_id):
         """ Get the certificate of a given account. """
@@ -75,7 +70,11 @@ class AnonymousHandler(RPCHandler):
             raise InvalidParamsFault("anon.get_certificate")
         
         # Try getting account.
-        ac = Account.get(account_id)
+        # If client is authenticated use given account.
+        if not account:
+            ac = Account.get(account_id)
+        else:
+            ac = account
         
         if not ac:
             raise NotFoundFault('Account with id %s' % (account_id))
@@ -83,5 +82,7 @@ class AnonymousHandler(RPCHandler):
         if not ac.cert:
             raise NotPossibleFault('No certificate present for account.')
         
+
+        self.log.debug('Certificate of account %d requested.' % (account_id))
         return ac.cert
         
